@@ -48,7 +48,7 @@ Agenten, Build & Deployment und Git.
 ## Installation
 
 ```bash
-curl -fsSL https://github.com/pvanissem/hearth/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/pvanissem/hearth-ide/releases/latest/download/install.sh | bash
 ```
 
 Lädt die aktuelle Version aus den GitHub Releases, prüft die SHA-256-Prüfsumme,

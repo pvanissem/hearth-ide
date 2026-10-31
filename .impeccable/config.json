@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-10-31T13:03:45.046Z",
+        "reason": "assistant triage: flagged elements are ruled typographic lists (rule lines, not containers) and a split panel whose halves carry their own clamp(1.4rem,3vw,2.6rem) padding"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-10-31T13:20:57.024Z",
+        "reason": "assistant triage: static check reads clamp() sizes as 17px; rendered h1 is 86px and h2 54px at 1440 (see .impeccable/review/desktop.png)"
+      }
+    ]
+  }
+}

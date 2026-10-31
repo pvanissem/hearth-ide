@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearth IDE – Dein Agent. Dein Abo. Unser Feuerring.</title>
+<meta name="description" content="Hearth IDE ist eine native macOS-App, die Claude Code, Codex, GitHub Copilot CLI, OpenCode und Gemini CLI in einer nono-Sandbox laufen lässt – mit einer Inbox für alle Sitzungen.">
+<meta property="og:title" content="Hearth IDE">
+<meta property="og:description" content="Dein Agent. Dein Abo. Unser Feuerring. Jede Agent-CLI in einer Sandbox auf deinem Mac.">
+<meta property="og:image" content="https://pvanissem.github.io/hearth-ide/assets/hearth-app.webp">
+<meta name="theme-color" content="#0e0a12">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+:root {
+  --night: #0e0a12;
+  --night-2: #170f1c;
+  --plum: #2a1e2e;
+  --crimson: #c4161c;
+  --ember: #ff5a1f;
+  --flame: #ffa62b;
+  --core: #ffe3a1;
+  --ash: #e9dfe6;
+  --ash-2: #bfb0bb;
+  --ash-3: #9a8b97;
+  --cold: #8a8194;
+  --flicker: 1;
+  --display: "Bricolage Grotesque", "Avenir Next", sans-serif;
+  --body: "Hanken Grotesk", "Avenir Next", sans-serif;
+  --mono: "Azeret Mono", ui-monospace, "SF Mono", monospace;
+  --gutter: clamp(1rem, 4vw, 3.5rem);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+}
+* { box-sizing: border-box; }
+html { background: var(--night); color: var(--ash); scrollbar-color: #3b3140 var(--night); overflow-x: clip; }
+body {
+  margin: 0;
+  font: 400 1.0625rem/1.6 var(--body);
+  background: linear-gradient(var(--night), var(--night-2) 40rem, var(--plum) 120rem, var(--night-2) 220rem, var(--night));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+::selection { background: var(--ember); color: var(--night); }
+:focus-visible { outline: 2px solid var(--flame); outline-offset: 3px; border-radius: 4px; }
+a { color: var(--flame); text-decoration-thickness: 1px; text-underline-offset: .2em; }
+a:hover { color: var(--core); }
+code, kbd, .mono { font-family: var(--mono); font-variant-ligatures: none; }
+code { font-size: .92em; }
+img { max-width: 100%; display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wrap { position: relative; width: min(1240px, 100%); margin: 0 auto; padding: 0 var(--gutter); }
+
+/* firelight: the only light source; its glow flickers with the fire (--flicker is set by the canvas loop) */
+.firelight { position: absolute; pointer-events: none; z-index: 0; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(196, 22, 28, .32), rgba(255, 90, 31, .1) 55%, transparent);
+  opacity: calc(.75 + .25 * var(--flicker)); }
+.firelight.hero-light { width: 70rem; height: 52rem; right: -14rem; top: -8rem; }
+.ember-light { position: absolute; pointer-events: none; z-index: 0; width: 42rem; height: 30rem; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 90, 31, .12), transparent);
+  animation: smoulder 5.5s ease-in-out infinite alternate; }
+@keyframes smoulder { 0% { opacity: .55; } 40% { opacity: .9; } 55% { opacity: .7; } 100% { opacity: 1; } }
+
+/* ---------- Top ---------- */
+.top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding-top: 1.4rem; }
+.mark { display: flex; align-items: center; gap: .7rem; color: var(--ash); text-decoration: none; font: 700 1.15rem/1 var(--display); letter-spacing: -.01em; }
+.mark img { width: 36px; height: 36px; border-radius: 9px; box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .8); }
+.version { font: 500 .72rem/1 var(--mono); color: var(--flame); border: 1px solid rgba(255, 166, 43, .4); padding: .3rem .45rem; border-radius: 999px; }
+.top nav { display: flex; gap: 1.4rem; font-size: .95rem; }
+.top nav a { color: var(--ash-2); text-decoration: none; }
+.top nav a:hover { color: var(--ash); }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 1rem; min-height: min(92vh, 860px); padding-block: 1.5rem 2.5rem; }
+.pitch { position: relative; z-index: 2; }
+h1 { font: 800 clamp(2.7rem, 5.6vw, 5.4rem)/.93 var(--display); font-variation-settings: "opsz" 96; letter-spacing: -.035em; margin: 0 0 1.4rem; text-wrap: balance; }
+h1 .lit { color: var(--flame); }
+.lede { font-size: clamp(1.05rem, 1.4vw, 1.2rem); color: var(--ash-2); max-width: 34ch; margin: 0 0 2rem; }
+.lede strong { color: var(--ash); font-weight: 600; }
+
+.install { position: relative; display: flex; align-items: stretch; max-width: 36rem; border-radius: 12px; background: #120c15; border: 1px solid rgba(255, 90, 31, .35); box-shadow: 0 16px 30px -16px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 166, 43, .12); }
+.install code { flex: 1; min-width: 0; white-space: normal; overflow-wrap: break-word; padding: .95rem 1.1rem; color: var(--core); font-size: .84rem; line-height: 1.55; }
+.install code .prompt { color: var(--ember); user-select: none; margin-right: .6ch; }
+.copy { flex: none; display: inline-flex; align-items: center; gap: .45rem; cursor: pointer; border: 0; border-left: 1px solid rgba(255, 90, 31, .3); border-radius: 0 11px 11px 0; padding: 0 1.1rem; font: 600 .9rem var(--body); color: var(--night); background: var(--flame); transition: background .25s var(--ease); }
+.copy:hover { background: var(--core); }
+.copy svg { width: 1.05em; height: 1.05em; }
+.copy[data-state="done"] { background: #ffd27a; }
+.copy-status { position: absolute; left: 0; top: calc(100% + .55rem); font-size: .85rem; color: var(--ash-3); }
+.pitch-links { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2.6rem; font-size: .98rem; }
+
+.facts { display: flex; flex-wrap: wrap; margin: 2rem 0 0; padding: 0; list-style: none; border-top: 1px solid rgba(233, 223, 230, .14); border-bottom: 1px solid rgba(233, 223, 230, .14); max-width: 36rem; }
+.facts li { font: 400 .86rem/1 var(--body); color: var(--ash-3); padding: .75rem .9rem .75rem 0; margin-right: .9rem; border-right: 1px solid rgba(233, 223, 230, .14); white-space: nowrap; }
+.facts li:last-child { border-right: 0; }
+.facts b { font: 500 .8rem/1 var(--mono); font-variant-ligatures: none; color: var(--ash); }
+
+/* ---------- The ring ---------- */
+.ring { position: relative; width: 100%; aspect-ratio: 1 / .86; }
+.ring canvas { position: absolute; inset: 0; width: 100%; height: 100%; -webkit-mask-image: linear-gradient(transparent 0, #000 22%); mask-image: linear-gradient(transparent 0, #000 22%); }
+.ring svg.stones { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.stone { cursor: help; }
+.stone .heat { opacity: calc(.35 + .4 * var(--flicker)); }
+.stone .hitglow { opacity: 0; transition: opacity .7s var(--ease); }
+.stone.hit .hitglow { opacity: 1; transition-duration: .08s; }
+[data-stone-holder]:focus-visible .rock { stroke: var(--flame); stroke-width: 3; }
+[data-stone-holder] { outline: none; }
+.cut { font-family: var(--mono); font-weight: 700; font-variant-ligatures: none; letter-spacing: .01em; pointer-events: none; }
+.cut .lip { fill: #f4e6dc; }
+.cut .recess { fill: #0c0708; opacity: .9; }
+.agent-name { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 600 clamp(1.05rem, 1.9vw, 1.45rem)/1 var(--mono); font-variant-ligatures: none; color: var(--core); pointer-events: none; white-space: nowrap; transition: opacity .4s var(--ease), filter .4s var(--ease); }
+.agent-name.swap { opacity: 0; filter: blur(6px); }
+.inside-label { position: absolute; left: 50%; top: 67%; transform: translateX(-50%); text-align: center; pointer-events: none; }
+.inside-label code { display: block; font-size: .82rem; color: var(--core); }
+.inside-label span { font-size: .78rem; color: var(--ash-3); }
+.rule-tip { position: absolute; z-index: 3; pointer-events: none; left: 50%; bottom: -1.6rem; transform: translateX(-50%); width: min(21rem, 92%); padding: .6rem .8rem; border-radius: 9px; font-size: .86rem; line-height: 1.4; color: var(--ash); background: #1d1420; border: 1px solid rgba(255, 90, 31, .45); box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .8); opacity: 0; transition: opacity .25s var(--ease); }
+.rule-tip.show { opacity: 1; }
+.rule-tip b { display: block; color: var(--flame); font: 600 .74rem/1.3 var(--mono); font-variant-ligatures: none; margin-bottom: .25rem; }
+
+/* ---------- Sections ---------- */
+section { position: relative; padding-block: clamp(4rem, 9vw, 8rem) 0; }
+section > * { position: relative; z-index: 1; }
+h2 { font: 800 clamp(2rem, 3.8vw, 3.4rem)/1 var(--display); letter-spacing: -.03em; margin: 0 0 1rem; text-wrap: balance; }
+.section-lede { color: var(--ash-2); max-width: 52ch; margin: 0 0 2.6rem; font-size: 1.1rem; }
+
+/* inside the ring vs. the stones that keep things out */
+.inside { display: flex; flex-wrap: wrap; gap: .6rem 2rem; margin: 0 0 3rem; padding: 0; list-style: none; }
+.inside li { font-size: 1rem; color: var(--ash-2); }
+.inside li code, .inside li strong { color: var(--core); font-weight: 600; }
+.outside-title { font: 700 1.25rem/1.2 var(--display); color: var(--cold); margin: 0 0 1.2rem; }
+.arc { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem 1.2rem; }
+.arc li { text-align: center; transform: translateY(calc(var(--lift, 0) * 1rem)); }
+.arc svg { width: 100%; height: auto; overflow: visible; }
+.arc p { margin: 0; font-size: .92rem; color: var(--ash-3); line-height: 1.35; }
+.side-note { margin-top: 2.4rem; color: var(--ash-3); font-size: .95rem; max-width: 70ch; }
+
+/* agents roster */
+.roster { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(233, 223, 230, .14); }
+.roster li { display: grid; grid-template-columns: minmax(10rem, 1.1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 1.4rem; align-items: baseline; padding: 1.25rem 0; border-bottom: 1px solid rgba(233, 223, 230, .1); }
+.roster .who { font: 700 clamp(1.3rem, 2.2vw, 1.8rem)/1.1 var(--display); letter-spacing: -.015em; transition: color .3s var(--ease); }
+.roster .login { color: var(--ash-2); }
+.roster .how { font-size: .9rem; color: var(--ash-3); }
+.roster li:hover .who { color: var(--flame); }
+
+/* three strokes: each number ignites in turn */
+.strokes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid rgba(233, 223, 230, .14); }
+.strokes li { position: relative; padding: 1.8rem 1.6rem 0 0; }
+.strokes li + li { padding-left: 1.6rem; border-left: 1px solid rgba(233, 223, 230, .1); }
+.strokes .n { display: block; font: 800 4.4rem/.8 var(--display); color: #8f7d95; margin-bottom: 1rem; }
+.strokes li.on .n { color: var(--ember); animation: ignite .9s steps(1, end); }
+@keyframes ignite { 0% { color: #8f7d95; } 12% { color: var(--flame); } 22% { color: #8f7d95; } 34% { color: var(--core); } 46% { color: var(--crimson); } 60% { color: var(--flame); } 100% { color: var(--ember); } }
+.strokes h3 { font: 700 1.35rem/1.2 var(--display); margin: 0 0 .5rem; letter-spacing: -.01em; }
+.strokes p { margin: 0; color: var(--ash-2); max-width: 34ch; }
+
+/* the app at work */
+.shot { margin: 0; }
+.shot-frame { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(233, 223, 230, .14); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .95); background: #19151c; }
+.shot-frame img { width: 100%; height: auto; }
+.pin { position: absolute; display: flex; align-items: center; gap: .5rem; font: 600 .82rem/1.2 var(--body); color: var(--night); background: var(--flame); padding: .4rem .65rem; border-radius: 999px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .8); white-space: nowrap; }
+.pin::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--crimson); }
+.pin.inbox { left: 3%; top: 31%; }
+.pin.chat { left: 30%; top: 13%; }
+.pin.inspector { left: 55%; top: 66%; }
+.shot figcaption { margin-top: 1rem; font-size: .9rem; color: var(--ash-3); max-width: 70ch; }
+
+/* honest status */
+.status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; }
+.status h3 { font: 700 1.15rem/1.2 var(--display); margin: 0 0 .9rem; }
+.status ul { margin: 0; padding-left: 1.1rem; color: var(--ash-2); }
+.status li { margin-bottom: .45rem; }
+.status li::marker { color: var(--ember); }
+
+/* close: the last fire */
+.close { text-align: center; padding-block: clamp(5rem, 10vw, 9rem) clamp(3rem, 6vw, 5rem); }
+.embers { position: relative; width: 132px; height: 132px; margin: 0 auto 1.6rem; }
+.embers::before { content: ""; position: absolute; inset: -40px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 90, 31, .45), rgba(196, 22, 28, .15) 60%, transparent); animation: smoulder 2.6s ease-in-out infinite alternate; }
+.embers.flare::before { animation: flare 1.2s var(--ease); }
+@keyframes flare { 0% { opacity: 1; transform: scale(1); } 25% { opacity: 1; transform: scale(1.45); } 100% { opacity: .8; transform: scale(1); } }
+.embers img { position: relative; width: 96px; height: 96px; margin: 18px; border-radius: 22px; box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .9); }
+.close h2 { margin-bottom: 1.6rem; }
+.close .install { margin: 0 auto; text-align: left; }
+.close .pitch-links { justify-content: center; }
+footer { border-top: 1px solid rgba(233, 223, 230, .1); padding-block: 2rem 3rem; font-size: .88rem; color: var(--ash-3); display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; justify-content: space-between; }
+footer a { color: var(--ash-2); }
+
+@media (max-width: 960px) {
+  .hero { grid-template-columns: minmax(0, 1fr); min-height: 0; padding-top: .5rem; }
+  .ring { order: -1; width: 100%; max-width: 560px; margin: 0 auto 4.5rem; }
+  .rule-tip { bottom: -4.2rem; }
+  .lede { max-width: 46ch; }
+  .arc { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .arc li { transform: none; }
+  .strokes { grid-template-columns: 1fr; }
+  .strokes li, .strokes li + li { padding: 1.6rem 0; border-left: 0; border-bottom: 1px solid rgba(233, 223, 230, .1); }
+  .status { grid-template-columns: 1fr; }
+  .roster li { grid-template-columns: 1fr; gap: .3rem; }
+}
+@media (max-width: 560px) {
+  .top nav a:not(.gh) { display: none; }
+  .copy .copy-text { display: none; }
+  .inside-label span { display: none; }
+  .arc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pin.inspector { display: none; }
+  .pin.inbox { left: 4%; top: 30%; }
+  .pin.chat { left: 50%; top: 9%; }
+  .pin .long { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="firelight hero-light" aria-hidden="true"></div>
+  <header class="top">
+    <a class="mark" href="./" aria-label="Hearth IDE – Startseite">
+      <img src="assets/hearth-icon.webp" alt="" width="36" height="36">
+      Hearth IDE <span class="version">v0.1</span>
+    </a>
+    <nav aria-label="Seitenbereiche">
+      <a href="#ring">Was gesperrt ist</a>
+      <a href="#agenten">Agenten</a>
+      <a href="#so-gehts">So geht’s</a>
+      <a class="gh" href="https://github.com/pvanissem/hearth-ide">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="pitch">
+        <h1>Dein Agent. Dein Abo. <span class="lit">Unser Feuerring.</span></h1>
+        <p class="lede"><strong>Claude Code, Codex, Copilot &amp; Co.</strong> laufen auf deinem Mac wie gewohnt – nur in einer Sandbox, die deine Schlüssel, dein Home und fremde Hosts draußen lässt.</p>
+
+        <div class="install" data-install>
+          <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
+          <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
+            <span class="copy-text">Kopieren</span>
+          </button>
+          <span class="copy-status" role="status" aria-live="polite"></span>
+        </div>
+
+        <ul class="facts" aria-label="Eckdaten">
+          <li><b>v0.1</b> frühe Version</li>
+          <li>macOS <b>14+</b></li>
+          <li><b>Apple Silicon</b></li>
+          <li>Lizenz <b>MIT</b></li>
+          <li>Sandbox <b>nono 0.80</b></li>
+        </ul>
+
+        <div class="pitch-links">
+          <a href="https://github.com/pvanissem/hearth-ide">Quellcode auf GitHub</a>
+          <a href="#ring">Was der Ring sperrt</a>
+        </div>
+      </div>
+
+      <div class="ring" data-ring aria-label="Ein Steinring aus Sandbox-Regeln um das Feuer des Agenten. Jeder Stein ist eine Sperre.">
+        <canvas data-fire aria-hidden="true"></canvas>
+        <svg class="stones" data-stones viewBox="0 0 1000 860" role="list"></svg>
+        <div class="agent-name" data-agent aria-hidden="true">claude</div>
+        <div class="inside-label"><code>~/dein-projekt</code><span>lesen + schreiben</span></div>
+        <div class="rule-tip" data-tip aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <section id="ring" aria-labelledby="ring-h">
+      <div class="ember-light" style="left:-18rem;top:2rem" aria-hidden="true"></div>
+      <h2 id="ring-h">Was im Ring bleibt.</h2>
+      <p class="section-lede">Hearth startet jeden Agenten in einer <a href="https://nono.sh">nono</a>-Sandbox (macOS Seatbelt). Innerhalb des Rings arbeitet er frei:</p>
+      <ul class="inside">
+        <li><code>~/dein-projekt</code> lesen und schreiben</li>
+        <li>die eigenen Einstellungen, z. B. <code>~/.claude</code></li>
+        <li><strong>LLM-APIs</strong>, npm, PyPI, Maven</li>
+        <li><strong>GitHub, GitLab</strong> und Dokumentation</li>
+      </ul>
+      <h3 class="outside-title">Draußen bleiben:</h3>
+      <ul class="arc" data-arc>
+        <li style="--lift:1.4" data-stone="~/.ssh"><p>SSH-Schlüssel</p></li>
+        <li style="--lift:.5" data-stone="~/.zshrc"><p>Shell-Konfiguration</p></li>
+        <li style="--lift:0" data-stone="~/.aws"><p>Cloud-Zugangsdaten</p></li>
+        <li style="--lift:0" data-stone="Browserdaten"><p>Cookies, Passwörter, Sitzungen</p></li>
+        <li style="--lift:.5" data-stone="~/Documents"><p>der Rest deines Home</p></li>
+        <li style="--lift:1.4" data-stone="example.com"><p>jeder nicht freigegebene Host</p></li>
+      </ul>
+      <p class="side-note">Weitere Domains, Ports und Ordner gibst du in den Einstellungen frei. API-Keys reicht nono als Platzhalter durch: Der Agent sieht nie den echten Wert.</p>
+    </section>
+
+    <section id="agenten" aria-labelledby="agenten-h">
+      <h2 id="agenten-h">Deine Agenten, deine Logins.</h2>
+      <p class="section-lede">Hearth bringt kein eigenes Modell mit. Es hält die Agenten in Schach, für die du schon bezahlst.</p>
+      <ul class="roster">
+        <li><span class="who">Claude Code</span><span class="login">dein Claude-Abo, über die offizielle CLI</span><span class="how">Status per Hooks in der Inbox</span></li>
+        <li><span class="who">Codex</span><span class="login">ChatGPT-Login oder API-Key</span><span class="how">Status per notify</span></li>
+        <li><span class="who">GitHub Copilot CLI</span><span class="login">dein GitHub-Konto</span><span class="how">im Terminal-Chat</span></li>
+        <li><span class="who">OpenCode</span><span class="login">jeder Anbieter, den OpenCode kennt</span><span class="how">mit privatem Server in der Sandbox</span></li>
+        <li><span class="who">Gemini CLI</span><span class="login">dein Google-Konto</span><span class="how">im Terminal-Chat</span></li>
+      </ul>
+    </section>
+
+    <section id="so-gehts" aria-labelledby="so-gehts-h">
+      <div class="ember-light" style="right:-16rem;top:6rem" aria-hidden="true"></div>
+      <h2 id="so-gehts-h">In drei Zügen entfacht.</h2>
+      <p class="section-lede">Kein Konto, keine Konfiguration. Hearth bringt die Sandbox mit, deine Agenten bringst du selbst.</p>
+      <ol class="strokes" data-strokes>
+        <li><span class="n" aria-hidden="true">1</span><h3>Installieren</h3><p>Der Befehl oben lädt die App, prüft die SHA-256-Prüfsumme und legt sie in den Programme-Ordner. Updates kommen aus der App.</p></li>
+        <li><span class="n" aria-hidden="true">2</span><h3>Ordner wählen</h3><p>Der Projektordner ist das Innere des Rings: Nur hier darf der Agent schreiben.</p></li>
+        <li><span class="n" aria-hidden="true">3</span><h3>Agent starten</h3><p>Claude Code, Codex, Copilot, OpenCode oder Gemini – mit deinem eigenen Login, im Terminal der Chat-Ansicht.</p></li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="app-h">
+      <h2 id="app-h">Alle Feuer in einem Fenster.</h2>
+      <p class="section-lede">Eine Inbox zeigt, welcher Agent arbeitet, wartet oder fertig ist. Daneben Ordner, Git, Editor, Tests und Builds – die auch in der Sandbox laufen.</p>
+      <figure class="shot">
+        <div class="shot-frame">
+          <picture>
+            <source media="(max-width: 560px)" srcset="assets/hearth-app-phone.webp" width="1000" height="1106">
+            <img src="assets/hearth-app.webp" width="2400" height="1326" loading="lazy" decoding="async"
+                 alt="Hearth IDE: links die Inbox mit einer fertigen Claude-Code-Sitzung, daneben der Terminal-Chat mit Sandbox-Abzeichen, rechts Verzeichnis, Git mit zwei Änderungen und Build &amp; Deployment.">
+          </picture>
+          <span class="pin inbox">Inbox</span>
+          <span class="pin chat">Terminal-Chat<span class="long"> in der Sandbox</span></span>
+          <span class="pin inspector">Git &amp; Builds folgen dem Agenten</span>
+        </div>
+        <figcaption>Echter Screenshot mit dem Demo-Projekt „lagerfeuer“: Claude Code ergänzt in der Sandbox eine Funktion samt Test.</figcaption>
+      </figure>
+    </section>
+
+    <section aria-labelledby="stand-h">
+      <h2 id="stand-h">Ehrlicher Stand: v0.1.</h2>
+      <p class="section-lede">Früh, aber benutzbar. Das hier stimmt heute:</p>
+      <div class="status">
+        <div>
+          <h3>Läuft</h3>
+          <ul>
+            <li>Agenten als Terminal in der Chat-Ansicht</li>
+            <li>Inbox mit Status und Benachrichtigungen</li>
+            <li>Build &amp; Deployment und Git in der Sandbox</li>
+            <li>Sitzungen fortsetzen</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Kommt als Nächstes</h3>
+          <ul>
+            <li>Nativer Chat über das Agent Client Protocol</li>
+            <li>Login ohne Schlüsselbund-Freigabe</li>
+            <li>Signierte, notarisierte Builds</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Voraussetzungen</h3>
+          <ul>
+            <li>macOS 14 oder neuer</li>
+            <li>Apple Silicon</li>
+            <li>mindestens eine Agent-CLI</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="close" aria-labelledby="close-h">
+      <div class="embers"><img src="assets/hearth-icon.webp" alt="" width="96" height="96" loading="lazy"></div>
+      <h2 id="close-h">Zünd ihn an.</h2>
+      <div class="install" data-install>
+        <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
+        <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
+          <span class="copy-text">Kopieren</span>
+        </button>
+        <span class="copy-status" role="status" aria-live="polite"></span>
+      </div>
+      <div class="pitch-links">
+        <a href="https://github.com/pvanissem/hearth-ide/releases/latest">Release-Notizen</a>
+        <a href="https://github.com/pvanissem/hearth-ide">Quellcode</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Hearth IDE · MIT-Lizenz · kein Konto, keine Telemetrie</span>
+    <span>Sandbox: <a href="https://github.com/nolabs-ai/nono">nono</a> (Apache-2.0)</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const root = document.documentElement;
+
+  /* ---------- copy install command ---------- */
+  document.querySelectorAll("[data-install]").forEach((box) => {
+    const btn = box.querySelector("[data-copy]");
+    const cmd = box.querySelector("[data-cmd]");
+    const text = cmd.textContent;
+    const status = box.querySelector(".copy-status");
+    const label = btn.querySelector(".copy-text");
+    btn.addEventListener("click", async () => {
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; }
+      catch {
+        const range = document.createRange(); range.selectNodeContents(cmd);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        try { ok = document.execCommand("copy"); } catch { ok = false; }
+      }
+      btn.dataset.state = ok ? "done" : "";
+      const embers = box.closest(".close")?.querySelector(".embers");
+      if (ok && embers && !reduce) { embers.classList.remove("flare"); void embers.offsetWidth; embers.classList.add("flare"); }
+      label.textContent = ok ? "Kopiert" : "Kopieren";
+      status.textContent = ok ? "Im Terminal einfügen und Enter drücken." : "Kopieren nicht möglich – der Befehl ist markiert, mit ⌘C kopieren.";
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => { btn.dataset.state = ""; label.textContent = "Kopieren"; status.textContent = ""; }, 3200);
+    });
+  });
+
+  /* ---------- field stones: a noise surface lit only by the fire ---------- */
+  let stoneId = 0;
+  const rand = (seed, i) => ((Math.sin(seed * 91.7 + i * 37.3) * 43758.5453) % 1 + 1) % 1;
+  function outline(w, h, seed) {
+    const n = 12, pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const j = 0.74 + 0.26 * rand(seed, i);
+      const flat = Math.sin(a) > 0.25 ? 0.7 : 1;            // flat resting underside
+      pts.push([Math.cos(a) * w / 2 * j, Math.sin(a) * h / 2 * j * flat]);
+    }
+    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d + "Z";
+  }
+  // (lx, ly): the fire's position relative to the stone's centre
+  function stone(parent, { w, h, seed, label, lx, ly, font }) {
+    const id = "st" + (stoneId++);
+    const d = outline(w, h, seed);
+    const len = Math.hypot(lx, ly) || 1, ux = lx / len, uy = ly / len;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "stone");
+    g.innerHTML = `
+      <defs>
+        <filter id="${id}f" x="-10%" y="-20%" width="120%" height="140%" primitiveUnits="userSpaceOnUse">
+          <feTurbulence type="fractalNoise" baseFrequency="${(0.03 + rand(seed, 3) * .015).toFixed(3)}" numOctaves="5" seed="${seed}" result="n"/>
+          <feDiffuseLighting in="n" surfaceScale="${(1.4 + rand(seed, 5) * .8).toFixed(1)}" diffuseConstant="1.15" lighting-color="#efe0d6" result="lit">
+            <fePointLight x="${lx.toFixed(0)}" y="${ly.toFixed(0)}" z="${(h * .9).toFixed(0)}"/>
+          </feDiffuseLighting>
+          <feComposite in="lit" in2="SourceGraphic" operator="arithmetic" k1="1.15" k2="0" k3="0" k4="0" result="tex"/>
+          <feComposite in="tex" in2="SourceAlpha" operator="in"/>
+        </filter>
+        <linearGradient id="${id}shade" gradientUnits="userSpaceOnUse" x1="${(ux * w * .5).toFixed(0)}" y1="${(uy * h * .5).toFixed(0)}" x2="${(-ux * w * .5).toFixed(0)}" y2="${(-uy * h * .5).toFixed(0)}">
+          <stop offset="0" stop-color="#0e0a12" stop-opacity="0"/><stop offset=".55" stop-color="#0e0a12" stop-opacity=".25"/><stop offset="1" stop-color="#0e0a12" stop-opacity=".78"/>
+        </linearGradient>
+        <radialGradient id="${id}heat" gradientUnits="userSpaceOnUse" cx="${(ux * w * .45).toFixed(0)}" cy="${(uy * h * .45).toFixed(0)}" r="${(w * .6).toFixed(0)}">
+          <stop offset="0" stop-color="#ff7a2a" stop-opacity=".5"/><stop offset=".7" stop-color="#ff5a1f" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="${id}hit"><stop offset="0" stop-color="#ffa62b" stop-opacity=".9"/><stop offset=".6" stop-color="#ff5a1f" stop-opacity=".3"/><stop offset="1" stop-color="#c4161c" stop-opacity="0"/></radialGradient>
+        <filter id="${id}blur"><feGaussianBlur stdDeviation="${(h * .12).toFixed(1)}"/></filter>
+        <filter id="${id}soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="${(font * .45).toFixed(1)}"/></filter>
+        <clipPath id="${id}clip"><path d="${d}"/></clipPath>
+      </defs>
+      <ellipse class="hitglow" rx="${(w * .72).toFixed(0)}" ry="${(h * .9).toFixed(0)}" fill="url(#${id}hit)"/>
+      <ellipse cx="${(-ux * h * .35).toFixed(1)}" cy="${(h * .3).toFixed(1)}" rx="${(w * .52).toFixed(0)}" ry="${(h * .26).toFixed(0)}" fill="#050307" opacity=".85" filter="url(#${id}blur)"/>
+      <path class="rock" d="${d}" fill="#7a6470" filter="url(#${id}f)"/>
+      <g clip-path="url(#${id}clip)">
+        <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="url(#${id}shade)"/>
+        <rect class="heat" x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="url(#${id}heat)"/>
+      </g>
+      <ellipse clip-path="url(#${id}clip)" rx="${(label.length * font * .36 + font).toFixed(1)}" ry="${(font * .85).toFixed(1)}" fill="#4a3a44" opacity=".82" filter="url(#${id}soft)"/>
+      <g class="cut" font-size="${font.toFixed(1)}" text-anchor="middle">
+        <text class="recess" y="${(font * .36 - 1.4).toFixed(1)}">${label}</text>
+        <text class="lip" y="${(font * .36).toFixed(1)}">${label}</text>
+      </g>`;
+    parent.appendChild(g);
+    return g;
+  }
+
+  /* ---------- the ring (real sandbox rules) ---------- */
+  const STONES = [
+    ["~/.ssh", "filesystem deny: ~/.ssh", "Deine SSH-Schlüssel bleiben draußen."],
+    ["~/.zshrc", "filesystem deny: Shell-Configs", "Deine Shell-Konfiguration bleibt draußen."],
+    ["Browserdaten", "filesystem deny: Browser-Profile", "Cookies, Passwörter und Sitzungen bleiben draußen."],
+    ["~/.aws", "filesystem deny: Credentials", "Deine Cloud-Zugangsdaten bleiben draußen."],
+    ["example.com", "network: nur Allowlist", "Nicht freigegebene Hosts bleiben unerreichbar."],
+    ["~/Documents", "kein Lese- oder Schreibrecht", "Der Rest deines Home bleibt draußen."],
+    ["~/.gnupg", "filesystem deny: Schlüssel", "Deine GPG-Schlüssel bleiben draußen."],
+    ["Port 22", "network: nur über den Proxy", "Direkte Verbindungen sind gesperrt."],
+  ];
+  const ring = document.querySelector("[data-ring]");
+  const svg = document.querySelector("[data-stones]");
+  const tip = document.querySelector("[data-tip]");
+  const cx = 500, cy = 450, rx = 375, ry = 255, fireX = 500, fireY = 450 + 860 * .05;
+
+  const ringStones = STONES.map(([label, rule, line], i) => {
+    const a = -Math.PI / 2 + (i + .5) / STONES.length * Math.PI * 2;
+    const x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
+    const depth = (Math.sin(a) + 1) / 2;
+    const s = (0.84 + depth * 0.3) * (0.92 + rand(i + 11, 1) * .16);
+    const w = Math.max(210, label.length * 18.5 + 104) * s, h = (100 + rand(i + 3, 2) * 18) * s;
+    const holder = document.createElementNS(NS, "g");
+    holder.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    holder.setAttribute("tabindex", "0");
+    holder.setAttribute("role", "listitem");
+    holder.setAttribute("aria-label", `${label}: ${line}`);
+    holder.setAttribute("data-stone-holder", "");
+    const g = stone(holder, { w, h, seed: i + 2, label, lx: fireX - x, ly: fireY - y, font: 25 * s });
+    const st = { holder, g, x, y, w, h, label, rule, line, depth };
+    holder.addEventListener("mouseenter", () => { g.classList.add("hit"); showTip(st, true); });
+    holder.addEventListener("focus", () => { g.classList.add("hit"); showTip(st, true); });
+    holder.addEventListener("mouseleave", () => { g.classList.remove("hit"); hideTip(); });
+    holder.addEventListener("blur", () => { g.classList.remove("hit"); hideTip(); });
+    return st;
+  });
+  ringStones.slice().sort((a, b) => a.depth - b.depth).forEach((s) => svg.appendChild(s.holder));
+
+  let tipTimer;
+  function showTip(st, sticky) {
+    tip.innerHTML = `<b>${st.rule}</b>${st.line}`;
+    tip.classList.add("show");
+    clearTimeout(tipTimer);
+    if (!sticky) tipTimer = setTimeout(hideTip, 1700);
+  }
+  function hideTip() { tip.classList.remove("show"); }
+
+  /* ---------- the stones that stay outside (below the hero) ---------- */
+  document.querySelectorAll("[data-arc] li").forEach((li, i, all) => {
+    const label = li.dataset.stone;
+    const w = Math.min(312, Math.max(250, label.length * 19 + 92)), h = 118;
+    const v = document.createElementNS(NS, "svg");
+    v.setAttribute("viewBox", "-160 -66 320 138");
+    v.setAttribute("aria-hidden", "true");
+    // the fire sits above the middle of the arc: light falls in from that side
+    const mid = (all.length - 1) / 2, off = (i - mid) / mid;
+    stone(v, { w, h, seed: i + 21, label, lx: -off * 260, ly: -220, font: 30 });
+    li.prepend(v);
+    li.querySelector("p").insertAdjacentHTML("afterbegin", `<span class="sr-only">${label}: </span>`);
+  });
+
+  /* ---------- agent names in the fire ---------- */
+  const agentEl = document.querySelector("[data-agent]");
+  const AGENTS = ["claude", "codex", "copilot", "opencode", "gemini"];
+  let ai = 0;
+  if (!reduce) setInterval(() => {
+    agentEl.classList.add("swap");
+    setTimeout(() => { ai = (ai + 1) % AGENTS.length; agentEl.textContent = AGENTS[ai]; agentEl.classList.remove("swap"); }, 400);
+  }, 2600);
+
+  /* ---------- fire, smoke and sparks ---------- */
+  const canvas = document.querySelector("[data-fire]");
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, visible = true, raf = 0;
+  function resize() {
+    const r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height; canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  addEventListener("resize", resize);
+
+  const flames = [], sparks = [], smoke = [];
+  const fx = () => W * 0.5, fy = () => H * (fireY / 860);
+  function drawLogs() {
+    const x = fx(), y = fy() + H * .02, L = W * .17, T = W * .022;
+    [[-0.32, -1], [0.3, 1], [0.05, 0]].forEach(([rot, side]) => {
+      ctx.save(); ctx.translate(x + side * W * .015, y); ctx.rotate(rot);
+      const g = ctx.createLinearGradient(0, -T, 0, T);
+      g.addColorStop(0, "#5a2a1c"); g.addColorStop(.5, "#2a1512"); g.addColorStop(1, "#120a0c");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(-L / 2, -T / 2, L, T, T / 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,90,31,.55)"; ctx.fillRect(-L * .18, -T * .5, L * .36, T * .18);
+      ctx.restore();
+    });
+  }
+  function spawnFlame() {
+    // tongues: particles born along a few wandering columns, drawn together into a tip
+    const column = (Math.random() * 5 | 0) - 2;
+    flames.push({ x: fx() + column * W * .018 + (Math.random() - .5) * W * .03, y: fy() - H * .01,
+      vx: -column * .06 + (Math.random() - .5) * .25, vy: -(1.6 + Math.random() * 2.2), life: 0,
+      max: 40 + Math.random() * 42, r: W * (0.02 + Math.random() * 0.03), wob: Math.random() * 6 });
+  }
+  function spawnSpark(target) {
+    const s = { x: fx() + (Math.random() - .5) * W * .05, y: fy() - H * .08, life: 0, max: 140 + Math.random() * 80, target: null };
+    if (target) {
+      s.target = target;
+      const k = W / 1000, dx = target.x * k - s.x, dy = target.y * k - s.y, t = 60 + Math.random() * 30;
+      s.vx = dx / t; s.vy = dy / t - 1.2; s.g = 2.4 / t;
+    } else { s.vx = (Math.random() - .5) * 1.2; s.vy = -(1.5 + Math.random() * 1.8); s.g = 0; }
+    sparks.push(s);
+  }
+  function drawStatic() {
+    ctx.clearRect(0, 0, W, H); drawLogs();
+    const g = ctx.createRadialGradient(fx(), fy() - H * .06, 0, fx(), fy() - H * .06, W * .14);
+    g.addColorStop(0, "rgba(255,190,110,.7)"); g.addColorStop(.4, "rgba(255,110,35,.45)"); g.addColorStop(1, "rgba(196,22,28,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx(), fy() - H * .06, W * .14, 0, Math.PI * 2); ctx.fill();
+  }
+
+  let frame = 0, flick = 1;
+  function tick() {
+    raf = 0;
+    if (!visible) return;
+    frame++;
+    ctx.clearRect(0, 0, W, H);
+    // the fire's light wanders; the page's firelight and the stones' heat follow it
+    flick += ((0.75 + Math.random() * .5) - flick) * .18;
+    if (frame % 3 === 0) root.style.setProperty("--flicker", flick.toFixed(2));
+    const floor = ctx.createRadialGradient(fx(), fy() + H * .02, 0, fx(), fy() + H * .02, W * .38);
+    floor.addColorStop(0, `rgba(255,90,31,${(.22 * flick).toFixed(3)})`); floor.addColorStop(1, "rgba(255,90,31,0)");
+    ctx.fillStyle = floor; ctx.beginPath(); ctx.ellipse(fx(), fy() + H * .02, W * .38, H * .22, 0, 0, Math.PI * 2); ctx.fill();
+
+    for (let i = 0; i < 6; i++) spawnFlame();
+    if (frame % 4 === 0) smoke.push({ x: fx() + (Math.random() - .5) * W * .04, y: fy() - H * .2, vx: (Math.random() - .5) * .3, vy: -(.5 + Math.random() * .5), life: 0, max: 160, r: W * .03 });
+    if (frame % 9 === 0) spawnSpark(null);
+    if (frame % 70 === 0) spawnSpark(ringStones[(Math.random() * ringStones.length) | 0]);
+
+    // smoke drifts up and fades into the night
+    for (let i = smoke.length - 1; i >= 0; i--) {
+      const p = smoke[i]; p.life++; p.x += p.vx + Math.sin(p.life * .03) * .25; p.y += p.vy; p.r += .25;
+      const t = p.life / p.max; if (t >= 1) { smoke.splice(i, 1); continue; }
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      const fade = Math.min(1, Math.max(0, (p.y - H * .12) / (H * .25)));
+      g.addColorStop(0, `rgba(104,70,74,${(.12 * Math.sin(t * Math.PI) * fade).toFixed(3)})`); g.addColorStop(1, "rgba(104,70,74,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    drawLogs();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = flames.length - 1; i >= 0; i--) {
+      const p = flames[i];
+      p.life++; p.x += p.vx + Math.sin((p.life + p.wob) * .2) * .45; p.y += p.vy;
+      p.vx += (fx() - p.x) * .0016;
+      const t = p.life / p.max;
+      if (t >= 1) { flames.splice(i, 1); continue; }
+      const rad = p.r * (1 - t * .8);
+      const col = t < .15 ? [255, 200, 120] : t < .4 ? [255, 140, 38] : t < .7 ? [240, 72, 26] : [150, 18, 32];
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+      g.addColorStop(0, `rgba(${col},${((1 - t) * .19).toFixed(3)})`); g.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.life++; s.vy += s.g; s.x += s.vx + (s.target ? 0 : Math.sin(s.life * .08) * .4); s.y += s.vy;
+      let dead = s.life > s.max;
+      if (s.target) {
+        const k = W / 1000, dx = s.target.x * k - s.x, dy = s.target.y * k - s.y;
+        if (dx * dx + dy * dy < (22 * k) ** 2 || s.life > 120) {
+          dead = true;
+          s.target.g.classList.add("hit"); showTip(s.target, false);
+          const tg = s.target.g; setTimeout(() => tg.classList.remove("hit"), 700);
+          for (let j = 0; j < 7; j++) sparks.push({ x: s.x, y: s.y, vx: (Math.random() - .5) * 2.4, vy: -Math.random() * 1.6, g: .06, life: 0, max: 22 + Math.random() * 12, target: null, ember: true });
+        }
+      }
+      if (dead) { sparks.splice(i, 1); continue; }
+      const t = s.life / s.max;
+      ctx.fillStyle = `rgba(255,${s.ember ? 120 : 190},${s.ember ? 40 : 90},${s.target ? .95 : (1 - t) * .9})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.target ? 2.4 : 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    raf = requestAnimationFrame(tick);
+  }
+
+  if (reduce) drawStatic();
+  else {
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(tick); }).observe(ring);
+    document.addEventListener("visibilitychange", () => { visible = !document.hidden; if (visible && !raf) raf = requestAnimationFrame(tick); });
+    raf = requestAnimationFrame(tick);
+  }
+
+  /* ---------- three strokes ignite in order ---------- */
+  const strokes = [...document.querySelectorAll("[data-strokes] li")];
+  if (reduce) strokes.forEach((li) => li.classList.add("on"));
+  else new IntersectionObserver((entries, obs) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    strokes.forEach((li, i) => setTimeout(() => li.classList.add("on"), 250 + i * 750));
+    obs.disconnect();
+  }, { threshold: .4 }).observe(document.querySelector("[data-strokes]"));
+})();
+</script>
+</body>
+</html>

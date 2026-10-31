@@ -162,3 +162,6 @@ build/
 *.xcodeproj/xcuserdata/
 .swiftpm/
 Vendor/
+
+# Impeccable review captures (regenerated)
+.impeccable/review/

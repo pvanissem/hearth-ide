@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="${HEARTH_REPO:-pvanissem/hearth}"
+REPO="${HEARTH_REPO:-pvanissem/hearth-ide}"
 ASSET="hearth-macos-arm64.zip"
 
 VERSION="${1:-}"
