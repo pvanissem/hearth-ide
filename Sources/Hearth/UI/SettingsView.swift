@@ -269,7 +269,7 @@ private struct SandboxRuleSettings: View {
             Section {
                 ForEach(model.sandboxSettings.ports, id: \.self) { p in
                     HStack {
-                        Text("\(p)").font(.callout.monospaced())
+                        Text(verbatim: String(p)).font(.callout.monospaced())
                         Spacer()
                         Button { model.updateSandboxSettings { $0.ports.removeAll { $0 == p } } } label: { Image(systemName: "trash") }
                             .buttonStyle(.borderless)
