@@ -226,7 +226,7 @@ enum SandboxManager {
 
     /// Writes the profile (and status hooks) for `run` and returns how to start it.
     static func prepare(kind: AgentKind, runID: String, directory: String, agentArguments: [String],
-                        statusHooks: Bool = true) throws -> Launch {
+                        statusHooks: Bool = true, openPorts extraPorts: [Int] = []) throws -> Launch {
         guard let nono = locateNono() else { throw Failure.nonoMissing }
         guard let agent = locate(kind) else { throw Failure.agentMissing(kind) }
         let home = NSHomeDirectory()
@@ -238,14 +238,14 @@ enum SandboxManager {
         var args = agentArguments
         if statusHooks { args = try AgentStatusHooks.install(kind: kind, runDirectory: runDir) + args }
         var program = agent.path
-        var openPorts: [Int] = []
+        var openPorts: [Int] = extraPorts
         var extraEnv: [String: String] = [:]
         if kind == .opencode, args.first != "auth" {
             // OpenCode's clients attach to a shared background service on a fixed port (outside any
             // sandbox), and --standalone binds a random port nono can't allow without opening every
             // local port. Run a private server on one picked port, protected by a per-run password.
             let port = try freeLocalPort()
-            openPorts = [port]
+            openPorts.append(port)
             extraEnv["OPENCODE_SERVER_PASSWORD"] = UUID().uuidString + UUID().uuidString
             args = ["-c", openCodeLauncher, "hearth-opencode", agent.path, String(port),
                     runDir.appendingPathComponent("opencode-server.log").path,

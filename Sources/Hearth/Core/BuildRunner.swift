@@ -108,7 +108,7 @@ final class BuildDeployStore {
     /// Why a task cannot run in this sandbox (nil = runnable or unknown yet).
     func unavailableReason(_ task: BuildTask, serverID: String) -> String? {
         guard let tool = task.requiredTool, let tools = availableTools[serverID], !tools.contains(tool) else { return nil }
-        return "„\(tool)“ ist in dieser Sandbox nicht verfügbar. Die Freigabe muss im devkcode-Profil erfolgen; es gibt keinen Host-Fallback."
+        return "„\(tool)“ ist in dieser Sandbox nicht verfügbar. Es gibt keinen Host-Fallback."
     }
 
     private static func location(_ root: String) -> [URLQueryItem] { [.init(name: "location[directory]", value: root)] }

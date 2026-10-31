@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// "Build & Deployment": project tasks and services, executed in the devkcode sandbox.
+/// "Build & Deployment": project tasks and services, executed in a sandbox (devkcode or Hearth's nono).
 struct BuildDeployView: View {
     @Environment(AppModel.self) private var model
     let root: String
@@ -18,10 +18,7 @@ struct BuildDeployView: View {
     }
 
     private var store: BuildDeployStore { model.builds }
-    private var connection: ServerConnection? {
-        guard let conn = model.server(for: model.selectedServerID), conn.connected else { return nil }
-        return conn
-    }
+    private var connection: AppModel.BuildShell? { model.buildShell(root: root) }
 
     var body: some View {
         GeometryReader { geometry in
@@ -45,7 +42,7 @@ struct BuildDeployView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .task(id: root) { await rescan() }
-        .task(id: "\(root)#\(connection.map { ObjectIdentifier($0).hashValue } ?? 0)") {
+        .task(id: "\(root)#\(connection?.id ?? "")") {
             guard let conn = connection else { return }
             await store.adopt(client: conn.client, root: root, serverID: conn.id)
             await store.probeTools(client: conn.client, serverID: conn.id, root: root)
@@ -97,11 +94,13 @@ struct BuildDeployView: View {
     @ViewBuilder
     private var sandboxBadge: some View {
         if let conn = connection {
-            Pill(text: "Sandbox · \(conn.entry.profileName ?? "aktiv")", color: .green, symbol: "lock.shield.fill")
-                .help("Alle Aufgaben laufen in der devkcode-Sandbox dieses Workspace – nie direkt auf dem Mac.")
+            Pill(text: "Sandbox · \(conn.label)", color: .green, symbol: "lock.shield.fill")
+                .help(conn.isLocal
+                      ? "Jede Aufgabe läuft in einer eigenen nono-Sandbox für diesen Ordner – nie direkt auf dem Mac."
+                      : "Alle Aufgaben laufen in der devkcode-Sandbox dieses Workspace – nie direkt auf dem Mac.")
         } else {
-            Pill(text: "Keine laufende Sandbox", color: .orange, symbol: "exclamationmark.triangle.fill")
-                .help("Starte die Sandbox dieses Workspace in der Seitenleiste.")
+            Pill(text: "Keine Sandbox verfügbar", color: .orange, symbol: "exclamationmark.triangle.fill")
+                .help("nono wurde nicht gefunden (Contents/Helpers/nono bzw. scripts/fetch-nono.sh).")
         }
     }
 
@@ -197,7 +196,7 @@ struct BuildDeployView: View {
     }
 
     private func reason(_ task: BuildTask) -> String? {
-        guard let conn = connection else { return "Keine laufende Sandbox für diesen Workspace." }
+        guard let conn = connection else { return "Keine Sandbox verfügbar (nono nicht gefunden)." }
         return store.unavailableReason(task, serverID: conn.id)
     }
 
@@ -312,8 +311,8 @@ struct BuildDeployView: View {
     private func runButton(_ task: BuildTask, project: BuildProject, run: BuildRun?, blocked: String?, prominent: Bool) -> some View {
         if let run, run.state.isActive {
             Button {
-                guard let conn = model.server(for: run.serverID) else { store.serverGone(run.serverID); return }
-                Task { await store.stop(run, client: conn.client) }
+                guard let client = model.buildShell(id: run.serverID) else { store.serverGone(run.serverID); return }
+                Task { await store.stop(run, client: client) }
             } label: {
                 Label(prominent ? "Stoppen" : "Abbrechen", systemImage: "stop.fill")
                     .labelStyle(.iconOnly).frame(width: 14)

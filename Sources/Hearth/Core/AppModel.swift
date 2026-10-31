@@ -627,6 +627,15 @@ final class AppModel {
             guard let self else { return }
             self.showWelcome = false
             self.startAgent(kind, directory: dir)
+            if let wanted = env["HEARTH_AUTOSTART_BUILD"] {
+                // Opens Build & Deployment and runs the first task whose id/title contains the text.
+                if !self.paneTree.contains(tab: .build) { self.addPane(.build) }
+                let projects = BuildDetector.scan(root: dir)
+                if let task = projects.flatMap(\.tasks).first(where: { $0.id.contains(wanted) || $0.title.contains(wanted) }),
+                   let shell = self.buildShell(root: dir) {
+                    await self.builds.start(task, root: dir, serverID: shell.id, client: shell.client)
+                }
+            }
             guard let prompt = env["HEARTH_AUTOSTART_PROMPT"], let run = self.agents.selectedRun else { return }
             try? await Task.sleep(for: .seconds(6))
             run.terminal?.send(txt: "\r")
@@ -1028,6 +1037,33 @@ final class AppModel {
     }
 
     // MARK: Chat
+
+    /// Build & Deployment shells: the devkcode/OpenCode server of this workspace when one is
+    /// connected, otherwise Hearth's own nono sandbox for the folder.
+    @ObservationIgnored private var localShells: [String: LocalSandboxShell] = [:]
+
+    struct BuildShell {
+        let id: String
+        let client: SandboxShellAPI
+        let label: String
+        let isLocal: Bool
+    }
+
+    func buildShell(root: String) -> BuildShell? {
+        if let conn = server(for: selectedServerID), conn.connected, conn.entry.repoRoot == root || selectedSession?.directory == root {
+            return BuildShell(id: conn.id, client: conn.client, label: conn.entry.profileName ?? "aktiv", isLocal: false)
+        }
+        guard SandboxManager.locateNono() != nil else { return nil }
+        let id = "local:" + root
+        let shell = localShells[id] ?? LocalSandboxShell(root: root)
+        localShells[id] = shell
+        return BuildShell(id: id, client: shell, label: "nono", isLocal: true)
+    }
+
+    func buildShell(id: String) -> SandboxShellAPI? {
+        if let conn = server(for: id) { return conn.client }
+        return localShells[id]
+    }
 
     /// Shows an agent session (terminal chat) and its folder in the inspector.
     func selectRun(_ id: String) {
