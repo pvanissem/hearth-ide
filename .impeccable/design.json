@@ -1,0 +1,604 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T15:45:36+00:00",
+  "title": "Design System: Hearth IDE",
+  "extensions": {
+    "colorMeta": {
+      "night": {
+        "role": "neutral",
+        "displayName": "Night",
+        "canonical": "#0e0a12",
+        "oklch": "oklch(15.4% 0.018 307.2)",
+        "tonalRamp": [
+          "#0d0911",
+          "#26222b",
+          "#423d47",
+          "#605b66",
+          "#807b86",
+          "#a19ca7",
+          "#c7c1cd",
+          "#f2ecf8"
+        ]
+      },
+      "night-2": {
+        "role": "neutral",
+        "displayName": "Night 2",
+        "canonical": "#170f1c",
+        "oklch": "oklch(18.5% 0.028 311.9)",
+        "tonalRamp": [
+          "#0f0814",
+          "#29202e",
+          "#453c4b",
+          "#63596a",
+          "#83798a",
+          "#a49aac",
+          "#cabfd2",
+          "#f5e9fd"
+        ]
+      },
+      "plum": {
+        "role": "neutral",
+        "displayName": "Plum",
+        "canonical": "#2a1e2e",
+        "oklch": "oklch(25.7% 0.034 317.5)",
+        "tonalRamp": [
+          "#110714",
+          "#2b1f2f",
+          "#473a4c",
+          "#66586a",
+          "#86778b",
+          "#a798ad",
+          "#cdbed3",
+          "#f8e8fe"
+        ]
+      },
+      "crimson": {
+        "role": "secondary",
+        "displayName": "Crimson",
+        "canonical": "#c4161c",
+        "oklch": "oklch(52.3% 0.203 27.0)",
+        "tonalRamp": [
+          "#1e0101",
+          "#4b0103",
+          "#7b070c",
+          "#af1217",
+          "#dc3632",
+          "#fd665b",
+          "#fcaca3",
+          "#fee9e6"
+        ]
+      },
+      "ember": {
+        "role": "primary",
+        "displayName": "Ember",
+        "canonical": "#ff5a1f",
+        "oklch": "oklch(68.2% 0.211 37.7)",
+        "tonalRamp": [
+          "#1c0300",
+          "#440f01",
+          "#702104",
+          "#a0340b",
+          "#d74301",
+          "#fe6838",
+          "#fdae96",
+          "#fee9e3"
+        ]
+      },
+      "flame": {
+        "role": "primary",
+        "displayName": "Flame",
+        "canonical": "#ffa62b",
+        "oklch": "oklch(79.6% 0.162 68.5)",
+        "tonalRamp": [
+          "#140800",
+          "#351e01",
+          "#5a3706",
+          "#81520f",
+          "#ad6d0a",
+          "#da8a12",
+          "#feb258",
+          "#feebd7"
+        ]
+      },
+      "core": {
+        "role": "primary",
+        "displayName": "Core",
+        "canonical": "#ffe3a1",
+        "oklch": "oklch(92.4% 0.089 87.6)",
+        "tonalRamp": [
+          "#100a00",
+          "#2e2203",
+          "#503d01",
+          "#735a15",
+          "#947a3a",
+          "#b69b5b",
+          "#dcc180",
+          "#feedc6"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash",
+        "canonical": "#e9dfe6",
+        "oklch": "oklch(91.4% 0.014 336.2)",
+        "tonalRamp": [
+          "#0f090d",
+          "#292127",
+          "#453d43",
+          "#635b61",
+          "#837a80",
+          "#a59ba2",
+          "#cac1c8",
+          "#f5ebf2"
+        ]
+      },
+      "ash-2": {
+        "role": "neutral",
+        "displayName": "Ash 2",
+        "canonical": "#bfb0bb",
+        "oklch": "oklch(77.3% 0.023 335.0)",
+        "tonalRamp": [
+          "#11080f",
+          "#2b2028",
+          "#483b45",
+          "#665963",
+          "#867883",
+          "#a899a4",
+          "#cebfca",
+          "#f9e9f5"
+        ]
+      },
+      "ash-3": {
+        "role": "neutral",
+        "displayName": "Ash 3",
+        "canonical": "#9a8b97",
+        "oklch": "oklch(65.4% 0.025 332.6)",
+        "tonalRamp": [
+          "#110710",
+          "#2b2029",
+          "#483b46",
+          "#665964",
+          "#877884",
+          "#a899a5",
+          "#cebecb",
+          "#f9e9f6"
+        ]
+      },
+      "cold": {
+        "role": "neutral",
+        "displayName": "Cold",
+        "canonical": "#8a8194",
+        "oklch": "oklch(61.8% 0.030 306.8)",
+        "tonalRamp": [
+          "#0e0815",
+          "#282030",
+          "#443c4c",
+          "#62596b",
+          "#82798c",
+          "#a39aad",
+          "#c9bfd4",
+          "#f4eaff"
+        ]
+      },
+      "unlit": {
+        "role": "neutral",
+        "displayName": "Unlit",
+        "canonical": "#8f7d95",
+        "oklch": "oklch(61.4% 0.041 317.7)",
+        "tonalRamp": [
+          "#120516",
+          "#2c1d31",
+          "#49394e",
+          "#67576d",
+          "#88768e",
+          "#a997b0",
+          "#d0bcd6",
+          "#f9e8fe"
+        ]
+      },
+      "hearth-well": {
+        "role": "neutral",
+        "displayName": "Hearth Well",
+        "canonical": "#120c15",
+        "oklch": "oklch(16.7% 0.021 314.2)",
+        "tonalRamp": [
+          "#0e0911",
+          "#28212b",
+          "#443d48",
+          "#625a66",
+          "#827a86",
+          "#a39ba8",
+          "#c9c0ce",
+          "#f4ebf8"
+        ]
+      },
+      "tip-well": {
+        "role": "neutral",
+        "displayName": "Tip Well",
+        "canonical": "#1d1420",
+        "oklch": "oklch(20.8% 0.027 317.5)",
+        "tonalRamp": [
+          "#100813",
+          "#29202d",
+          "#463b49",
+          "#645968",
+          "#847988",
+          "#a69aaa",
+          "#cbbfd0",
+          "#f6e9fb"
+        ]
+      },
+      "frame-well": {
+        "role": "neutral",
+        "displayName": "Frame Well",
+        "canonical": "#19151c",
+        "oklch": "oklch(20.4% 0.015 310.6)",
+        "tonalRamp": [
+          "#0d0910",
+          "#262229",
+          "#423e46",
+          "#605b64",
+          "#807b84",
+          "#a19ca5",
+          "#c7c2cb",
+          "#f2ecf6"
+        ]
+      },
+      "stone-body": {
+        "role": "neutral",
+        "displayName": "Stone Body",
+        "canonical": "#7a6470",
+        "oklch": "oklch(52.9% 0.033 344.3)",
+        "tonalRamp": [
+          "#15060e",
+          "#301d28",
+          "#4d3944",
+          "#6c5662",
+          "#8c7682",
+          "#ae97a3",
+          "#d5bcc9",
+          "#ffe7f3"
+        ]
+      },
+      "stone-lip": {
+        "role": "neutral",
+        "displayName": "Stone Lip",
+        "canonical": "#f4e6dc",
+        "oklch": "oklch(93.3% 0.020 58.1)",
+        "tonalRamp": [
+          "#120904",
+          "#2c221a",
+          "#483d35",
+          "#675b53",
+          "#877b72",
+          "#a99c92",
+          "#cfc1b8",
+          "#faece1"
+        ]
+      },
+      "stone-recess": {
+        "role": "neutral",
+        "displayName": "Stone Recess",
+        "canonical": "#0c0708",
+        "oklch": "oklch(13.7% 0.010 3.6)",
+        "tonalRamp": [
+          "#0f090b",
+          "#282223",
+          "#453e3f",
+          "#635b5d",
+          "#837b7c",
+          "#a49c9e",
+          "#cac2c3",
+          "#f5ecee"
+        ]
+      },
+      "rule-line": {
+        "role": "neutral",
+        "displayName": "Rule Line",
+        "canonical": "rgba(233, 223, 230, .14)",
+        "tonalRamp": []
+      },
+      "rule-line-soft": {
+        "role": "neutral",
+        "displayName": "Rule Line Soft",
+        "canonical": "rgba(233, 223, 230, .1)",
+        "tonalRamp": []
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero headline only; final clause lit in flame."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headlines as short full sentences."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "The three stroke numerals that ignite in order."
+      },
+      "roster-name": {
+        "displayName": "Roster Name",
+        "purpose": "Agent names in the roster; flame on row hover."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Stroke titles."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "Status column heads."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "Hero subline, max 34ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default German prose."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Captions, arc notes, roster how-column, footer."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons and pins."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Install command and inline code; ligatures off."
+      },
+      "mono-label": {
+        "displayName": "Mono Label",
+        "purpose": "Fact values, version badge."
+      },
+      "agent-name": {
+        "displayName": "Agent Name",
+        "purpose": "Cycling agent name above the fire."
+      }
+    },
+    "shadows": [
+      {
+        "name": "well",
+        "value": "0 16px 30px -16px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,166,43,.12)",
+        "purpose": "Install command; flame-caught rim."
+      },
+      {
+        "name": "float",
+        "value": "0 12px 30px -12px rgba(0,0,0,.8)",
+        "purpose": "Rule tip."
+      },
+      {
+        "name": "pin",
+        "value": "0 8px 20px -8px rgba(0,0,0,.8)",
+        "purpose": "Pins over the screenshot."
+      },
+      {
+        "name": "frame",
+        "value": "0 30px 60px -30px rgba(0,0,0,.95)",
+        "purpose": "Screenshot frame."
+      },
+      {
+        "name": "icon-sm",
+        "value": "0 4px 10px -4px rgba(0,0,0,.8)",
+        "purpose": "36px app icon in the wordmark."
+      },
+      {
+        "name": "icon-lg",
+        "value": "0 14px 30px -12px rgba(0,0,0,.9)",
+        "purpose": "96px app icon in the closing embers."
+      },
+      {
+        "name": "firelight",
+        "value": "radial-gradient(closest-side, rgba(196,22,28,.32), rgba(255,90,31,.1) 55%, transparent); opacity: calc(.75 + .25 * var(--flicker))",
+        "purpose": "The fire’s light falloff on the page."
+      },
+      {
+        "name": "ember-light",
+        "value": "radial-gradient(closest-side, rgba(255,90,31,.12), transparent)",
+        "purpose": "Smouldering light pools at section edges."
+      },
+      {
+        "name": "embers-halo",
+        "value": "radial-gradient(closest-side, rgba(255,90,31,.45), rgba(196,22,28,.15) 60%, transparent)",
+        "purpose": "Halo behind the closing app icon."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Default easing for all transitions and the flare."
+      },
+      {
+        "name": "flicker",
+        "value": "--flicker lerps toward random .75–1.25 (factor .18), written every 3rd frame by the canvas loop",
+        "purpose": "Shared light bus for firelight and stone heat."
+      },
+      {
+        "name": "smoulder",
+        "value": "opacity .55 → .9 → .7 → 1; ease-in-out infinite alternate; 5.5s (ember lights), 2.6s (closing halo)",
+        "purpose": "Light sources away from the fire."
+      },
+      {
+        "name": "ignite",
+        "value": ".9s steps(1, end); unlit → flame → unlit → core → crimson → flame → ember; stagger 250ms + 750ms·i at 40% visibility",
+        "purpose": "Stroke numerals catching like a match."
+      },
+      {
+        "name": "flare",
+        "value": "1.2s var(--ease); scale 1 → 1.45 → 1",
+        "purpose": "Closing halo on successful copy."
+      },
+      {
+        "name": "stone-hit",
+        "value": "in .08s, out .7s var(--ease)",
+        "purpose": "Stone hitglow on hover, focus or spark impact."
+      },
+      {
+        "name": "agent-swap",
+        "value": "every 2.6s; .4s opacity + blur(6px)",
+        "purpose": "Agent name cycling above the fire."
+      },
+      {
+        "name": "tip-fade",
+        "value": ".25s var(--ease)",
+        "purpose": "Rule tip show/hide."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all animations/transitions off; static fire frame; numerals pre-lit; names fixed; no flare",
+        "purpose": "Still, lit state for every motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack",
+        "value": "960px",
+        "purpose": "Hero stacks with ring first; arc 3 cols, no lift; strokes/status/roster stack."
+      },
+      {
+        "name": "phone",
+        "value": "560px",
+        "purpose": "Nav to GitHub only; icon-only copy; arc 2 cols; phone screenshot crop, two pins."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Field Stone",
+      "kind": "custom",
+      "refersTo": "field-stone",
+      "description": "Procedural noise slab lit from the fire with a sandbox target cut into its face; glows on hover/focus/spark hit.",
+      "html": "<div class=\"ds-stone-wrap\" tabindex=\"0\" aria-label=\"~/.ssh: Deine SSH-Schlüssel bleiben draußen.\"><svg class=\"ds-stone\" viewBox=\"-160 -66 320 138\" aria-hidden=\"true\"><defs><filter id=\"dsf\" x=\"-10%\" y=\"-20%\" width=\"120%\" height=\"140%\" primitiveUnits=\"userSpaceOnUse\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.036\" numOctaves=\"5\" seed=\"21\" result=\"n\"/><feDiffuseLighting in=\"n\" surfaceScale=\"1.8\" diffuseConstant=\"1.15\" lighting-color=\"#efe0d6\" result=\"lit\"><fePointLight x=\"0\" y=\"-220\" z=\"106\"/></feDiffuseLighting><feComposite in=\"lit\" in2=\"SourceGraphic\" operator=\"arithmetic\" k1=\"1.15\" k2=\"0\" k3=\"0\" k4=\"0\" result=\"tex\"/><feComposite in=\"tex\" in2=\"SourceAlpha\" operator=\"in\"/></filter><linearGradient id=\"dsshade\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"-59\" x2=\"0\" y2=\"59\"><stop offset=\"0\" stop-color=\"#0e0a12\" stop-opacity=\"0\"/><stop offset=\".55\" stop-color=\"#0e0a12\" stop-opacity=\".25\"/><stop offset=\"1\" stop-color=\"#0e0a12\" stop-opacity=\".78\"/></linearGradient><radialGradient id=\"dsheat\" gradientUnits=\"userSpaceOnUse\" cx=\"0\" cy=\"-53\" r=\"160\"><stop offset=\"0\" stop-color=\"#ff7a2a\" stop-opacity=\".5\"/><stop offset=\".7\" stop-color=\"#ff5a1f\" stop-opacity=\"0\"/></radialGradient><radialGradient id=\"dshit\"><stop offset=\"0\" stop-color=\"#ffa62b\" stop-opacity=\".9\"/><stop offset=\".6\" stop-color=\"#ff5a1f\" stop-opacity=\".3\"/><stop offset=\"1\" stop-color=\"#c4161c\" stop-opacity=\"0\"/></radialGradient><filter id=\"dsblur\"><feGaussianBlur stdDeviation=\"14\"/></filter><filter id=\"dssoft\" x=\"-30%\" y=\"-60%\" width=\"160%\" height=\"220%\"><feGaussianBlur stdDeviation=\"13.5\"/></filter><clipPath id=\"dsclip\"><path d=\"M133,0 C133,13 120,24 101,33 C82,42 60,40 31,40 C2,40 -30,44 -62,39 C-94,34 -124,17 -124,0 C-124,-17 -110,-42 -87,-50 C-64,-58 -33,-50 0,-52 C33,-54 79,-56 100,-47 C121,-38 133,-13 133,0Z\"/></clipPath></defs><ellipse class=\"ds-hitglow\" rx=\"190\" ry=\"106\" fill=\"url(#dshit)\"/><ellipse cx=\"0\" cy=\"35\" rx=\"138\" ry=\"31\" fill=\"#050307\" opacity=\".85\" filter=\"url(#dsblur)\"/><path class=\"ds-rock\" d=\"M133,0 C133,13 120,24 101,33 C82,42 60,40 31,40 C2,40 -30,44 -62,39 C-94,34 -124,17 -124,0 C-124,-17 -110,-42 -87,-50 C-64,-58 -33,-50 0,-52 C33,-54 79,-56 100,-47 C121,-38 133,-13 133,0Z\" fill=\"#7a6470\" filter=\"url(#dsf)\"/><g clip-path=\"url(#dsclip)\"><rect x=\"-266\" y=\"-118\" width=\"532\" height=\"236\" fill=\"url(#dsshade)\"/><rect class=\"ds-heat\" x=\"-266\" y=\"-118\" width=\"532\" height=\"236\" fill=\"url(#dsheat)\"/></g><ellipse clip-path=\"url(#dsclip)\" rx=\"95\" ry=\"25.5\" fill=\"#4a3a44\" opacity=\".82\" filter=\"url(#dssoft)\"/><g class=\"ds-cut\" font-size=\"30\" text-anchor=\"middle\"><text class=\"ds-recess\" y=\"9.4\">~/.ssh</text><text class=\"ds-lip\" y=\"10.8\">~/.ssh</text></g></svg></div>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-stone-wrap{width:280px;background:var(--night);padding:24px;border-radius:12px;outline:none;cursor:help;} .ds-stone{width:100%;height:auto;overflow:visible;} .ds-heat{opacity:calc(.35 + .4 * var(--flicker));} .ds-hitglow{opacity:0;transition:opacity .7s var(--ease);} .ds-stone-wrap:hover .ds-hitglow,.ds-stone-wrap:focus-visible .ds-hitglow{opacity:1;transition-duration:.08s;} .ds-stone-wrap:focus-visible .ds-rock{stroke:var(--flame);stroke-width:3;} .ds-cut{font-family:var(--mono);font-variant-ligatures:none;letter-spacing:.01em;} .ds-lip{fill:#f4e6dc;} .ds-recess{fill:#0c0708;opacity:.9;}"
+    },
+    {
+      "name": "Install Command",
+      "kind": "custom",
+      "refersTo": "install-command",
+      "description": "The one action: the install line in a dark well with a flame copy control.",
+      "html": "<div class=\"ds-install\"><code><span class=\"ds-prompt\">$</span>curl -fsSL https://github.com/pvanissem/hearth-ide/releases/latest/download/install.sh | bash</code><button class=\"ds-copy\" type=\"button\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><rect x=\"6.5\" y=\"6.5\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5\"/></svg><span>Kopieren</span></button></div>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-install{display:flex;align-items:stretch;max-width:36rem;border-radius:12px;background:#120c15;border:1px solid rgba(255,90,31,.35);box-shadow:0 16px 30px -16px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,166,43,.12);} .ds-install code{flex:1;min-width:0;overflow-wrap:break-word;padding:.95rem 1.1rem;color:var(--core);font:400 .84rem/1.55 var(--mono);font-variant-ligatures:none;} .ds-prompt{color:var(--ember);user-select:none;margin-right:.6ch;} .ds-copy{flex:none;display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;border:0;border-left:1px solid rgba(255,90,31,.3);border-radius:0 11px 11px 0;padding:0 1.1rem;font:600 .9rem var(--body);color:var(--night);background:var(--flame);transition:background .25s var(--ease);} .ds-copy:hover{background:var(--core);} .ds-copy:active{background:#ffd27a;} .ds-copy:focus-visible{outline:2px solid var(--flame);outline-offset:3px;} .ds-copy svg{width:1.05em;height:1.05em;}"
+    },
+    {
+      "name": "Fact Border",
+      "kind": "custom",
+      "refersTo": "fact-border",
+      "description": "Ruled strip of short facts with mono values under the install command.",
+      "html": "<ul class=\"ds-facts\"><li><b>v0.1</b> frühe Version</li><li>macOS <b>14+</b></li><li>Lizenz <b>MIT</b></li></ul>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-facts{display:flex;flex-wrap:wrap;margin:0;padding:0;list-style:none;border-top:1px solid rgba(233,223,230,.14);border-bottom:1px solid rgba(233,223,230,.14);max-width:36rem;background:var(--night);} .ds-facts li{font:400 .86rem/1 var(--body);color:var(--ash-3);padding:.75rem .9rem .75rem 0;margin-right:.9rem;border-right:1px solid rgba(233,223,230,.14);white-space:nowrap;} .ds-facts li:last-child{border-right:0;} .ds-facts b{font:500 .8rem/1 var(--mono);font-variant-ligatures:none;color:var(--ash);}"
+    },
+    {
+      "name": "Roster Row",
+      "kind": "custom",
+      "refersTo": "roster",
+      "description": "Ruled three-column list of agents; name lights flame on hover.",
+      "html": "<ul class=\"ds-roster\"><li><span class=\"ds-who\">Claude Code</span><span class=\"ds-login\">dein Claude-Abo, über die offizielle CLI</span><span class=\"ds-how\">Status per Hooks in der Inbox</span></li><li><span class=\"ds-who\">Codex</span><span class=\"ds-login\">ChatGPT-Login oder API-Key</span><span class=\"ds-how\">Status per notify</span></li></ul>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-roster{list-style:none;margin:0;padding:0;border-top:1px solid rgba(233,223,230,.14);background:var(--night);color:var(--ash);font-family:var(--body);} .ds-roster li{display:grid;grid-template-columns:minmax(10rem,1.1fr) minmax(0,1.4fr) minmax(0,1fr);gap:1.4rem;align-items:baseline;padding:1.25rem 0;border-bottom:1px solid rgba(233,223,230,.1);} .ds-who{font:700 clamp(1.3rem,2.2vw,1.8rem)/1.1 var(--display);letter-spacing:-.015em;transition:color .3s var(--ease);} .ds-login{color:var(--ash-2);} .ds-how{font-size:.9rem;color:var(--ash-3);} .ds-roster li:hover .ds-who{color:var(--flame);}"
+    },
+    {
+      "name": "Stroke",
+      "kind": "custom",
+      "refersTo": "strokes",
+      "description": "Numbered step whose numeral ignites from unlit to ember.",
+      "html": "<ol class=\"ds-strokes\"><li class=\"ds-on\"><span class=\"ds-n\">1</span><h3>Installieren</h3><p>Der Befehl oben lädt die App und prüft die Prüfsumme.</p></li><li><span class=\"ds-n\">2</span><h3>Ordner wählen</h3><p>Nur hier darf der Agent schreiben.</p></li></ol>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-strokes{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid rgba(233,223,230,.14);background:var(--night);color:var(--ash);font-family:var(--body);} .ds-strokes li{padding:1.8rem 1.6rem 0 0;} .ds-strokes li+li{padding-left:1.6rem;border-left:1px solid rgba(233,223,230,.1);} .ds-n{display:block;font:800 4.4rem/.8 var(--display);color:#8f7d95;margin-bottom:1rem;} .ds-on .ds-n,.ds-strokes li:hover .ds-n{color:var(--ember);animation:ds-ignite .9s steps(1,end);} @keyframes ds-ignite{0%{color:#8f7d95}12%{color:var(--flame)}22%{color:#8f7d95}34%{color:var(--core)}46%{color:var(--crimson)}60%{color:var(--flame)}100%{color:var(--ember)}} .ds-strokes h3{font:700 1.35rem/1.2 var(--display);margin:0 0 .5rem;letter-spacing:-.01em;} .ds-strokes p{margin:0;color:var(--ash-2);max-width:34ch;} @media (prefers-reduced-motion:reduce){.ds-n{animation:none!important}}"
+    },
+    {
+      "name": "Rule Tip",
+      "kind": "custom",
+      "refersTo": "rule-tip",
+      "description": "The real nono rule in flame mono over a plain German consequence.",
+      "html": "<div class=\"ds-tip\"><b>filesystem deny: ~/.ssh</b>Deine SSH-Schlüssel bleiben draußen.</div>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-tip{width:min(21rem,92%);padding:.6rem .8rem;border-radius:9px;font:400 .86rem/1.4 var(--body);color:var(--ash);background:#1d1420;border:1px solid rgba(255,90,31,.45);box-shadow:0 12px 30px -12px rgba(0,0,0,.8);} .ds-tip b{display:block;color:var(--flame);font:600 .74rem/1.3 var(--mono);font-variant-ligatures:none;margin-bottom:.25rem;}"
+    },
+    {
+      "name": "Pin",
+      "kind": "chip",
+      "refersTo": "pin",
+      "description": "Flame pill naming a region of a real screenshot.",
+      "html": "<span class=\"ds-pin\">Inbox</span> <span class=\"ds-pin\">Terminal-Chat in der Sandbox</span>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-pin{display:inline-flex;align-items:center;gap:.5rem;font:600 .82rem/1.2 var(--body);color:var(--night);background:var(--flame);padding:.4rem .65rem;border-radius:999px;box-shadow:0 8px 20px -8px rgba(0,0,0,.8);white-space:nowrap;} .ds-pin::before{content:\"\";width:7px;height:7px;border-radius:50%;background:var(--crimson);}"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Wordmark with version badge; quiet ash text links.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-mark\" href=\"#\">Hearth IDE <span class=\"ds-version\">v0.1</span></a><nav class=\"ds-nav\"><a href=\"#\">Was gesperrt ist</a><a href=\"#\">Agenten</a><a href=\"#\">GitHub</a></nav></header>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-top{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding:1.4rem;background:var(--night);} .ds-mark{display:flex;align-items:center;gap:.7rem;color:var(--ash);text-decoration:none;font:700 1.15rem/1 var(--display);letter-spacing:-.01em;} .ds-version{font:500 .72rem/1 var(--mono);color:var(--flame);border:1px solid rgba(255,166,43,.4);padding:.3rem .45rem;border-radius:999px;} .ds-nav{display:flex;gap:1.4rem;font:400 .95rem var(--body);} .ds-nav a{color:var(--ash-2);text-decoration:none;} .ds-nav a:hover{color:var(--ash);} .ds-nav a:focus-visible,.ds-mark:focus-visible{outline:2px solid var(--flame);outline-offset:3px;border-radius:4px;}"
+    },
+    {
+      "name": "Text Link",
+      "kind": "custom",
+      "refersTo": "text-link",
+      "description": "Flame underlined link, core on hover.",
+      "html": "<p class=\"ds-p\"><a href=\"#\">Quellcode auf GitHub</a> &nbsp; <a href=\"#\">Was der Ring sperrt</a></p>",
+      "css": ":host{--night:#0e0a12;--night-2:#170f1c;--plum:#2a1e2e;--crimson:#c4161c;--ember:#ff5a1f;--flame:#ffa62b;--core:#ffe3a1;--ash:#e9dfe6;--ash-2:#bfb0bb;--ash-3:#9a8b97;--cold:#8a8194;--flicker:1;--display:\"Bricolage Grotesque\",\"Avenir Next\",sans-serif;--body:\"Hanken Grotesk\",\"Avenir Next\",sans-serif;--mono:\"Azeret Mono\",ui-monospace,\"SF Mono\",monospace;--ease:cubic-bezier(.16,1,.3,1);} .ds-p{margin:0;padding:1rem;background:var(--night);font:400 .98rem var(--body);} .ds-p a{color:var(--flame);text-decoration-thickness:1px;text-underline-offset:.2em;} .ds-p a:hover{color:var(--core);} .ds-p a:focus-visible{outline:2px solid var(--flame);outline-offset:3px;border-radius:4px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Feuerring bei Nacht",
+    "overview": "**Creative North Star: \"Feuerring bei Nacht\"**\n\nThe page is a night clearing with one fire in it. The fire is the only light source; everything else is night ground, ash-coloured type and field stones that are lit from the side facing the flames. The sandbox is the ring of stones: what is inside burns freely, what is outside stays cold. Each stone carries a literal sandbox target (`~/.ssh`, `example.com`, `Port 22`) cut into its face.\n\nDensity is low and typographic. Content sits on a 1240px column inside a responsive gutter. Sections are open fields separated by vertical rhythm rather than containers; lists are ruled with ash hairlines, not boxed. Warm colour appears only where the fire would reach: the lit half of the headline, the install control, pins, glows and stone heat. Motion follows the same idea: the fire flickers, sparks rise, embers smoulder, numbers ignite. With reduced motion all of it holds still in its lit state.\n\nThe world is procedural rather than illustrated. Fire, smoke and sparks come from a canvas particle loop. Stones are SVG noise surfaces lit by a point light at the fire's position. The only rasters are the app icon and real app screenshots.",
+    "keyCharacteristics": [
+      "Night ground (night → night-2 → plum → night-2 → night, a vertical wash over ~220rem) with firelight as the only light.",
+      "Field stones as the signature component: irregular smoothed slabs, lit from the fire, with labels cut into a smoothed face.",
+      "One shared light variable (`--flicker`) drives every firelit surface.",
+      "Bricolage Grotesque at 800 for big compressed statements, Hanken Grotesk for German prose, Azeret Mono for literal machine strings.",
+      "Ruled lists (hairline ash borders) instead of cards.",
+      "Soft, downward, black shadows; the only coloured glow is the fire's."
+    ],
+    "rules": [
+      {
+        "name": "The One Light Rule",
+        "body": "All warm colour is firelight. Crimson, ember, flame and core appear only where the fire reaches (lit text, the install control, pins, glows, stone heat, sparks). The ground, wells and stones stay night, plum and ash. If you can't say what fire lights a warm pixel, it shouldn't be warm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Inside/Outside Rule",
+        "body": "Literal things inside the ring (your project, the running agent, the install line) are set in core. Things the ring keeps out are set in cold or carved into stones. The palette carries the sandbox boundary.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Is Literal Rule",
+        "body": "Azeret Mono only ever sets something you could type into a terminal or a config (a path, host, port, command, version, CLI name or rule). German explanation always stays in Hanken.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Carries It Rule",
+        "body": "Hierarchy comes from Bricolage at 700–800 with negative tracking against Hanken at 400. Uppercase and letterspaced labels are not used.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flicker Bus Rule",
+        "body": "Every surface lit by the fire reads one shared variable, `--flicker`, rather than animating on its own. The canvas loop eases it toward a random value between .75 and 1.25 (factor .18) and writes it to `:root` every third frame. The firelight and the stones' heat layer (`calc(.35 + .4 * var(--flicker))`) follow it. Light sources away from the fire, such as ember lights and the closing halo, smoulder on their own CSS loop.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Shadows Fall Down Rule",
+        "body": "Shadows are black, soft, have negative spread and fall straight down. Stone shadows are the one exception, falling away from the fire.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** light everything from the fire. Each new firelit surface reads `--flicker`, and each new stone gets its point light from the fire's actual position.",
+      "**Do** cut stone labels as recess plus lip on a smoothed face, in Azeret Mono with ligatures off.",
+      "**Do** put real, literal sandbox targets on stones and real nono rules in tips.",
+      "**Do** separate list items with hairlines (rule-line opening a list, rule-line-soft between rows) rather than cards.",
+      "**Do** keep warm colour for firelit things and literal inside-the-ring strings; keep outside things cold.",
+      "**Do** keep shadows black, soft, negative-spread and falling down.",
+      "**Do** give every animation a still, lit reduced-motion state, and pause the canvas off screen."
+    ],
+    "donts": [
+      "**Don't** use gradients as decoration. Every radial gradient is light falloff from a source (fire, ember, hit); the body's vertical night wash is the only non-light gradient.",
+      "**Don't** add a second light source or light stones from a generic top-left.",
+      "**Don't** box content in cards, or tint panels with fire colours. Wells stay near-black plum.",
+      "**Don't** set German prose in mono or literal machine strings in Hanken.",
+      "**Don't** use uppercase letterspaced labels above headlines. Headlines stand on their own.",
+      "**Don't** replace the real screenshot with mockups or illustrations, or replace stones with flat chips."
+    ]
+  }
+}
