@@ -29,6 +29,7 @@ final class AgentRun: Identifiable {
 
     @ObservationIgnored var terminal: LocalProcessTerminalView?
     @ObservationIgnored var themedScale: Double?
+    @ObservationIgnored var restartAfterExit = false
     @ObservationIgnored fileprivate var delegate: AgentTerminalDelegate?
     @ObservationIgnored fileprivate var eventOffset: UInt64 = 0
     @ObservationIgnored var themedDark: Bool?
@@ -138,6 +139,14 @@ final class AgentHost {
     }
 
     func stopAll() { runs.forEach(stop) }
+
+    /// Restarts running sessions so new sandbox settings apply (Claude/Codex continue their conversation).
+    func restartRunning() {
+        for run in runs where run.isRunning && run.purpose == .session {
+            run.restartAfterExit = true
+            stop(run)
+        }
+    }
     var runningCount: Int { runs.filter(\.isRunning).count }
 
     private func launch(_ run: AgentRun) {
@@ -202,6 +211,12 @@ final class AgentHost {
         run.exitCode = code
         pollEvents(run)
         if run.status != .done { run.status = .inactive }
+        if run.restartAfterExit {
+            run.restartAfterExit = false
+            run.updated = Date()
+            launch(run)
+            return
+        }
         if let code, code != 0, run.updated.timeIntervalSinceNow > -3 {
             // Failed right at startup: show nono's/the agent's reason from the log.
             run.error = Self.lastLogLines(run) ?? "Beendet mit Code \(code)."

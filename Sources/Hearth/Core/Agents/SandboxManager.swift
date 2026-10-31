@@ -80,6 +80,13 @@ enum SandboxManager {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Hearth")
     }
 
+    /// Neutral folder for logins started from the settings (a sandbox needs a working folder).
+    static var loginDirectory: URL {
+        let url = supportDirectory.appendingPathComponent("Anmeldung")
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
     static func runDirectory(_ runID: String) -> URL {
         supportDirectory.appendingPathComponent("runs/\(runID)")
     }
@@ -89,41 +96,54 @@ enum SandboxManager {
     }
 
     /// The nono profile for one run: nono's conservative default, the project folder
-    /// read/write, toolchains read-only, the agent's own state, and only the hosts in
-    /// nono's developer network profile plus the agent's API hosts.
-    static func profile(kind: AgentKind, runDirectory: URL, extraDomains: [String] = [],
+    /// read/write, toolchains read-only, the agent's own state, only the hosts in nono's
+    /// developer network profile plus the agent's API hosts, and the user's own
+    /// additions from the settings (domains, ports, folders, project folders, credentials).
+    static func profile(kind: AgentKind, runDirectory: URL, directory: String? = nil,
+                        settings: SandboxSettings = .load(), extraDomains: [String] = [],
                         extraOpenPorts: [Int] = [], gitAccess: Bool = false) -> [String: Any] {
         let spec = kind.sandbox
         let fm = FileManager.default
+        let keychains = expand("~/Library/Keychains")
         var allow = spec.readWrite.map(expand)
         allow.append(runDirectory.path)
-        var filesystem: [String: Any] = [:]
-        if spec.keychain {
+        var read: [String] = []
+        var bypass: [String] = []
+        if spec.keychain && settings.agentKeychain {
             // Claude Code, Codex and Copilot keep their login in the login keychain.
-            let keychains = expand("~/Library/Keychains")
             allow.append(keychains)
-            filesystem["bypass_protection"] = [keychains]
+            bypass.append(keychains)
         }
         for dir in spec.readWrite.map(expand) where !fm.fileExists(atPath: dir) {
             try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
         }
+        // The user's extra folders: everywhere, and for this project folder.
+        var userFolders = settings.folders
+        if let directory, let project = settings.project(for: directory) { userFolders += project.folders }
+        for folder in userFolders where SandboxSettings.validFolder(folder.path) == nil && fm.fileExists(atPath: folder.path) {
+            if folder.write { allow.append(folder.path) } else { read.append(folder.path) }
+        }
         var seatbelt: [String] = []
-        if gitAccess {
+        var files = spec.readWriteFiles.map(expand)
+        if gitAccess && settings.gitSSH {
             // Only for the Git pane's fixed fetch/pull/clone commands: SSH keys (read),
             // known_hosts, the keychain for HTTPS logins, and SSH's port 22.
-            let ssh = expand("~/.ssh"), keychains = expand("~/Library/Keychains")
-            filesystem["read"] = [ssh]
+            let ssh = expand("~/.ssh")
+            read.append(ssh)
             if !allow.contains(keychains) { allow.append(keychains) }
-            filesystem["bypass_protection"] = Array(Set((filesystem["bypass_protection"] as? [String] ?? []) + [ssh, keychains]))
+            bypass += [ssh, keychains]
             seatbelt.append(#"(allow network-outbound (remote tcp "*:22"))"#)
-        }
-        filesystem["allow"] = allow
-        var files = spec.readWriteFiles.map(expand)
-        if gitAccess {
             let knownHosts = expand("~/.ssh/known_hosts")
             if !fm.fileExists(atPath: knownHosts) { fm.createFile(atPath: knownHosts, contents: nil, attributes: [.posixPermissions: 0o644]) }
             files.append(knownHosts)
+        } else if gitAccess, !allow.contains(keychains) {
+            // HTTPS logins of the Git pane come from the keychain (osxkeychain helper).
+            allow.append(keychains)
+            bypass.append(keychains)
         }
+        var filesystem: [String: Any] = ["allow": allow]
+        if !read.isEmpty { filesystem["read"] = read }
+        if !bypass.isEmpty { filesystem["bypass_protection"] = Array(Set(bypass)).sorted() }
         if !files.isEmpty { filesystem["allow_file"] = files }
         if kind == .claude {
             // The user's own Claude hooks run inside the sandbox too: let them read their scripts.
@@ -132,10 +152,30 @@ enum SandboxManager {
         }
 
         var network: [String: Any] = ["network_profile": "developer"]
-        let domains = spec.domains + extraDomains
+        let domains = spec.domains + extraDomains + settings.domains.filter(SandboxSettings.validDomain)
         if !domains.isEmpty { network["allow_domain"] = domains }
-        let ports = spec.openPorts + extraOpenPorts
-        if !ports.isEmpty { network["open_port"] = ports }
+        let ports = spec.openPorts + extraOpenPorts + settings.ports.filter { (1...65535).contains($0) }
+        if !ports.isEmpty { network["open_port"] = Array(Set(ports)).sorted() }
+
+        // Credentials: proxy routes (the sandbox only sees a placeholder token) or plain env.
+        let credentials = settings.credentials.filter { $0.enabled && SandboxSettings.Credential.validName($0.name) }
+        var envCredentials: [String: String] = [:]
+        var routes: [String: Any] = [:]
+        for c in credentials {
+            switch c.mode {
+            case .env:
+                envCredentials[c.keychainAccount] = c.name
+            case .proxy:
+                guard URL(string: c.upstream)?.scheme == "https" else { continue }
+                routes[c.routeName] = ["upstream": c.upstream, "credential_key": c.keychainAccount, "env_var": c.name,
+                                       "inject_mode": "header", "inject_header": c.header.isEmpty ? "Authorization" : c.header,
+                                       "credential_format": c.format.contains("{}") ? c.format : "{}"]
+            }
+        }
+        if !routes.isEmpty {
+            network["credentials"] = routes.keys.sorted()
+            network["custom_credentials"] = routes
+        }
 
         var profile: [String: Any] = [
             "extends": "default",
@@ -145,12 +185,20 @@ enum SandboxManager {
             "filesystem": filesystem,
             "network": network,
         ]
+        if !envCredentials.isEmpty { profile["env_credentials"] = envCredentials }
         if !spec.openURLOrigins.isEmpty || spec.allowLocalhost {
             profile["open_urls"] = ["allow_origins": spec.openURLOrigins, "allow_localhost": spec.allowLocalhost]
         }
         if !spec.environment.isEmpty { profile["environment"] = ["set_vars": spec.environment] }
         if !seatbelt.isEmpty { profile["unsafe_macos_seatbelt_rules"] = seatbelt }
         return profile
+    }
+
+    /// `--credential` flags that activate the profile's proxy routes.
+    static func credentialFlags(_ settings: SandboxSettings) -> [String] {
+        settings.credentials
+            .filter { $0.enabled && $0.mode == .proxy && SandboxSettings.Credential.validName($0.name) && URL(string: $0.upstream)?.scheme == "https" }
+            .flatMap { ["--credential", $0.routeName] }
     }
 
     /// Absolute script paths referenced by hooks in ~/.claude/settings.json (outside the home's
@@ -269,8 +317,10 @@ enum SandboxManager {
             program = "/bin/sh"
         }
 
+        let settings = SandboxSettings.load()
         let profileURL = runDir.appendingPathComponent("nono-profile.json")
-        let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, extraOpenPorts: openPorts, gitAccess: gitAccess),
+        let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, directory: resolved,
+                                                                      settings: settings, extraOpenPorts: openPorts, gitAccess: gitAccess),
                                               options: [.prettyPrinted, .sortedKeys])
         try data.write(to: profileURL, options: .atomic)
 
@@ -292,7 +342,8 @@ enum SandboxManager {
         env.merge(extraEnv) { $1 }
 
         let nonoArgs = ["run", "--silent", "--profile", profileURL.path, "--allow-cwd", "--no-diagnostics",
-                        "--log-file", runDir.appendingPathComponent("nono.log").path, "--", program] + args
+                        "--log-file", runDir.appendingPathComponent("nono.log").path]
+            + credentialFlags(settings) + ["--", program] + args
         return Launch(executable: nono.path, arguments: nonoArgs,
                       environment: env.map { "\($0.key)=\($0.value)" }, directory: resolved)
     }

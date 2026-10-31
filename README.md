@@ -28,6 +28,14 @@ bleiben beim Wechsel aktiv; beendete Claude-/Codex-/OpenCode-Sitzungen lassen
 sich fortsetzen. Profil, Protokoll und Status-Ereignisse jeder Sitzung liegen
 unter `~/Library/Application Support/Hearth/runs/<id>/`.
 
+**Einstellungen** (⌘,): Agenten (installiert?, Anmelden, Schlüsselbund),
+Sandbox (zusätzliche Domains, Ports, Ordner, SSH für den Git-Bereich, Profil-Vorschau),
+Projekte (weitere Ordner für Sitzungen in einem Projektordner) und Credentials
+(API-Keys/Tokens im Schlüsselbund – per nono-Proxy, sodass die Sandbox nur einen
+Platzhalter sieht, oder als Umgebungsvariable). Gespeichert unter
+`~/Library/Application Support/Hearth/settings.json`, nie im Repository; gilt für
+Agenten, Build & Deployment und Git.
+
 > **Status:** Die bisherige Anbindung über die `devkcode`-CLI (OpenCode-Server,
 > nativer Chat) ist noch enthalten und erscheint nur, wenn `devkcode` installiert
 > ist. Nächster Schritt ist der native Chat über ACP. Details: [PLAN.md](PLAN.md).

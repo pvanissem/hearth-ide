@@ -36,6 +36,10 @@ struct StartAgentSheet: View {
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
                 if let problem = folderProblem {
                     Text(problem).font(.caption).foregroundStyle(.red)
+                } else if let project = model.sandboxSettings.project(for: directory.wrappedValue), !project.folders.isEmpty {
+                    Label("Projekt-Freigaben: " + project.folders.map { URL(fileURLWithPath: $0.path).lastPathComponent + ($0.write ? " (schreiben)" : " (lesen)") }
+                            .joined(separator: ", "), systemImage: "folder.badge.gearshape")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
 

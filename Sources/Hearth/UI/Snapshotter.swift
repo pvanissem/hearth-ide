@@ -41,10 +41,13 @@ enum Snapshotter {
             var views: [(String, AnyView, CGSize)] = [
                 ("main", AnyView(ContentView()), CGSize(width: 1400, height: 860)),
                 ("start-sheet", AnyView(StartSandboxSheet(request: .init(root: model.entries.first?.repoRoot))), CGSize(width: 520, height: 640)),
-                ("settings", AnyView(SettingsView()), CGSize(width: 680, height: 500)),
+                ("agent-start-sheet", AnyView(StartAgentSheet(request: .init())), CGSize(width: 520, height: 640)),
                 ("welcome", AnyView(WelcomeView()), CGSize(width: 600, height: 560)),
                 ("pipeline-graph", AnyView(PipelineGraph(jobs: Self.sampleJobs, onSelect: { _ in }, onRetry: { _ in }, onPlay: { _ in })), CGSize(width: 860, height: 300)),
             ]
+            for (name, view) in SettingsSnapshot.tabs {
+                views.append(("settings-" + name, view, CGSize(width: 720, height: 540)))
+            }
             if let root = ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_BUILD_ROOT"] {
                 views.append(("build-wide", AnyView(BuildDeployView(root: root, preloaded: BuildDetector.scan(root: root))), CGSize(width: 1100, height: 520)))
                 views.append(("build-narrow", AnyView(BuildDeployView(root: root, preloaded: BuildDetector.scan(root: root))), CGSize(width: 620, height: 640)))

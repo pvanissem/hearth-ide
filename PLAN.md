@@ -37,9 +37,11 @@ Hearth IDE.app
 - [x] **2 Terminal-Chat** – `AgentHost`/`AgentRunView`: Terminal in der
       Chat-Fläche, bleibt beim Wechsel aktiv; Inbox-Status über Claude-Hooks,
       Codex-`notify` oder Terminal-Heuristik; Fortsetzen, Benachrichtigungen.
-- [ ] **2b Rest** – Projekte/Netzwerk-/Credential-Einstellungen aus devkcode
-      (Swift-Settings statt CLI), Login ohne Schlüsselbund-Freigabe (nono
-      `credential_providers`, Platzhalter-Tokens), `DevkCLI`-Pfad entfernen.
+- [x] **2b Einstellungen** – nativ statt devkcode-CLI: Domains, Ports, Ordner,
+      Projekte, Credentials (nono-Proxy oder env), Git über SSH; Build &
+      Deployment und Git laufen in Hearths nono-Sandbox.
+- [ ] **2c Rest** – Login ohne Schlüsselbund-Freigabe (nono `credential_providers`,
+      Platzhalter-Tokens), `DevkCLI`-/OpenCode-Server-Pfad entfernen.
 - [ ] **3 ACP-Chat** – Agent-Schnittstelle in der App, ACP-Client auf den
       bestehenden Chat-Views (Permissions, Modelle, Modi, Slash-Commands);
       OpenCode-HTTP-Weg danach entfernen.

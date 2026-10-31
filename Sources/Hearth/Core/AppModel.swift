@@ -9,6 +9,20 @@ final class AppModel {
     let builds = BuildDeployStore()
     /// Agent sessions running in Hearth's own nono sandbox (terminal chat).
     let agents = AgentHost()
+    /// The user's sandbox rules (domains, ports, folders, projects, credentials).
+    private(set) var sandboxSettings = SandboxSettings.load()
+
+    func updateSandboxSettings(_ change: (inout SandboxSettings) -> Void) {
+        var updated = sandboxSettings
+        change(&updated)
+        guard updated != sandboxSettings else { return }
+        do {
+            try updated.save()
+            sandboxSettings = updated
+        } catch {
+            banner = "Einstellungen konnten nicht gespeichert werden: \(error.localizedDescription)"
+        }
+    }
     var cli: DevkCLI? = DevkCLI.locate()
     var entries: [WebSessionEntry] = []
     var servers: [String: ServerConnection] = [:]
