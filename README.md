@@ -82,8 +82,8 @@ Entwicklerhilfen (Umgebungsvariablen beim Start):
 open -n --env HEARTH_AUTOSTART_AGENT=shell --env HEARTH_AUTOSTART_DIR=$HOME/IdeaProjects/demo "build/Hearth IDE.app"
 ```
 
-Das App-Icon wird per Skript gezeichnet:
-`scripts/make-icon-source.swift && scripts/make-icon.swift`.
+App-Icon: Motiv in `Resources/AppIcon-source.png` (randlos, 1024 × 1024);
+`scripts/make-icon.swift` schneidet es auf die macOS-Form zu und erzeugt `AppIcon.icns`.
 
 ## Release erstellen
 
