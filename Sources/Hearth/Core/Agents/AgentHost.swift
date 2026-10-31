@@ -46,6 +46,16 @@ final class AgentRun: Identifiable {
     }
 
     var folderName: String { URL(fileURLWithPath: directory).lastPathComponent }
+
+    /// Whether the agent can continue this conversation. Claude Code only writes its
+    /// transcript with the first message, so a session that never got a prompt has none.
+    var canResume: Bool {
+        guard let sid = sessionID else { return false }
+        guard kind == .claude else { return true }
+        let projects = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/projects")
+        let dirs = (try? FileManager.default.contentsOfDirectory(atPath: projects.path)) ?? []
+        return dirs.contains { FileManager.default.fileExists(atPath: projects.appendingPathComponent("\($0)/\(sid).jsonl").path) }
+    }
     var hasCustomTitle: Bool { title != kind.displayName }
 }
 
@@ -135,7 +145,10 @@ final class AgentHost {
         run.exitCode = nil
         let args: [String]
         if run.purpose == .login { args = run.kind.loginArguments ?? [] }
-        else { args = run.kind.arguments(resume: run.sessionID) }
+        else {
+            if !run.canResume { run.sessionID = nil }
+            args = run.kind.arguments(resume: run.sessionID)
+        }
         let launch: SandboxManager.Launch
         do {
             launch = try SandboxManager.prepare(kind: run.kind, runID: run.id, directory: run.directory,

@@ -34,7 +34,7 @@ struct AgentRunView: View {
                         HStack(spacing: 10) {
                             Text(run.exitCode.map { "Sitzung beendet (Code \($0))" } ?? "Sitzung beendet").font(.callout)
                             if run.purpose == .session {
-                                Button(run.sessionID != nil ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
+                                Button(run.canResume ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
                                     .controlSize(.small)
                             }
                         }
@@ -75,7 +75,7 @@ struct AgentRunView: View {
                     .help("Sitzung beenden")
             } else if run.purpose == .session {
                 Button { model.agents.resume(run) } label: { Image(systemName: "play.circle") }
-                    .help(run.sessionID != nil ? "Gespräch fortsetzen" : "Neu starten")
+                    .help(run.canResume ? "Gespräch fortsetzen" : "Neu starten")
             }
             Menu {
                 Button("Umbenennen …") { newTitle.wrappedValue = run.title; renaming.wrappedValue = true }
@@ -110,11 +110,11 @@ struct AgentRunView: View {
         ContentUnavailableView {
             Label(run.title, systemImage: run.kind.symbol)
         } description: {
-            Text(run.sessionID != nil
+            Text(run.canResume
                  ? "Diese Sitzung ist beendet. \(run.kind.displayName) kann das Gespräch in einer neuen Sandbox fortsetzen."
                  : "Diese Sitzung ist beendet.")
         } actions: {
-            Button(run.sessionID != nil ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
+            Button(run.canResume ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -222,7 +222,7 @@ struct AgentRunRow: View {
                 Button { model.agents.stop(run) } label: { Label("Sitzung beenden", systemImage: "stop.circle") }
             } else if run.purpose == .session {
                 Button { model.agents.resume(run); model.selectRun(run.id) } label: {
-                    Label(run.sessionID != nil ? "Fortsetzen" : "Neu starten", systemImage: "play.circle")
+                    Label(run.canResume ? "Fortsetzen" : "Neu starten", systemImage: "play.circle")
                 }
             }
             Button { newTitle.wrappedValue = run.title; renaming.wrappedValue = true } label: {
