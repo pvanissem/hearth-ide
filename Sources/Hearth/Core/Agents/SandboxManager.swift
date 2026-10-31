@@ -76,8 +76,11 @@ enum SandboxManager {
 
     // MARK: Profile
 
+    /// Hearth's own data (sessions, settings, profiles). `HEARTH_SUPPORT_DIR` points a development
+    /// instance elsewhere so it never touches the installed app's sessions.
     static var supportDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Hearth")
+        if let dir = ProcessInfo.processInfo.environment["HEARTH_SUPPORT_DIR"] { return URL(fileURLWithPath: dir) }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Hearth")
     }
 
     /// Neutral folder for logins started from the settings (a sandbox needs a working folder).
@@ -354,7 +357,7 @@ enum SandboxManager {
 /// Status reporting from inside the sandbox: the agent appends one JSON line per
 /// event to `<run>/events.jsonl` (the only Hearth path it may write); the app tails it.
 enum AgentStatusHooks {
-    static let claudeEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest",
+    static let claudeEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PermissionRequest",
                                "Notification", "Stop", "SessionEnd"]
 
     /// Writes the hook script/settings and returns the extra agent arguments that enable them.

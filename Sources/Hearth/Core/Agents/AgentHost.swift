@@ -77,6 +77,16 @@ final class AgentHost {
 
     @ObservationIgnored private var poller: Timer?
     @ObservationIgnored var onAttention: ((AgentRun) -> Void)?
+    /// The agent may have changed files (a tool ran, a turn ended, the session exited).
+    @ObservationIgnored var onFilesChanged: ((AgentRun) -> Void)?
+    @ObservationIgnored private var lastFilesSignal: [String: Date] = [:]
+
+    private func filesChanged(_ run: AgentRun) {
+        let now = Date()
+        if let last = lastFilesSignal[run.id], now.timeIntervalSince(last) < 1 { return }
+        lastFilesSignal[run.id] = now
+        onFilesChanged?(run)
+    }
 
     init() {
         load()
@@ -208,6 +218,7 @@ final class AgentHost {
 
     private func processExited(_ run: AgentRun, code: Int32?) {
         run.isRunning = false
+        filesChanged(run)
         run.exitCode = code
         pollEvents(run)
         if run.status != .done { run.status = .inactive }
@@ -282,6 +293,8 @@ final class AgentHost {
             set(run, .running)
         case "PreToolUse":
             set(run, .running)
+        case "PostToolUse":
+            filesChanged(run)
         case "PermissionRequest":
             let tool = event["tool_name"] as? String
             set(run, .needsInput, detail: tool.map { "Möchte \($0) verwenden." } ?? "Wartet auf eine Freigabe.")
@@ -294,6 +307,7 @@ final class AgentHost {
                 set(run, .needsInput, detail: message)
             }
         case "Stop", "agent-turn-complete":
+            filesChanged(run)
             let summary = event["last_assistant_message"] as? String ?? event["last-assistant-message"] as? String
             set(run, .done, detail: summary.map { String($0.prefix(140)) })
         case "SessionEnd":

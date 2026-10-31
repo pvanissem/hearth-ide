@@ -601,6 +601,10 @@ final class AppModel {
             let what = run.status == .needsInput ? "wartet auf dich" : "ist fertig"
             Notifier.notify(title: run.title, body: "\(run.kind.displayName) \(what)" + (run.detail.map { ": \($0)" } ?? "."))
         }
+        agents.onFilesChanged = { [weak self] run in
+            guard let self, self.workspaceRoot == run.directory else { return }
+            self.workspaceRevision += 1
+        }
         // Resolve the login shell's PATH off the main thread before the first start.
         Task.detached(priority: .utility) { _ = SandboxManager.searchPath }
         autostartAgentForDevelopment()
@@ -623,6 +627,14 @@ final class AppModel {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(3))
                     Snapshotter.writeWindow(to: URL(fileURLWithPath: path))
+                }
+            }
+        }
+        if let size = env["HEARTH_WINDOW_SIZE"]?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                if let w = NSApp.windows.filter({ $0.isVisible && !$0.isSheet }).max(by: { $0.frame.width < $1.frame.width }) {
+                    w.setFrame(NSRect(x: 40, y: 40, width: size[0], height: size[1]), display: true)
                 }
             }
         }
@@ -652,6 +664,9 @@ final class AppModel {
             }
             guard let prompt = env["HEARTH_AUTOSTART_PROMPT"], let run = self.agents.selectedRun else { return }
             try? await Task.sleep(for: .seconds(6))
+            // Claude asks whether to trust a new folder with "No, exit" preselected: pick "Yes" explicitly.
+            if kind == .claude { run.terminal?.send(txt: "\u{1b}[B") }
+            try? await Task.sleep(for: .milliseconds(300))
             run.terminal?.send(txt: "\r")
             try? await Task.sleep(for: .seconds(3))
             run.terminal?.send(txt: prompt)
