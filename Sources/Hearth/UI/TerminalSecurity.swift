@@ -7,6 +7,9 @@ import SwiftTerm
 @MainActor
 final class TerminalSecurity: TerminalViewDelegate {
     weak var processView: LocalProcessTerminalView?
+    /// Observers for agent status heuristics (keyboard input, terminal bell).
+    var onSend: ((ArraySlice<UInt8>) -> Void)?
+    var onBell: (() -> Void)?
 
     init(_ view: LocalProcessTerminalView) { processView = view }
 
@@ -15,9 +18,9 @@ final class TerminalSecurity: TerminalViewDelegate {
     }
     func setTerminalTitle(source: TerminalView, title: String) { processView?.setTerminalTitle(source: source, title: title) }
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) { processView?.hostCurrentDirectoryUpdate(source: source, directory: directory) }
-    func send(source: TerminalView, data: ArraySlice<UInt8>) { processView?.send(source: source, data: data) }
+    func send(source: TerminalView, data: ArraySlice<UInt8>) { onSend?(data); processView?.send(source: source, data: data) }
     func scrolled(source: TerminalView, position: Double) { processView?.scrolled(source: source, position: position) }
-    func bell(source: TerminalView) { processView?.bell(source: source) }
+    func bell(source: TerminalView) { onBell?(); processView?.bell(source: source) }
     func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) { processView?.iTermContent(source: source, content: content) }
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) { processView?.rangeChanged(source: source, startY: startY, endY: endY) }
     func programStatusChanged(source: TerminalView, records: [TerminalProgramStatus]) { processView?.programStatusChanged(source: source, records: records) }

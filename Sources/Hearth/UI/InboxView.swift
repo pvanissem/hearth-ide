@@ -12,19 +12,23 @@ struct InboxView: View {
     var body: some View {
         let attention = model.inbox.filter { $0.status.priority <= AgentStatus.done.priority }
         let attentionIDs = Set(attention.map(\.id))
+        let agentRuns = model.agents.sorted
+        let agentAttention = agentRuns.filter { $0.status.priority <= AgentStatus.done.priority }
+        let attentionCount = attention.count + agentAttention.count
 
         List(selection: Binding(
-            get: { model.selectedSessionID },
+            get: { model.agents.selectedRunID.map { "run:" + $0 } ?? model.selectedSessionID },
             set: { id in
-                if let item = model.inbox.first(where: { $0.id == id }) { model.select(item) }
+                if let id, id.hasPrefix("run:") { model.selectRun(String(id.dropFirst(4))) }
+                else if let item = model.inbox.first(where: { $0.id == id }) { model.select(item) }
             })) {
             Section(isExpanded: Binding(get: { model.sessionListDisclosure.attentionExpanded },
                                         set: { model.sessionListDisclosure.attentionExpanded = $0 })) {
-                if attention.isEmpty {
+                if attentionCount == 0 {
                     Text("Alles ruhig – kein Agent wartet.").foregroundStyle(.secondary).scaledFont(.callout)
                 }
-                if !attention.isEmpty {
-                    Text("\(attention.count) Sessions mit Aktivität, Ergebnissen, Rückfragen oder Fehlern.")
+                if attentionCount > 0 {
+                    Text("\(attentionCount) Sessions mit Aktivität, Ergebnissen, Rückfragen oder Fehlern.")
                         .scaledFont(.caption).foregroundStyle(.secondary)
                 }
                 if !attention.isEmpty || onlyAttention.wrappedValue {
@@ -34,7 +38,28 @@ struct InboxView: View {
                     .buttonStyle(.link).scaledFont(.caption)
                 }
             } header: {
-                Text("Braucht Aufmerksamkeit (\(attention.count))\(onlyAttention.wrappedValue ? " · Filter aktiv" : "")").scaledFont(.caption, bold: true)
+                Text("Braucht Aufmerksamkeit (\(attentionCount))\(onlyAttention.wrappedValue ? " · Filter aktiv" : "")").scaledFont(.caption, bold: true)
+            }
+
+            let shownRuns = onlyAttention.wrappedValue ? agentAttention : agentRuns
+            Section {
+                if agentRuns.isEmpty {
+                    Button { model.agents.startSheet = .init() } label: {
+                        Label("Agent starten …", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.link).scaledFont(.callout)
+                }
+                ForEach(shownRuns) { run in
+                    AgentRunRow(run: run).tag("run:" + run.id)
+                }
+            } header: {
+                HStack {
+                    Text("Agenten (\(model.agents.runningCount) aktiv)").scaledFont(.caption, bold: true)
+                    Spacer()
+                    Button { model.agents.startSheet = .init() } label: { Image(systemName: "plus") }
+                        .buttonStyle(.borderless).help("Agent starten")
+                }
+                .textCase(nil)
             }
 
             ForEach(runningServers) { conn in

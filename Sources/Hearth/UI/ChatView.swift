@@ -10,7 +10,9 @@ struct ChatView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if let session = model.selectedSession {
+        if let run = model.agents.selectedRun {
+            AgentRunView(run: run).id(run.id)
+        } else if let session = model.selectedSession {
             let generation = model.chatViewGeneration
             let displayedMessages = ChatTranscript.withLiveFailure(model.messages, failure: currentFailure(session))
             VStack(spacing: 0) {

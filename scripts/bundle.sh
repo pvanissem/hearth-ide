@@ -12,6 +12,10 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Hearth"
 cp Resources/mermaid.min.js Resources/AppIcon.icns "$APP/Contents/Resources/"
+# The sandbox runtime: pinned, checksum-verified nono release (see scripts/fetch-nono.sh).
+NONO="$(scripts/fetch-nono.sh | tail -n1)"
+mkdir -p "$APP/Contents/Helpers"
+cp "$NONO" "$APP/Contents/Helpers/nono"
 
 # Release builds pass VERSION=vX.Y.Z; dev builds use git describe.
 BUILD_CHANNEL=release

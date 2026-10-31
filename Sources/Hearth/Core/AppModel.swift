@@ -7,6 +7,8 @@ import Observation
 final class AppModel {
     let updates = UpdateChecker()
     let builds = BuildDeployStore()
+    /// Agent sessions running in Hearth's own nono sandbox (terminal chat).
+    let agents = AgentHost()
     var cli: DevkCLI? = DevkCLI.locate()
     var entries: [WebSessionEntry] = []
     var servers: [String: ServerConnection] = [:]
@@ -112,7 +114,7 @@ final class AppModel {
 
     /// Directory the inspector shows: the selected session's, else its sandbox repo.
     var workspaceRoot: String? {
-        selectedSession?.directory ?? server(for: selectedServerID)?.entry.repoRoot
+        agents.selectedRun?.directory ?? selectedSession?.directory ?? server(for: selectedServerID)?.entry.repoRoot
     }
 
     func openPreview(_ url: URL, mode: PreviewMode = .file, line: Int? = nil, recordHistory: Bool = true) {
@@ -574,12 +576,64 @@ final class AppModel {
     init() {
         Notifier.requestAuthorization()
         restoreUIState()
+        agents.onAttention = { [weak self] run in
+            guard let self else { return }
+            let visible = NSApp.isActive && self.agents.selectedRunID == run.id
+            guard !visible else {
+                // The user is looking at it: a finished turn needs no further attention.
+                self.agents.acknowledge(run)
+                return
+            }
+            let what = run.status == .needsInput ? "wartet auf dich" : "ist fertig"
+            Notifier.notify(title: run.title, body: "\(run.kind.displayName) \(what)" + (run.detail.map { ": \($0)" } ?? "."))
+        }
+        // Resolve the login shell's PATH off the main thread before the first start.
+        Task.detached(priority: .utility) { _ = SandboxManager.searchPath }
+        autostartAgentForDevelopment()
         if Snapshotter.directory == nil { zoomMonitor = TextZoomMonitor(model: self) }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 self?.refreshRegistry()
                 try? await Task.sleep(for: .seconds(5))
             }
+        }
+    }
+
+    /// Developer aid: `HEARTH_AUTOSTART_AGENT=claude HEARTH_AUTOSTART_DIR=<dir>` starts an agent at
+    /// launch; `HEARTH_AUTOSTART_PROMPT` then confirms the folder-trust question and types the prompt.
+    private func autostartAgentForDevelopment() {
+        let env = ProcessInfo.processInfo.environment
+        if let path = env["HEARTH_WINDOW_SNAPSHOT"] {
+            // Writes the main window's layer tree to a PNG every few seconds (no screen-recording permission needed).
+            Task { @MainActor in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3))
+                    Snapshotter.writeWindow(to: URL(fileURLWithPath: path))
+                }
+            }
+        }
+        if env["HEARTH_SHOW_START_SHEET"] != nil {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1.5))
+                self?.showWelcome = false
+                try? await Task.sleep(for: .milliseconds(400))
+                self?.agents.startSheet = .init()
+            }
+        }
+        guard let raw = env["HEARTH_AUTOSTART_AGENT"], let kind = AgentKind(rawValue: raw),
+              let dir = env["HEARTH_AUTOSTART_DIR"] else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self else { return }
+            self.showWelcome = false
+            self.startAgent(kind, directory: dir)
+            guard let prompt = env["HEARTH_AUTOSTART_PROMPT"], let run = self.agents.selectedRun else { return }
+            try? await Task.sleep(for: .seconds(6))
+            run.terminal?.send(txt: "\r")
+            try? await Task.sleep(for: .seconds(3))
+            run.terminal?.send(txt: prompt)
+            try? await Task.sleep(for: .milliseconds(500))
+            run.terminal?.send(txt: "\r")
         }
     }
 
@@ -700,7 +754,16 @@ final class AppModel {
         showWelcome = false
         Task {
             try? await Task.sleep(for: .milliseconds(350))
-            startRequest = prefill
+            if cli == nil { agents.startSheet = .init(directory: prefill.root) } else { startRequest = prefill }
+        }
+    }
+
+    /// Opens the agent start sheet from the welcome dialog (sheets can't stack).
+    func welcomeStartAgent(_ prefill: AgentHost.StartAgentRequest = .init()) {
+        showWelcome = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            agents.startSheet = prefill
         }
     }
 
@@ -719,7 +782,7 @@ final class AppModel {
             // Greet once per launch, but only when nothing was already running in the background.
             if !welcomeChecked {
                 welcomeChecked = true
-                showWelcome = servers.isEmpty && Self.welcomeEnabled && Snapshotter.directory == nil
+                showWelcome = servers.isEmpty && agents.runningCount == 0 && Self.welcomeEnabled && Snapshotter.directory == nil
             }
         }
         for entry in entries {
@@ -966,7 +1029,31 @@ final class AppModel {
 
     // MARK: Chat
 
+    /// Shows an agent session (terminal chat) and its folder in the inspector.
+    func selectRun(_ id: String) {
+        guard let run = agents.run(id) else { return }
+        agents.acknowledge(run)
+        guard agents.selectedRunID != id else { return }
+        if workspaceRoot != run.directory { gitSnapshot = GitSnapshot(); invalidateDefinition() }
+        agents.selectedRunID = id
+        selectedSessionID = nil
+        selectedServerID = nil
+        workspaceRevision += 1
+        chatViewGeneration = UUID()
+        chatIsLoading = false
+        chatLoadFailure = nil
+        chatRequests.invalidate()
+    }
+
+    /// Starts an agent in the sandbox and shows it.
+    func startAgent(_ kind: AgentKind, directory: String, purpose: AgentRun.Purpose = .session) {
+        let run = agents.start(kind: kind, directory: directory, purpose: purpose)
+        selectRun(run.id)
+        if let error = run.error { banner = error }
+    }
+
     func select(_ session: SessionItem) {
+        agents.selectedRunID = nil
         if let entry = servers[session.serverID]?.entry { recordSandboxUse(entry) }
         let selection = ChatSelection(serverID: session.serverID, sessionID: session.id)
         if chatSelection == selection {
@@ -990,6 +1077,7 @@ final class AppModel {
     }
 
     func selectSandbox(_ serverID: String) {
+        agents.selectedRunID = nil
         if let entry = servers[serverID]?.entry { recordSandboxUse(entry) }
         guard selectedServerID != serverID || selectedSessionID != nil else { return }
         if workspaceRoot != servers[serverID]?.entry.repoRoot { gitSnapshot = GitSnapshot(); invalidateDefinition() }

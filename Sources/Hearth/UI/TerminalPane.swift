@@ -178,35 +178,12 @@ struct EmbeddedTerminal: NSViewRepresentable {
         view.terminate()
     }
 
-    private var profile: ITermProfile? {
-        TerminalLauncher.preferred == .iTerm ? ITermProfile.load(dark: dark) : nil
-    }
+    private var baseFontSize: Double { TerminalTheme.baseFontSize(dark: dark) }
 
-    private var baseFontSize: Double { profile?.font.map { Double($0.pointSize) } ?? 12 }
-
-    private func font(size: Double) -> NSFont {
-        if let f = profile?.font, let scaled = NSFont(name: f.fontName, size: size) { return scaled }
-        return .monospacedSystemFont(ofSize: size, weight: .regular)
-    }
+    private func font(size: Double) -> NSFont { TerminalTheme.font(size: size, dark: dark) }
 
     private func applyTheme(to view: LocalProcessTerminalView) {
-        view.font = font(size: baseFontSize * scale)
-        if let p = profile {
-            if p.ansi.count == 16 {
-                view.installColors(p.ansi.map { c in
-                    let s = c.usingColorSpace(.sRGB) ?? c
-                    return SwiftTerm.Color(red: UInt16(s.redComponent * 65535), green: UInt16(s.greenComponent * 65535),
-                                           blue: UInt16(s.blueComponent * 65535))
-                })
-            }
-            if let fg = p.foreground { view.nativeForegroundColor = fg }
-            if let bg = p.background { view.nativeBackgroundColor = bg }
-            if let c = p.cursor { view.caretColor = c }
-            if let s = p.selection { view.selectedTextBackgroundColor = s }
-        } else {
-            view.nativeForegroundColor = .textColor
-            view.nativeBackgroundColor = .textBackgroundColor
-        }
+        TerminalTheme.apply(to: view, dark: dark, scale: scale)
     }
 
     final class Coordinator: NSObject, LocalProcessTerminalViewDelegate {
@@ -219,6 +196,51 @@ struct EmbeddedTerminal: NSViewRepresentable {
         func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
         func processTerminated(source: TerminalView, exitCode: Int32?) {
             DispatchQueue.main.async { self.onExit(exitCode) }
+        }
+    }
+}
+
+/// Font and colours shared by every embedded terminal: the user's iTerm2 profile
+/// when iTerm2 is the preferred terminal, else the system monospaced font.
+enum TerminalTheme {
+    static func profile(dark: Bool) -> ITermProfile? {
+        TerminalLauncher.preferred == .iTerm ? ITermProfile.load(dark: dark) : nil
+    }
+
+    static func baseFontSize(dark: Bool) -> Double {
+        profile(dark: dark)?.font.map { Double($0.pointSize) } ?? 12
+    }
+
+    static func font(size: Double, dark: Bool) -> NSFont {
+        if let f = profile(dark: dark)?.font, let scaled = NSFont(name: f.fontName, size: size) { return scaled }
+        return .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
+    static func apply(to view: TerminalView, dark: Bool, scale: Double) {
+        let p = profile(dark: dark)
+        view.font = font(size: (p?.font.map { Double($0.pointSize) } ?? 12) * scale, dark: dark)
+        if let p {
+            if p.ansi.count == 16 {
+                view.installColors(p.ansi.map { c in
+                    let s = c.usingColorSpace(.sRGB) ?? c
+                    return SwiftTerm.Color(red: UInt16(s.redComponent * 65535), green: UInt16(s.greenComponent * 65535),
+                                           blue: UInt16(s.blueComponent * 65535))
+                })
+            }
+            if let fg = p.foreground { view.nativeForegroundColor = fg }
+            if let bg = p.background { view.nativeBackgroundColor = bg }
+            if let c = p.cursor { view.caretColor = c }
+            if let s = p.selection { view.selectedTextBackgroundColor = s }
+        } else {
+            // Resolve the dynamic system colours for the requested appearance now; the
+            // terminal draws with whatever appearance is current at draw time otherwise.
+            var fg = NSColor.textColor, bg = NSColor.textBackgroundColor
+            NSAppearance(named: dark ? .darkAqua : .aqua)?.performAsCurrentDrawingAppearance {
+                fg = NSColor.textColor.usingColorSpace(.sRGB) ?? fg
+                bg = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? bg
+            }
+            view.nativeForegroundColor = fg
+            view.nativeBackgroundColor = bg
         }
     }
 }

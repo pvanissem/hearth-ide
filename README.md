@@ -5,16 +5,37 @@ Hearth bündelt alle laufenden Agenten in einer Inbox und bietet einen nativen
 Chat sowie einen Inspector mit Directory, Git, Editor, Preview, Tests,
 Architecture (Mermaid), Build & Deployment und CI-Pipelines.
 
-> **Status: Umbau.** Hearth ist aus einem internen Projekt hervorgegangen und
-> nutzt im Moment noch die `devkcode`-CLI mit OpenCode als Agenten-Backend.
-> Ziel ist eine eigenständige App mit eingebauter [nono](https://nono.sh)-Sandbox,
-> in der du dich mit beliebigen Agent-CLIs anmeldest (Claude Code, Codex,
-> GitHub Copilot, OpenCode, …). Details: [PLAN.md](PLAN.md).
+## Agenten in der Sandbox
+
+Über **＋ Agent starten** wählst du einen Ordner und einen Agenten:
+Claude Code, Codex, GitHub Copilot CLI, OpenCode, Gemini CLI oder eine
+Sandbox-Shell. Hearth startet ihn in einer mitgelieferten
+[nono](https://nono.sh)-Sandbox (Seatbelt):
+
+- Schreiben nur im gewählten Ordner und im Konfigurationsordner des Agenten
+- gesperrt: SSH-Schlüssel, Shell-Konfiguration, Browserdaten, übriges Home
+- Netzwerk nur zu LLM-APIs, Paket-Registries, GitHub/GitLab, Doku und den
+  API-Hosts des Agenten
+- Claude Code, Codex und Copilot dürfen an den Schlüsselbund (ihr Login liegt dort)
+
+Jeder Agent nutzt seinen eigenen Login (Claude-Abo, ChatGPT, GitHub …).
+„Anmelden …“ im Startdialog startet den Login-Befehl des Agenten in der Sandbox.
+
+Der Chat-Bereich zeigt den Agenten als Terminal. Die Inbox kennt den Status:
+Claude Code meldet ihn über Hooks (läuft, wartet auf Freigabe, fertig), Codex
+über `notify`, andere Agenten über Eingabe und Terminal-Klingel. Sitzungen
+bleiben beim Wechsel aktiv; beendete Claude-/Codex-/OpenCode-Sitzungen lassen
+sich fortsetzen. Profil, Protokoll und Status-Ereignisse jeder Sitzung liegen
+unter `~/Library/Application Support/Hearth/runs/<id>/`.
+
+> **Status:** Die bisherige Anbindung über die `devkcode`-CLI (OpenCode-Server,
+> nativer Chat) ist noch enthalten und erscheint nur, wenn `devkcode` installiert
+> ist. Nächster Schritt ist der native Chat über ACP. Details: [PLAN.md](PLAN.md).
 
 ## Voraussetzungen
 
 - macOS 14+ auf Apple Silicon
-- vorübergehend: die `devkcode`-CLI (Pfad abweichend per `HEARTH_DEVKCODE_BIN`)
+- mindestens eine Agent-CLI im PATH deiner Login-Shell
 
 ## Installation
 
@@ -43,6 +64,23 @@ Ohne Xcode (nur Command Line Tools) gilt:
   SwiftUI-Makro-Plugin nur mit Xcode ausgeliefert wird.
 - `swift test` benötigt Xcode (Swift-Testing-Makros); `scripts/test-security.sh`
   führt dieselben Tests ohne Xcode aus.
+
+`scripts/bundle.sh` lädt nono (gepinnte Version, SHA-256 geprüft) über
+`scripts/fetch-nono.sh` nach `Vendor/` und legt es nach `Contents/Helpers/nono`.
+`swift run` findet es dort ebenfalls; abweichend per `HEARTH_NONO_BIN`.
+
+Entwicklerhilfen (Umgebungsvariablen beim Start):
+
+| Variable | Wirkung |
+|---|---|
+| `HEARTH_AUTOSTART_AGENT=claude` + `HEARTH_AUTOSTART_DIR=<ordner>` | startet direkt einen Agenten |
+| `HEARTH_AUTOSTART_PROMPT=<text>` | bestätigt die Ordner-Abfrage und tippt den Prompt ein |
+| `HEARTH_SHOW_START_SHEET=1` | öffnet den Startdialog |
+| `HEARTH_WINDOW_SNAPSHOT=<datei.png>` | schreibt alle 3 s ein Bild des Fensters (ohne Bildschirmaufnahme-Recht) |
+
+```bash
+open -n --env HEARTH_AUTOSTART_AGENT=shell --env HEARTH_AUTOSTART_DIR=$HOME/IdeaProjects/demo "build/Hearth IDE.app"
+```
 
 Das App-Icon wird per Skript gezeichnet:
 `scripts/make-icon-source.swift && scripts/make-icon.swift`.

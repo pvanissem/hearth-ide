@@ -12,6 +12,9 @@ struct ContentView: View {
         .sheet(item: Binding(get: { model.startRequest }, set: { model.startRequest = $0 })) { req in
             StartSandboxSheet(request: req)
         }
+        .sheet(item: Binding(get: { model.agents.startSheet }, set: { model.agents.startSheet = $0 })) { req in
+            StartAgentSheet(request: req)
+        }
         .sheet(isPresented: Binding(get: { model.showWelcome }, set: { model.showWelcome = $0 })) {
             WelcomeView()
         }
@@ -28,9 +31,13 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button { model.startRequest = .init() } label: { Label("Sandbox starten", systemImage: "plus") }
-                    .help("Sandbox starten (Verzeichnis, Repository klonen, Profil, Projekt)")
-                    .disabled(model.busy)
+                Button { model.agents.startSheet = .init() } label: { Label("Agent starten", systemImage: "plus") }
+                    .help("Agent in einer Sandbox starten (Ordner und Agent wählen)")
+                if model.cli != nil {
+                    Button { model.startRequest = .init() } label: { Label("devkcode-Sandbox starten", systemImage: "shippingbox") }
+                        .help("devkcode-Sandbox starten (Verzeichnis, Repository klonen, Profil, Projekt)")
+                        .disabled(model.busy)
+                }
                 Menu {
                     Section("Bereich hinzufügen") {
                         ForEach(InspectorTab.allCases) { tab in

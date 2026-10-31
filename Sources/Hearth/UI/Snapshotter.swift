@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import SwiftTerm
 
 /// Developer aid: `HEARTH_SNAPSHOT=<dir> Hearth` renders key views offscreen
 /// with live data to PNG files and exits. Needs no screen-recording permission.
@@ -142,5 +143,50 @@ enum Snapshotter {
         guard let image = ctx.makeImage(),
               let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
         try? png.write(to: url)
+    }
+
+    /// Renders the app's largest visible window (layer tree) into a PNG.
+    static func writeWindow(to url: URL) {
+        guard let main = NSApp.windows.filter({ $0.isVisible && $0.contentView != nil && !$0.isSheet })
+                .max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }),
+              case let window = main.attachedSheet ?? main,
+              let view = window.contentView?.superview ?? window.contentView, let layer = view.layer else { return }
+        let size = view.bounds.size, scale = window.backingScaleFactor
+        guard let ctx = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
+                                  bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        window.effectiveAppearance.performAsCurrentDrawingAppearance {
+            ctx.setFillColor(NSColor.windowBackgroundColor.cgColor)
+        }
+        ctx.fill(CGRect(x: 0, y: 0, width: size.width * scale, height: size.height * scale))
+        ctx.saveGState()
+        if view.isFlipped {
+            ctx.translateBy(x: 0, y: size.height * scale)
+            ctx.scaleBy(x: scale, y: -scale)
+        } else {
+            ctx.scaleBy(x: scale, y: scale)
+        }
+        layer.render(in: ctx)
+        ctx.restoreGState()
+        // Views that draw in draw(_:) (the terminals) have no layer contents: draw them on top.
+        func terminals(_ v: NSView) -> [NSView] {
+            (v is TerminalView ? [v] : []) + v.subviews.flatMap(terminals)
+        }
+        for t in terminals(view) where !t.isHiddenOrHasHiddenAncestor && t.window != nil {
+            guard let rep = t.bitmapImageRepForCachingDisplay(in: t.bounds), let cg = rep.cgImage else { continue }
+            t.cacheDisplay(in: t.bounds, to: rep)
+            guard let img = rep.cgImage else { continue }
+            _ = cg
+            let r = t.convert(t.bounds, to: nil)   // window coordinates, origin bottom-left
+            // The terminal paints its background via the layer, which cacheDisplay leaves out.
+            if let bg = (t as? TerminalView)?.nativeBackgroundColor.cgColor {
+                ctx.setFillColor(bg)
+                ctx.fill(CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale))
+            }
+            ctx.draw(img, in: CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale))
+        }
+        guard let image = ctx.makeImage(),
+              let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: url, options: .atomic)
     }
 }

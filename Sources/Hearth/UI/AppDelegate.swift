@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Self.model?.quitting = true
+        Self.model?.agents.stopAll()
         if Self.model?.updates.installOnQuit == true, Snapshotter.directory == nil {
             AppUpdateInstaller.launchHelper()
         }
@@ -103,6 +104,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .alertSecondButtonReturn: break
             default: return .terminateCancel
             }
+        }
+        if let model = Self.model, model.agents.runningCount > 0, Snapshotter.directory == nil {
+            let count = model.agents.runningCount
+            let alert = NSAlert()
+            alert.messageText = count == 1 ? "Eine Agent-Sitzung läuft noch" : "\(count) Agent-Sitzungen laufen noch"
+            alert.informativeText = "Beim Beenden werden sie gestoppt. Claude-Code- und Codex-Gespräche lassen sich später mit „Fortsetzen“ weiterführen."
+            alert.addButton(withTitle: "Beenden")
+            alert.addButton(withTitle: "Abbrechen")
+            if alert.runModal() != .alertFirstButtonReturn { return .terminateCancel }
         }
         guard !stopping, let model = Self.model, !model.servers.isEmpty, Snapshotter.directory == nil else {
             return .terminateNow

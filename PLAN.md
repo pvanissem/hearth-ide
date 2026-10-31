@@ -30,11 +30,16 @@ Hearth IDE.app
 
 - [x] **1a Neues Repo** – aus devkdesk ohne Historie, DEVK-Infrastruktur
       entfernt, Name/Bundle-ID/Icon, Updates und Releases über GitHub.
-- [ ] **1b SandboxManager** – nono ins Bundle, Profile/Projekte/Netzwerk/
-      Credentials aus devkcode nach Swift portieren (nur macOS/Seatbelt),
-      `DevkCLI`/`DevkConfig`/`WebSessionRegistry` ablösen.
-- [ ] **2 Terminal-Chat** – generischer Terminal-Modus, Claude Code mit Hooks,
-      Inbox-Status und Session-Liste.
+- [x] **1b Sandbox** – nono v0.80.0 im Bundle (`Contents/Helpers`), Profil pro
+      Sitzung (`SandboxManager`), Agenten-Katalog (`AgentKind`): Claude Code,
+      Codex, Copilot CLI, OpenCode (privater Server auf einem freigegebenen Port),
+      Gemini CLI, Sandbox-Shell.
+- [x] **2 Terminal-Chat** – `AgentHost`/`AgentRunView`: Terminal in der
+      Chat-Fläche, bleibt beim Wechsel aktiv; Inbox-Status über Claude-Hooks,
+      Codex-`notify` oder Terminal-Heuristik; Fortsetzen, Benachrichtigungen.
+- [ ] **2b Rest** – Projekte/Netzwerk-/Credential-Einstellungen aus devkcode
+      (Swift-Settings statt CLI), Login ohne Schlüsselbund-Freigabe (nono
+      `credential_providers`, Platzhalter-Tokens), `DevkCLI`-Pfad entfernen.
 - [ ] **3 ACP-Chat** – Agent-Schnittstelle in der App, ACP-Client auf den
       bestehenden Chat-Views (Permissions, Modelle, Modi, Slash-Commands);
       OpenCode-HTTP-Weg danach entfernen.

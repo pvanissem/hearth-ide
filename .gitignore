@@ -161,3 +161,4 @@ build/
 .DS_Store
 *.xcodeproj/xcuserdata/
 .swiftpm/
+Vendor/
