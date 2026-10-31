@@ -101,9 +101,11 @@ Auf einem Apple-Silicon-Mac, auf aktuellem `main`, mit eingeloggter GitHub CLI:
 scripts/release.sh v0.1.0
 ```
 
-Baut das Bundle, erzeugt Zip, Prüfsumme, `latest-version.txt` und ein
-kumulatives `CHANGELOG.md`, setzt und pusht den Tag und legt das GitHub-Release
-mit allen Dateien an. App-Updater und `install.sh` lesen von
+Baut das Bundle, erzeugt Zip, Prüfsumme und `latest-version.txt`, macht aus dem
+Abschnitt „Unveröffentlicht“ in [`CHANGELOG.md`](CHANGELOG.md) den Eintrag der
+neuen Version (Commit auf `main`), setzt und pusht den Tag und legt das
+GitHub-Release mit allen Dateien an. Neue Änderungen kommen unter einen frischen
+Abschnitt `## Unveröffentlicht`; fehlt er, stammen die Notizen aus den Commits. App-Updater und `install.sh` lesen von
 `releases/latest/download/…`.
 
 ## Weitere Dokumentation

@@ -4,7 +4,8 @@
 #   scripts/release.sh v0.1.0
 #
 # 1. release build + app bundle, zipped with a SHA-256 checksum
-# 2. cumulative CHANGELOG.md and latest-version.txt
+# 2. CHANGELOG.md: the "Unveröffentlicht" section becomes the release (committed to main)
+#    and latest-version.txt
 # 3. annotated tag + push
 # 4. GitHub release with all files attached; the app and install.sh read them
 #    from https://github.com/<repo>/releases/latest/download/<file>
@@ -46,16 +47,23 @@ printf '%s\n' "$VERSION" > "$OUT/latest-version.txt"
 cp install.sh "$OUT/install.sh"
 
 step "Changelog"
-PREV="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-NOTES="$(git log --no-merges --format='- %s' ${PREV:+$PREV..}HEAD | head -n 60 || true)"
-{
-  printf '## %s · %s\n\n%s\n\n' "${VERSION#v}" "$(date +%Y-%m-%d)" "${NOTES:--}"
-  # Keep earlier releases' notes (cumulative, newest first); tolerate a missing file.
-  curl -fsSL "https://github.com/$REPO/releases/latest/download/CHANGELOG.md" 2>/dev/null | sed '/^# /d' || true
-} > "$OUT/CHANGELOG.body"
-{ printf '# Hearth IDE – Änderungen\n\n'; cat "$OUT/CHANGELOG.body"; } | head -c 180000 > "$OUT/CHANGELOG.md"
-rm -f "$OUT/CHANGELOG.body"
+# Notes come from the "## Unveröffentlicht" section of CHANGELOG.md; without one,
+# from the commit subjects since the last tag.
+UNRELEASED="$(awk '/^## Unveröffentlicht/{on=1;next} /^## /{on=0} on' CHANGELOG.md | sed '/^[[:space:]]*$/d')"
+if [[ -n "$UNRELEASED" ]]; then
+  NOTES="$UNRELEASED"
+  HEADING="## ${VERSION#v} · $(date +%Y-%m-%d)"
+  awk -v h="$HEADING" '/^## Unveröffentlicht/{print h; next} {print}' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+else
+  PREV="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+  NOTES="$(git log --no-merges --format='- %s' ${PREV:+$PREV..}HEAD | head -n 60 || true)"
+  { sed -n '1,2p' CHANGELOG.md; printf '## %s · %s\n\n%s\n\n' "${VERSION#v}" "$(date +%Y-%m-%d)" "${NOTES:--}"; sed '1,2d' CHANGELOG.md; } > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+fi
+head -c 180000 CHANGELOG.md > "$OUT/CHANGELOG.md"
 sed -n '1,12p' "$OUT/CHANGELOG.md"
+git add CHANGELOG.md
+git commit -q -m "Release $VERSION"
+git push origin main
 
 step "Tag and push"
 git tag -a "$VERSION" -m "Hearth IDE $VERSION"
