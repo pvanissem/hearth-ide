@@ -8,7 +8,7 @@ related_targets: []
 # Landingpage (GitHub Pages)
 
 Scope: `site/index.html`, the public landing page at pvanissem.github.io/hearth. Mode: Persuade.
-Audience: developers using agent CLIs on a Mac. Action: copy the install command. Belief after the first viewport: "my agent, my subscription, but fenced in". Proof: real app screenshots from a neutral demo project; real sandbox rules. Constraints: German, v0.1 labelled honestly, no invented numbers or testimonials, no generic SaaS look, little text.
+Audience: developers using agent CLIs on a Mac. Action: copy the install command. Belief after the first viewport: "my agent, my subscription, but fenced in". Proof: real app screenshots from a neutral demo project; real sandbox rules. Constraints: German, current version (v0.2) labelled honestly, no invented numbers or testimonials, no generic SaaS look, little text.
 
 ## Direction contract
 

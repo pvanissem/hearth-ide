@@ -98,7 +98,7 @@ App-Icon: Motiv in `Resources/AppIcon-source.png` (randlos, 1024 × 1024);
 Auf einem Apple-Silicon-Mac, auf aktuellem `main`, mit eingeloggter GitHub CLI:
 
 ```bash
-scripts/release.sh v0.1.0
+scripts/release.sh v0.3.0
 ```
 
 Baut das Bundle, erzeugt Zip, Prüfsumme und `latest-version.txt`, macht aus dem
