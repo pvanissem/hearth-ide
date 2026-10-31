@@ -95,7 +95,7 @@ actor LocalSandboxShell: HearthSandboxShell {
         }
         let launch = try SandboxManager.prepare(kind: .shell, runID: "build-" + id, directory: root,
                                                 agentArguments: ["-f", "-c", script], statusHooks: false, openPorts: ports,
-                                                gitAccess: gitAccess)
+                                                gitAccess: gitAccess, extraDomains: gitAccess ? Self.gitHosts(root: root) + Self.urlHosts(command) : [])
         let entry = Entry(id: id, command: command, metadata: metadata)
         let process = entry.process
         process.executableURL = URL(fileURLWithPath: launch.executable)
@@ -130,6 +130,37 @@ actor LocalSandboxShell: HearthSandboxShell {
             }
         }
         return id
+    }
+
+    /// Hosts of the repository's remotes, read from .git/config as a plain file (no Git
+    /// process, nothing from the repository runs). Fetch/pull/clone only download, so the
+    /// Git pane may reach them; agents still need an explicit domain in the settings.
+    static func gitHosts(root: String) -> [String] {
+        let config = URL(fileURLWithPath: root).appendingPathComponent(".git/config")
+        guard let text = try? String(contentsOf: config, encoding: .utf8) else { return [] }
+        let urls = text.split(separator: "\n").compactMap { line -> String? in
+            let t = line.trimmingCharacters(in: .whitespaces)
+            guard t.hasPrefix("url"), let eq = t.firstIndex(of: "=") else { return nil }
+            return t[t.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+        }
+        return Array(Set(urls.compactMap(host(of:)))).sorted()
+    }
+
+    /// Hosts of URLs in a command (clone).
+    static func urlHosts(_ command: String) -> [String] {
+        command.split(whereSeparator: { $0 == " " || $0 == "'" }).compactMap { host(of: String($0)) }
+    }
+
+    /// Host of an https/ssh URL or scp-like `user@host:path`; nil for anything else.
+    static func host(of url: String) -> String? {
+        var host: String?
+        if let u = URLComponents(string: url), ["https", "http", "ssh"].contains(u.scheme ?? "") { host = u.host }
+        else if url.range(of: #"^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+:"#, options: .regularExpression) != nil,
+                let at = url.firstIndex(of: "@"), let colon = url[at...].firstIndex(of: ":") {
+            host = String(url[url.index(after: at)..<colon])
+        }
+        guard let h = host?.lowercased(), SandboxSettings.validDomain(h) else { return nil }
+        return h
     }
 
     private func wrap(_ data: Any) throws -> JSON {

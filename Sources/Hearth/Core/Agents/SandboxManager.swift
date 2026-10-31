@@ -290,7 +290,8 @@ enum SandboxManager {
 
     /// Writes the profile (and status hooks) for `run` and returns how to start it.
     static func prepare(kind: AgentKind, runID: String, directory: String, agentArguments: [String],
-                        statusHooks: Bool = true, openPorts extraPorts: [Int] = [], gitAccess: Bool = false) throws -> Launch {
+                        statusHooks: Bool = true, openPorts extraPorts: [Int] = [], gitAccess: Bool = false,
+                        extraDomains: [String] = []) throws -> Launch {
         guard let nono = locateNono() else { throw Failure.nonoMissing }
         guard let agent = locate(kind) else { throw Failure.agentMissing(kind) }
         let home = NSHomeDirectory()
@@ -320,7 +321,8 @@ enum SandboxManager {
         let settings = SandboxSettings.load()
         let profileURL = runDir.appendingPathComponent("nono-profile.json")
         let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, directory: resolved,
-                                                                      settings: settings, extraOpenPorts: openPorts, gitAccess: gitAccess),
+                                                                      settings: settings, extraDomains: extraDomains,
+                                                                      extraOpenPorts: openPorts, gitAccess: gitAccess),
                                               options: [.prettyPrinted, .sortedKeys])
         try data.write(to: profileURL, options: .atomic)
 
