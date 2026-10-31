@@ -56,6 +56,14 @@ final class AppModel {
     var editorGroups: [UUID: EditorGroup] = [:]
     /// Preview pane that receives openPreview() and the editor shortcuts.
     var activeEditorID: UUID? { didSet { if oldValue != activeEditorID { invalidateDefinition() } } }
+    /// Editor tabs of the sessions not shown right now (see AppModel+EditorWorkspaces).
+    var editorWorkspaces: [String: EditorWorkspace] = UIStateStore.load(.editorWorkspaces) ?? [:] {
+        didSet { UIStateStore.save(editorWorkspaces, as: .editorWorkspaces) }
+    }
+    /// Selection whose tabs the editors show (nil = not yet assigned, e.g. right after launch).
+    var shownEditorWorkspace: String? = UIStateStore.load(.shownEditorWorkspace) {
+        didSet { UIStateStore.save(shownEditorWorkspace, as: .shownEditorWorkspace) }
+    }
     /// Holds tabs while no Preview pane exists (e.g. restored state before layout).
     private let looseEditor = EditorGroup()
 
@@ -67,7 +75,7 @@ final class AppModel {
         return g
     }
 
-    private var previewPaneIDs: [UUID] {
+    var previewPaneIDs: [UUID] {
         let main = paneTree.panes.filter { $0.tab == .preview }.map(\.id)
         return detachedTabs.contains(.preview) ? main + [DetachedPaneView.id(for: .preview)] : main
     }
@@ -1109,6 +1117,7 @@ final class AppModel {
         agents.selectedRunID = id
         selectedSessionID = nil
         selectedServerID = nil
+        switchEditorWorkspace()
         workspaceRevision += 1
         chatViewGeneration = UUID()
         chatIsLoading = false
@@ -1124,6 +1133,7 @@ final class AppModel {
     }
 
     func select(_ session: SessionItem) {
+        defer { switchEditorWorkspace() }
         agents.selectedRunID = nil
         if let entry = servers[session.serverID]?.entry { recordSandboxUse(entry) }
         let selection = ChatSelection(serverID: session.serverID, sessionID: session.id)
@@ -1148,6 +1158,7 @@ final class AppModel {
     }
 
     func selectSandbox(_ serverID: String) {
+        defer { switchEditorWorkspace() }
         agents.selectedRunID = nil
         if let entry = servers[serverID]?.entry { recordSandboxUse(entry) }
         guard selectedServerID != serverID || selectedSessionID != nil else { return }
