@@ -2,8 +2,8 @@ import Foundation
 import Darwin
 
 extension AppModel {
-    /// Fetch/pull are explicit UI actions executed by the already sandboxed
-    /// OpenCode server, not by an agent or the local host Git dispatcher.
+    /// Fetch/pull are explicit UI actions executed in a sandbox (a running devkcode
+    /// server, else Hearth's nono sandbox), not by an agent or the local host Git dispatcher.
     func networkGit(_ operation: SandboxGitOperation, in directory: String) async -> Git.OpResult {
         do {
             let root = URL(fileURLWithPath: directory).resolvingSymlinksInPath().standardizedFileURL
@@ -43,7 +43,9 @@ extension AppModel {
             if result.ok {
                 cloneDirectories.remove(root.path)
                 // Only this new server's empty location is reloaded to discover its new VCS.
-                try? await client.send("POST", "/api/location/reload", session: GitLabTransport.session)
+                if let server = client as? OpenCodeClient {
+                    try? await server.send("POST", "/api/location/reload", session: GitLabTransport.session)
+                }
                 workspaceRevision += 1
                 refreshRegistry()
                 if let connection = servers.values.first(where: { sameGitRoot($0.entry.repoRoot, root.path) }) {
@@ -60,7 +62,7 @@ extension AppModel {
 
     /// Reuse a running registry entry without `devkcode web` (which creates an
     /// empty chat session on each invocation). Start only when genuinely missing.
-    private func prepareGitSandbox(root: URL, profile: String? = nil) async throws -> OpenCodeClient {
+    private func prepareGitSandbox(root: URL, profile: String? = nil) async throws -> any SandboxShellAPI {
         try Task.checkCancellation()
         let saved = try WebSessionRegistry.load().first { sameGitRoot($0.repoRoot, root.path) }
         if let saved, WebSessionRegistry.isAlive(saved), let url = saved.baseURL, let password = saved.password {
@@ -70,7 +72,12 @@ extension AppModel {
             }
             return OpenCodeClient(baseURL: url, password: password)
         }
-        guard let cli else { throw SandboxGitRunner.Failure("devkcode wurde nicht gefunden. Kein Host-Fallback.") }
+        guard let cli else {
+            guard let shell = localShell(root: root.path, gitAccess: true) else {
+                throw SandboxGitRunner.Failure("nono wurde nicht gefunden. Kein Host-Fallback.")
+            }
+            return shell
+        }
         let result = try await cli.startWeb(repoRoot: root.path, project: saved?.projectName, profile: profile ?? saved?.profileName)
         guard result.status == 0 else { throw SandboxGitRunner.Failure("Sandbox-Start fehlgeschlagen: " + result.output) }
         refreshRegistry()

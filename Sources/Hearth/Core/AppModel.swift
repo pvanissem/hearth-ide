@@ -1053,11 +1053,17 @@ final class AppModel {
         if let conn = server(for: selectedServerID), conn.connected, conn.entry.repoRoot == root || selectedSession?.directory == root {
             return BuildShell(id: conn.id, client: conn.client, label: conn.entry.profileName ?? "aktiv", isLocal: false)
         }
+        guard let shell = localShell(root: root) else { return nil }
+        return BuildShell(id: "local:" + root, client: shell, label: "nono", isLocal: true)
+    }
+
+    /// Hearth's own sandbox shell for a folder (nil when nono is missing).
+    func localShell(root: String, gitAccess: Bool = false) -> LocalSandboxShell? {
         guard SandboxManager.locateNono() != nil else { return nil }
-        let id = "local:" + root
-        let shell = localShells[id] ?? LocalSandboxShell(root: root)
+        let id = (gitAccess ? "local-git:" : "local:") + root
+        let shell = localShells[id] ?? LocalSandboxShell(root: root, gitAccess: gitAccess)
         localShells[id] = shell
-        return BuildShell(id: id, client: shell, label: "nono", isLocal: true)
+        return shell
     }
 
     func buildShell(id: String) -> SandboxShellAPI? {

@@ -4,10 +4,12 @@ import Foundation
 /// locally: every command runs in its own nono sandbox for the workspace, never
 /// directly on the Mac. Lets the build pane work for agent sessions without a
 /// devkcode/OpenCode server.
-actor LocalSandboxShell: SandboxShellAPI {
+actor LocalSandboxShell: HearthSandboxShell {
     let root: String
+    /// Git pane shells may use SSH keys, the keychain and port 22 (see SandboxManager.profile).
+    let gitAccess: Bool
 
-    init(root: String) { self.root = root }
+    init(root: String, gitAccess: Bool = false) { self.root = root; self.gitAccess = gitAccess }
 
     /// One command and its merged stdout/stderr. Filled from the pipe's reader thread.
     private final class Entry: @unchecked Sendable {
@@ -49,7 +51,7 @@ actor LocalSandboxShell: SandboxShellAPI {
         func q(_ name: String) -> Int? { query.first { $0.name == name }?.value.flatMap(Int.init) }
         switch (method, parts.count) {
         case ("POST", 2):
-            return try wrap(["id": create(body ?? [:])])
+            return try wrap(["id": create(body ?? [:]), "status": "running"])
         case ("GET", 2):
             return try wrap(entries.values.filter { $0.state.0 == "running" }.map { e in
                 ["id": e.id, "command": e.command, "metadata": e.metadata,
@@ -92,7 +94,8 @@ actor LocalSandboxShell: SandboxShellAPI {
             script = "cd '\(dir.replacingOccurrences(of: "'", with: "'\\''"))' && " + command
         }
         let launch = try SandboxManager.prepare(kind: .shell, runID: "build-" + id, directory: root,
-                                                agentArguments: ["-f", "-c", script], statusHooks: false, openPorts: ports)
+                                                agentArguments: ["-f", "-c", script], statusHooks: false, openPorts: ports,
+                                                gitAccess: gitAccess)
         let entry = Entry(id: id, command: command, metadata: metadata)
         let process = entry.process
         process.executableURL = URL(fileURLWithPath: launch.executable)

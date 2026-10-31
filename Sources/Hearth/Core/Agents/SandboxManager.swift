@@ -92,7 +92,7 @@ enum SandboxManager {
     /// read/write, toolchains read-only, the agent's own state, and only the hosts in
     /// nono's developer network profile plus the agent's API hosts.
     static func profile(kind: AgentKind, runDirectory: URL, extraDomains: [String] = [],
-                        extraOpenPorts: [Int] = []) -> [String: Any] {
+                        extraOpenPorts: [Int] = [], gitAccess: Bool = false) -> [String: Any] {
         let spec = kind.sandbox
         let fm = FileManager.default
         var allow = spec.readWrite.map(expand)
@@ -107,8 +107,23 @@ enum SandboxManager {
         for dir in spec.readWrite.map(expand) where !fm.fileExists(atPath: dir) {
             try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
         }
+        var seatbelt: [String] = []
+        if gitAccess {
+            // Only for the Git pane's fixed fetch/pull/clone commands: SSH keys (read),
+            // known_hosts, the keychain for HTTPS logins, and SSH's port 22.
+            let ssh = expand("~/.ssh"), keychains = expand("~/Library/Keychains")
+            filesystem["read"] = [ssh]
+            if !allow.contains(keychains) { allow.append(keychains) }
+            filesystem["bypass_protection"] = Array(Set((filesystem["bypass_protection"] as? [String] ?? []) + [ssh, keychains]))
+            seatbelt.append(#"(allow network-outbound (remote tcp "*:22"))"#)
+        }
         filesystem["allow"] = allow
-        let files = spec.readWriteFiles.map(expand)
+        var files = spec.readWriteFiles.map(expand)
+        if gitAccess {
+            let knownHosts = expand("~/.ssh/known_hosts")
+            if !fm.fileExists(atPath: knownHosts) { fm.createFile(atPath: knownHosts, contents: nil, attributes: [.posixPermissions: 0o644]) }
+            files.append(knownHosts)
+        }
         if !files.isEmpty { filesystem["allow_file"] = files }
         if kind == .claude {
             // The user's own Claude hooks run inside the sandbox too: let them read their scripts.
@@ -134,6 +149,7 @@ enum SandboxManager {
             profile["open_urls"] = ["allow_origins": spec.openURLOrigins, "allow_localhost": spec.allowLocalhost]
         }
         if !spec.environment.isEmpty { profile["environment"] = ["set_vars": spec.environment] }
+        if !seatbelt.isEmpty { profile["unsafe_macos_seatbelt_rules"] = seatbelt }
         return profile
     }
 
@@ -226,7 +242,7 @@ enum SandboxManager {
 
     /// Writes the profile (and status hooks) for `run` and returns how to start it.
     static func prepare(kind: AgentKind, runID: String, directory: String, agentArguments: [String],
-                        statusHooks: Bool = true, openPorts extraPorts: [Int] = []) throws -> Launch {
+                        statusHooks: Bool = true, openPorts extraPorts: [Int] = [], gitAccess: Bool = false) throws -> Launch {
         guard let nono = locateNono() else { throw Failure.nonoMissing }
         guard let agent = locate(kind) else { throw Failure.agentMissing(kind) }
         let home = NSHomeDirectory()
@@ -254,7 +270,7 @@ enum SandboxManager {
         }
 
         let profileURL = runDir.appendingPathComponent("nono-profile.json")
-        let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, extraOpenPorts: openPorts),
+        let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, extraOpenPorts: openPorts, gitAccess: gitAccess),
                                               options: [.prettyPrinted, .sortedKeys])
         try data.write(to: profileURL, options: .atomic)
 
