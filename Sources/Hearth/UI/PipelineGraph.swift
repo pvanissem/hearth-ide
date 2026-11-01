@@ -88,15 +88,15 @@ struct PipelineGraph: View {
         }
         .help(tooltip(job))
         .contextMenu {
-            Button { onSelect(job) } label: { Label("Log anzeigen", systemImage: "doc.text") }
+            Button { onSelect(job) } label: { Label("Show log", systemImage: "doc.text") }
             if let url = job.webURL {
-                Button { NSWorkspace.shared.open(url) } label: { Label("Im Browser öffnen", systemImage: "arrow.up.forward.square") }
+                Button { NSWorkspace.shared.open(url) } label: { Label("Open in browser", systemImage: "arrow.up.forward.square") }
             }
             if let onPlay, job.status == "manual" {
-                Button { onPlay(job) } label: { Label("Manuell starten …", systemImage: "play.fill") }
+                Button { onPlay(job) } label: { Label("Start manually…", systemImage: "play.fill") }
             }
             if let onRetry, Self.retryable(job) {
-                Button { onRetry(job) } label: { Label("Job wiederholen", systemImage: "arrow.clockwise") }
+                Button { onRetry(job) } label: { Label("Retry job", systemImage: "arrow.clockwise") }
             }
         }
     }
@@ -107,18 +107,18 @@ struct PipelineGraph: View {
     @ViewBuilder
     private func actionButton(_ job: CIJob) -> some View {
         if job.status == "manual", let onPlay {
-            CircleAction(symbol: "play.fill", tint: .purple, help: "Manuellen Job starten") { onPlay(job) }
+            CircleAction(symbol: "play.fill", tint: .purple, help: String(localized: "Start manual job")) { onPlay(job) }
         } else if let onRetry, Self.retryable(job),
                   job.status != "success" || hovered.wrappedValue == job.id {
             CircleAction(symbol: "arrow.clockwise", tint: job.status == "success" ? .secondary : .orange,
-                         help: "Job wiederholen") { onRetry(job) }
+                         help: String(localized: "Retry job")) { onRetry(job) }
         }
     }
 
     private func tooltip(_ job: CIJob) -> String {
         var t = "\(job.name) – \(CIStatus.label(job.status))"
         if let d = job.duration { t += d < 60 ? " · \(Int(d)) s" : " · \(Int(d) / 60) min \(Int(d) % 60) s" }
-        return t + "\nKlicken für das Log"
+        return t + String(localized: "\nClick for the log")
     }
 
     /// Worst status wins, like GitLab's stage badge.

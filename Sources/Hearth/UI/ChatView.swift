@@ -9,11 +9,11 @@ struct ChatView: View {
             AgentRunView(run: run).id(run.id)
         } else {
             ContentUnavailableView {
-                Label("Keine Sitzung ausgewählt", systemImage: "flame")
+                Label("No session selected", systemImage: "flame")
             } description: {
-                Text("Wähle links eine Agenten-Sitzung oder starte einen Agenten in einem Projektordner.")
+                Text("Select an agent session on the left or start an agent in a project folder.")
             } actions: {
-                Button("Agent starten …") { model.agents.startSheet = .init() }
+                Button("Start agent…") { model.agents.startSheet = .init() }
                     .buttonStyle(.borderedProminent)
             }
         }

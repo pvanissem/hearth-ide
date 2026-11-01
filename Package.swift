@@ -22,7 +22,8 @@ let package = Package(
         .testTarget(
             name: "HearthTests",
             dependencies: ["Hearth"],
-            path: "Tests/HearthTests"
+            path: "Tests/HearthTests",
+            exclude: ["Golden"]
         ),
     ]
 )

@@ -41,6 +41,8 @@ jobs:
         run: swift build
       - name: Tests
         run: scripts/test.sh
+      - name: German translation complete
+        run: scripts/check-localization.sh
 
   bundle:
     name: App bundle

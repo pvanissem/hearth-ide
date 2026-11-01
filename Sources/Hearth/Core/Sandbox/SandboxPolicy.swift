@@ -201,8 +201,8 @@ struct SandboxPolicy: Equatable {
         switch purpose {
         case .agent(let kind): kind.displayName
         case .build: "Build & Deployment"
-        case .gitNetwork: "Git (Netzwerk)"
-        case .gitLocal: "Git (lokal)"
+        case .gitNetwork: String(localized: "Git (network)")
+        case .gitLocal: String(localized: "Git (local)")
         }
     }
 }

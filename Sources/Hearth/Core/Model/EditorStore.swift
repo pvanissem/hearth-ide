@@ -1,7 +1,20 @@
 import Foundation
 import Observation
 
-enum PreviewMode: String, CaseIterable { case file = "Datei", diff = "Diff" }
+enum PreviewMode: String, CaseIterable {
+    case file, diff
+
+    /// Also accepts the values saved by earlier versions ("Datei", "Diff").
+    init?(saved: String) {
+        switch saved {
+        case "file", "Datei": self = .file
+        case "diff", "Diff": self = .diff
+        default: return nil
+        }
+    }
+
+    var title: String { self == .file ? String(localized: "File") : String(localized: "Diff") }
+}
 
 struct PreviewLocation: Equatable {
     let url: URL
@@ -165,7 +178,7 @@ final class EditorStore {
 
     /// Restores the last session's tabs (before any per-session state exists).
     func restore() {
-        if let raw: String = UIStateStore.load(.previewMode), let mode = PreviewMode(rawValue: raw) { self.mode = mode }
+        if let raw: String = UIStateStore.load(.previewMode), let mode = PreviewMode(saved: raw) { self.mode = mode }
         if let paths: [String] = UIStateStore.load(.openTabs) {
             tabs = paths.filter { FileManager.default.fileExists(atPath: $0) }.map { URL(fileURLWithPath: $0) }
         }
@@ -256,7 +269,7 @@ final class EditorStore {
         let others = results.filter { !($0.path == current && $0.line == line) }
         switch others.count {
         case 0:
-            notify(results.isEmpty ? "Keine Definition für „\(symbol)“ gefunden" : "Das ist bereits die Definition von „\(symbol)“")
+            notify(results.isEmpty ? String(localized: "No definition found for “\(symbol)”") : String(localized: "This already is the definition of “\(symbol)”"))
         case 1:
             open(others[0], root: root)
         default:
@@ -277,7 +290,7 @@ final class EditorStore {
         if let hit = hits.first {
             open(URL(fileURLWithPath: root).appendingPathComponent(hit.relativePath), mode: .file, line: line)
         } else {
-            notify("\(fileName) nicht im Workspace gefunden")
+            notify(String(localized: "\(fileName) not found in the workspace"))
         }
     }
 
@@ -352,7 +365,7 @@ struct EditorSnapshot: Codable, Equatable {
         let existing = tabs.filter { FileManager.default.fileExists(atPath: $0.path) }
         group.tabs = existing
         group.file = file.flatMap { existing.contains($0) ? $0 : nil } ?? existing.first
-        group.mode = PreviewMode(rawValue: mode) ?? .file
+        group.mode = PreviewMode(saved: mode) ?? .file
         group.line = group.file == file ? line : nil
         group.back = back
         group.forward = forward

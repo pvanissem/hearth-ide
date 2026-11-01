@@ -11,12 +11,12 @@ struct ArchitectureView: View {
     private let showSource = State(initialValue: false)
     private let renderError = State(initialValue: String?.none)
 
-    static let generatePrompt = """
-    Erstelle oder aktualisiere `docs/architecture.md` mit einer kurzen Architekturbeschreibung dieses \
-    Repositories und mindestens einem Mermaid-Diagramm (```mermaid, z. B. flowchart LR) mit den \
-    wichtigsten Komponenten, Schnittstellen und Datenflüssen. Halte die Diagramme lesbar (max. ~20 Knoten) \
-    und prüfe, dass die Mermaid-Syntax gültig ist.
-    """
+    static var generatePrompt: String { String(localized: """
+    Create or update `docs/architecture.md` with a short description of this repository's architecture \
+    and at least one Mermaid diagram (```mermaid, e.g. flowchart LR) showing the main components, \
+    interfaces and data flows. Keep the diagrams readable (at most ~20 nodes) and make sure the Mermaid \
+    syntax is valid.
+    """) }
 
     var body: some View {
         Group {
@@ -37,11 +37,11 @@ struct ArchitectureView: View {
 
     private var empty: some View {
         ContentUnavailableView {
-            Label("Keine Diagramme", systemImage: "point.3.connected.trianglepath.dotted")
+            Label("No diagrams", systemImage: "point.3.connected.trianglepath.dotted")
         } description: {
-            Text("Gesucht wird nach ```mermaid-Blöcken in Markdown sowie .mmd-Dateien.")
+            Text("Looks for ```mermaid blocks in Markdown and for .mmd files.")
         } actions: {
-            Button("Architektur vom Agenten erzeugen lassen") { model.ask(Self.generatePrompt) }
+            Button("Let the agent create an architecture") { model.ask(Self.generatePrompt) }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -70,23 +70,24 @@ struct ArchitectureView: View {
                 Text("\(list.count)").font(.caption2).padding(.horizontal, 5).background(Color.primary.opacity(0.08), in: Capsule())
                 Spacer()
                 Toggle(isOn: showSource.projectedValue) { Image(systemName: "chevron.left.forwardslash.chevron.right") }
-                    .toggleStyle(.button).help("Quelltext anzeigen")
+                    .toggleStyle(.button).help("Show source")
                 Button {
                     model.editor.open(URL(fileURLWithPath: root).appendingPathComponent(current.file), mode: .file, line: current.line)
                 } label: { Image(systemName: "doc.text.magnifyingglass") }
-                    .help("Quelle in der Vorschau öffnen")
+                    .help("Open the source in the editor")
                 Menu {
-                    Button("Neues Architektur-Diagramm erzeugen lassen") { model.ask(Self.generatePrompt) }
-                    Button("Dieses Diagramm aktualisieren lassen") {
-                        model.ask("Aktualisiere das Mermaid-Diagramm „\(current.title)“ in `\(current.file)` (ab Zeile \(current.line)) so, dass es dem aktuellen Code entspricht. Behalte die Syntax gültig.")
+                    Button("Let the agent create a new architecture diagram") { model.ask(Self.generatePrompt) }
+                    Button("Let the agent update this diagram") {
+                        model.ask(String(localized: "Update the Mermaid diagram “\(current.title)” in `\(current.file)` (from line \(current.line)) so that it matches the current code. Keep the syntax valid."))
                     }
                     if renderError.wrappedValue != nil {
-                        Button("Syntaxfehler vom Agenten beheben lassen") {
-                            model.ask("Das Mermaid-Diagramm in `\(current.file)` (ab Zeile \(current.line)) lässt sich nicht rendern: \(renderError.wrappedValue ?? ""). Bitte korrigiere die Syntax.")
+                        Button("Let the agent fix the syntax error") {
+                            let problem = renderError.wrappedValue ?? ""
+                            model.ask(String(localized: "The Mermaid diagram in `\(current.file)` (from line \(current.line)) does not render: \(problem). Please fix the syntax."))
                         }
                     }
                 } label: { Image(systemName: "wand.and.stars") }
-                    .menuStyle(.borderlessButton).fixedSize().help("Agent-Aktionen")
+                    .menuStyle(.borderlessButton).fixedSize().help("Agent actions")
             }
             .buttonStyle(.borderless)
             .padding(.horizontal, 8).padding(.vertical, 5)

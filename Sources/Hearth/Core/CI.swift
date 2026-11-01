@@ -27,7 +27,7 @@ enum CIProvider: String, Sendable {
 
     var name: String { self == .gitLab ? "GitLab" : "GitHub" }
     /// What one run is called there.
-    var runName: String { self == .gitLab ? "Pipeline" : "Workflow-Lauf" }
+    var runName: String { self == .gitLab ? "Pipeline" : String(localized: "Workflow run") }
 }
 
 /// Parsing a remote does NOT authorize this server to receive a token.
@@ -232,12 +232,12 @@ struct GitLabAPI: CIClient {
         case unauthorizedOrigin, readOnly
         var errorDescription: String? {
             switch self {
-            case .unauthorizedOrigin: "Dieser HTTPS-Origin ist für diesen Token nicht freigegeben."
-            case .readOnly: "Für Schreibaktionen bitte einen separaten Token mit Scope api für diesen Server freigeben."
-            case .http(401, _): "GitLab lehnt den Token ab (401). Token abgelaufen oder ohne Scope read_api/api?"
-            case .http(403, _): "Keine Berechtigung (403). Für Starten/Wiederholen braucht der Token den Scope „api“ und du mindestens Developer-Rechte – geschützte Branches/Umgebungen können zusätzlich gesperrt sein."
-            case .http(404, _): "Projekt nicht gefunden oder keine Berechtigung (404)."
-            case .http(let c, let b): "GitLab-Fehler \(c): \(b.prefix(160))"
+            case .unauthorizedOrigin: String(localized: "This HTTPS origin is not approved for this token.")
+            case .readOnly: String(localized: "For write actions, approve a separate token with the api scope for this server.")
+            case .http(401, _): String(localized: "GitLab rejects the token (401). Expired, or missing the read_api/api scope?")
+            case .http(403, _): String(localized: "No permission (403). Starting or retrying needs a token with the “api” scope and at least Developer access – protected branches or environments can be locked as well.")
+            case .http(404, _): String(localized: "Project not found or no permission (404).")
+            case .http(let c, let b): String(localized: "GitLab error \(c): \(b.prefix(160))")
             }
         }
     }
@@ -351,14 +351,14 @@ enum CIStatus {
 
     static func label(_ s: String) -> String {
         switch s {
-        case "success": "erfolgreich"
-        case "failed": "fehlgeschlagen"
-        case "running": "läuft"
-        case "pending", "created", "preparing", "waiting_for_resource": "wartet"
-        case "scheduled": "geplant"
-        case "canceled", "canceling": "abgebrochen"
-        case "skipped": "übersprungen"
-        case "manual": "manuell"
+        case "success": String(localized: "succeeded")
+        case "failed": String(localized: "failed")
+        case "running": String(localized: "running")
+        case "pending", "created", "preparing", "waiting_for_resource": String(localized: "waiting")
+        case "scheduled": String(localized: "scheduled")
+        case "canceled", "canceling": String(localized: "cancelled")
+        case "skipped": String(localized: "skipped")
+        case "manual": String(localized: "manual")
         default: s
         }
     }

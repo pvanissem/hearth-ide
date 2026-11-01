@@ -9,11 +9,11 @@ extension AppModel {
         do {
             let root = URL(fileURLWithPath: directory).resolvingSymlinksInPath().standardizedFileURL
             guard let overrides = Git.networkSandboxOverrides(in: root.path) else {
-                throw SandboxCommandError("Git-Konfiguration konnte nicht sicher gelesen werden.")
+                throw SandboxCommandError(String(localized: "The Git configuration could not be read safely."))
             }
             let purpose: SandboxPurpose = operation.needsNetwork ? .gitNetwork : .gitLocal
             guard let runner = runner(root: root.path, purpose: purpose) else {
-                throw SandboxCommandError("nono wurde nicht gefunden. Kein Host-Fallback.")
+                throw SandboxCommandError(String(localized: "nono was not found. No host fallback."))
             }
             return await SandboxGitRunner(runner: runner, root: root,
                                           repoOverrides: operation.needsNetwork ? overrides : []).run(operation)
@@ -32,30 +32,30 @@ extension AppModel {
                          progress: @escaping @Sendable (String, Double?) -> Void) async -> Git.OpResult {
         do {
             guard SandboxGitOperation.validCloneURL(remote), destination.isFileURL else {
-                throw SandboxCommandError("Keine gültige HTTPS-/SSH-Git-URL.")
+                throw SandboxCommandError(String(localized: "Not a valid HTTPS/SSH Git URL."))
             }
             let parent = destination.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL
             let home = FileManager.default.homeDirectoryForCurrentUser.resolvingSymlinksInPath().standardizedFileURL
             let name = destination.lastPathComponent
             guard parent.path == home.path || parent.path.hasPrefix(home.path + "/"),
                   !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\0") else {
-                throw SandboxCommandError("Der Zielordner muss unterhalb deines Benutzerordners liegen.")
+                throw SandboxCommandError(String(localized: "The target folder must be inside your home folder."))
             }
             let root = parent.appendingPathComponent(name)
             if !workspace.cloneDirectories.contains(root.path) {
                 // Atomic reservation: do not adopt an existing directory, including empty ones/symlinks.
                 guard mkdir(root.path, 0o700) == 0 else {
-                    throw SandboxCommandError("Zielordner konnte nicht neu angelegt werden (existiert bereits oder keine Berechtigung).")
+                    throw SandboxCommandError(String(localized: "The target folder could not be created (it already exists or there is no permission)."))
                 }
                 workspace.cloneDirectories.insert(root.path)
             }
             guard try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty,
                   root.resolvingSymlinksInPath().path == root.path else {
-                throw SandboxCommandError("Der reservierte Zielordner ist nicht mehr leer oder wurde durch einen Symlink ersetzt. Kein Überschreiben.")
+                throw SandboxCommandError(String(localized: "The reserved target folder is no longer empty or was replaced by a symlink. Nothing is overwritten."))
             }
-            progress("Starte Sandbox im neuen Zielordner …", nil)
+            progress(String(localized: "Starting a sandbox in the new target folder…"), nil)
             guard let runner = runner(root: root.path, purpose: .gitNetwork) else {
-                throw SandboxCommandError("nono wurde nicht gefunden. Kein Host-Fallback.")
+                throw SandboxCommandError(String(localized: "nono was not found. No host fallback."))
             }
             let result = await SandboxGitRunner(runner: runner, root: root).run(.clone(remote), progress: progress)
             if result.ok {
@@ -64,7 +64,7 @@ extension AppModel {
             }
             return result
         } catch {
-            return Git.OpResult(ok: false, output: error.localizedDescription + "\nKeine ungeschützte Git-Ausführung; vorhandene Daten werden nicht gelöscht.")
+            return Git.OpResult(ok: false, output: error.localizedDescription + String(localized: "\nNo unprotected Git execution; existing data is not deleted."))
         }
     }
 }

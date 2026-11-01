@@ -33,7 +33,7 @@ enum SandboxGitOperation: Sendable {
                          "-c", "submodule.recurse=false", "merge", "--ff-only", "--no-edit", "@{u}"]
             return local.map(Self.quote).joined(separator: " ")
         case .clone(let url):
-            guard Self.validCloneURL(url) else { throw SandboxCommandError("Bitte eine HTTPS- oder SSH-Git-URL ohne Passwort verwenden.") }
+            guard Self.validCloneURL(url) else { throw SandboxCommandError(String(localized: "Please use an HTTPS or SSH Git URL without a password.")) }
             args = ["clone", "--progress", "--no-recurse-submodules", "--", url, "."]
         }
         // Keep the sandbox's inherited GitLab proxy/credential configuration intact.
@@ -101,7 +101,7 @@ struct SandboxGitRunner: Sendable {
              progress: @escaping @Sendable (String, Double?) -> Void = { _, _ in }) async -> Git.OpResult {
         var id: String?
         do {
-            guard root.isFileURL, root.path.hasPrefix("/") else { throw Failure("Ungültiger Ordner. Kein Host-Fallback.") }
+            guard root.isFileURL, root.path.hasPrefix("/") else { throw Failure(String(localized: "Invalid folder. No host fallback.")) }
             try Task.checkCancellation()
             let commandID = try await runner.start(SandboxCommandRequest(
                 command: try operation.command(repoOverrides: repoOverrides), cwd: root.path,
@@ -112,7 +112,7 @@ struct SandboxGitRunner: Sendable {
             let deadline = Date().addingTimeInterval(timeout)
             while true {
                 try Task.checkCancellation()
-                guard Date() < deadline else { throw Failure("Git-Vorgang hat das Zeitlimit erreicht und wird in der Sandbox beendet.") }
+                guard Date() < deadline else { throw Failure(String(localized: "The Git operation timed out and is stopped in the sandbox.")) }
                 // Read the state first: output written before the exit is then complete below.
                 let state = try await runner.state(of: commandID)
                 // Drain output by byte cursor, including output larger than one page.
@@ -128,15 +128,15 @@ struct SandboxGitRunner: Sendable {
                 if !state.isRunning {
                     await runner.remove(commandID)
                     let ok = state == .exited(0)
-                    let fallback = ok ? "Git \(operation.name) abgeschlossen" : "Git \(operation.name): \(Self.describe(state))"
+                    let fallback = ok ? String(localized: "Git \(operation.name) finished") : "Git \(operation.name): \(Self.describe(state))"
                     return Git.OpResult(ok: ok, output: output.isEmpty ? fallback : output.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
                 try await Task.sleep(for: pollInterval)
             }
         } catch {
             if let id { await remove(id) }
-            let detail = error is CancellationError ? "Git-Vorgang abgebrochen." : error.localizedDescription
-            return Git.OpResult(ok: false, output: detail + "\nKeine Ausführung auf dem Host.")
+            let detail = error is CancellationError ? "Git operation cancelled." : error.localizedDescription
+            return Git.OpResult(ok: false, output: detail + String(localized: "\nNothing was run on the host."))
         }
     }
 
@@ -148,10 +148,10 @@ struct SandboxGitRunner: Sendable {
 
     static func describe(_ state: SandboxCommandState) -> String {
         switch state {
-        case .running: "läuft"
-        case .exited(let code): "Exit \(code)"
-        case .timedOut: "Zeitlimit"
-        case .killed: "abgebrochen"
+        case .running: String(localized: "running")
+        case .exited(let code): String(localized: "exit \(code)")
+        case .timedOut: String(localized: "timed out")
+        case .killed: String(localized: "cancelled")
         }
     }
 

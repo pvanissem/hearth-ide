@@ -5,7 +5,7 @@ import Foundation
 struct BuildTask: Identifiable, Hashable, Codable, Sendable {
     enum Kind: String, Codable, Sendable { case task, service }
     enum Tool: String, Codable, Sendable, CaseIterable {
-        case maven = "Maven", gradle = "Gradle", node = "Node", go = "Go", make = "Make", custom = "Eigene"
+        case maven = "Maven", gradle = "Gradle", node = "Node", go = "Go", make = "Make", custom = "Custom"
     }
 
     let id: String
@@ -183,7 +183,7 @@ enum BuildDetector {
             task("verify", "Verify", ["verify"]),
             task("test", "Test", ["test"]),
             task("package", "Package", ["package"]),
-            task("package-skip", "Package ohne Tests", ["package", "-DskipTests"]),
+            task("package-skip", "Package without tests", ["package", "-DskipTests"]),
             task("compile", "Compile", ["compile"]),
             task("clean", "Clean", ["clean"]),
             task("deps", "Dependency-Tree", ["dependency:tree"]),
@@ -202,7 +202,7 @@ enum BuildDetector {
             let wrapper = exe == "./mvnw" ? (module.isEmpty ? "./mvnw" : "../mvnw") : "mvn"
             let childPom = read(url.appendingPathComponent("pom.xml")) ?? ""
             tasks.append(BuildTask(id: id(.maven, path, "spring-boot-run"), tool: .maven, project: path,
-                                   title: module.isEmpty ? "Spring Boot starten" : "Spring Boot starten (\(module))", kind: .service,
+                                   title: module.isEmpty ? String(localized: "Start Spring Boot") : String(localized: "Start Spring Boot (\(module))"), kind: .service,
                                    argv: [wrapper, "-B", "--no-transfer-progress", "spring-boot:run"],
                                    port: springPort(url) ?? 8080,
                                    healthPath: childPom.contains("spring-boot-starter-actuator") ? "/actuator/health" : "/",
@@ -243,7 +243,7 @@ enum BuildDetector {
         }
         var tasks = [task("build", "Build"), task("test", "Test"), task("clean", "Clean")]
         if isSpringBoot(file) {
-            var run = task("bootRun", "Spring Boot starten", .service)
+            var run = task("bootRun", String(localized: "Start Spring Boot"), .service)
             run.port = springPort(dir) ?? 8080
             run.healthPath = file.contains("actuator") ? "/actuator/health" : "/"
             tasks.append(run)
@@ -260,7 +260,7 @@ enum BuildDetector {
               let json = JSON.parse(Data(text.utf8)) else { return [] }
         let manager = exists(dir.appendingPathComponent("pnpm-lock.yaml")) ? "pnpm"
             : exists(dir.appendingPathComponent("yarn.lock")) ? "yarn" : "npm"
-        var tasks = [BuildTask(id: id(.node, relative, "install"), tool: .node, project: relative, title: "Abhängigkeiten installieren",
+        var tasks = [BuildTask(id: id(.node, relative, "install"), tool: .node, project: relative, title: String(localized: "Install dependencies"),
                                kind: .task, argv: manager == "npm" && exists(dir.appendingPathComponent("package-lock.json"))
                                    ? ["npm", "ci"] : [manager, "install"])]
         for (name, value) in (json["scripts"]?.object ?? [:]).sorted(by: { $0.key < $1.key }) {
@@ -300,7 +300,7 @@ enum BuildDetector {
         }
         for (path, url) in mains.prefix(10) {
             var run = BuildTask(id: id(.go, relative, "run:" + path), tool: .go, project: relative,
-                                title: path == "." ? "Starten (go run .)" : "Starten \(path.dropFirst(6))",
+                                title: path == "." ? String(localized: "Start (go run .)") : String(localized: "Start \(path.dropFirst(6))"),
                                 kind: .service, argv: ["go", "run", path])
             run.port = goPort(url)
             run.healthPath = "/"

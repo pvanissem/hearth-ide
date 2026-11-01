@@ -54,7 +54,7 @@ actor NonoCommandRunner: SandboxCommandRunner {
         let base = URL(fileURLWithPath: root).standardizedFileURL.path
         let dir = URL(fileURLWithPath: request.cwd).standardizedFileURL.path
         if dir != base {
-            guard dir.hasPrefix(base + "/") else { throw SandboxCommandError("Verzeichnis liegt außerhalb des Workspace") }
+            guard dir.hasPrefix(base + "/") else { throw SandboxCommandError(String(localized: "The folder is outside the workspace")) }
             script = "cd " + Self.quote(dir) + " && " + request.command
         }
         let network = purpose == .gitNetwork
@@ -99,12 +99,12 @@ actor NonoCommandRunner: SandboxCommandRunner {
     }
 
     func state(of id: String) async throws -> SandboxCommandState {
-        guard let entry = entries[id] else { throw SandboxCommandError("Unbekannter Vorgang") }
+        guard let entry = entries[id] else { throw SandboxCommandError(String(localized: "Unknown command")) }
         return entry.current
     }
 
     func output(of id: String, from cursor: Int, limit: Int) async throws -> SandboxOutputPage {
-        guard let entry = entries[id] else { throw SandboxCommandError("Unbekannter Vorgang") }
+        guard let entry = entries[id] else { throw SandboxCommandError(String(localized: "Unknown command")) }
         return entry.page(from: cursor, limit: limit)
     }
 

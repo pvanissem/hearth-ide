@@ -29,7 +29,7 @@ final class AppModel {
             try updated.save()
             sandboxSettings = updated
         } catch {
-            banner = "Einstellungen konnten nicht gespeichert werden: \(error.localizedDescription)"
+            banner = String(localized: "Settings could not be saved: \(error.localizedDescription)")
         }
     }
 
@@ -56,7 +56,7 @@ final class AppModel {
                 self.agents.acknowledge(run)
                 return
             }
-            let what = run.status == .needsInput ? "wartet auf dich" : "ist fertig"
+            let what = run.status == .needsInput ? String(localized: "is waiting for you") : String(localized: "is done")
             Notifier.notify(title: run.title, body: "\(run.kind.displayName) \(what)" + (run.detail.map { ": \($0)" } ?? "."))
         }
         agents.onFilesChanged = { [weak self] run in
@@ -113,7 +113,7 @@ final class AppModel {
     /// Types a prepared instruction into the selected agent's terminal and submits it.
     func ask(_ prompt: String) {
         guard let run = agents.selectedRun, run.isRunning, let terminal = run.terminal else {
-            banner = "Wähle zuerst links eine laufende Agenten-Sitzung, die den Auftrag bekommen soll."
+            banner = String(localized: "First select a running agent session on the left to receive the task.")
             return
         }
         terminal.send(txt: prompt)
@@ -121,18 +121,18 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(150))
             terminal.send(txt: "\r")
         }
-        toast("Auftrag an \(run.kind.displayName) gesendet")
+        toast(String(localized: "Task sent to \(run.kind.displayName)"))
     }
 
     /// Types a file path (relative to the workspace) into the agent's prompt, without sending.
     func mention(_ url: URL) {
         guard let run = agents.selectedRun, run.isRunning, let terminal = run.terminal else {
-            banner = "Wähle zuerst links eine laufende Agenten-Sitzung."
+            banner = String(localized: "First select a running agent session on the left.")
             return
         }
         let path = workspaceRoot.flatMap { EditorPresentation.relativePath(url, root: $0) } ?? url.path
         terminal.send(txt: path.contains(" ") ? "\"\(path)\" " : path + " ")
-        toast("Im Chat eingefügt: \(path)")
+        toast(String(localized: "Inserted into the chat: \(path)"))
     }
 
     // MARK: Sandbox commands (Build & Deployment, Git)

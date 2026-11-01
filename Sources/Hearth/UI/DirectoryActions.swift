@@ -15,12 +15,12 @@ enum WorkspaceFiles {
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains(":"),
               name != ".git", !directory.resolvingSymlinksInPath().pathComponents.contains(".git"),
               !name.contains("\0"), contains(directory, root: root) else {
-            throw Failure("Bitte einen gültigen Namen innerhalb des Workspace angeben.")
+            throw Failure(String(localized: "Please enter a valid name inside the workspace."))
         }
         let url = directory.appendingPathComponent(name)
         guard !FileManager.default.fileExists(atPath: url.path),
               (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) == nil else {
-            throw Failure("Unter diesem Namen existiert bereits eine Datei oder ein Ordner.")
+            throw Failure(String(localized: "A file or folder with this name already exists."))
         }
         return url
     }
@@ -28,7 +28,7 @@ enum WorkspaceFiles {
     static func moveDestination(source: URL, directory: URL, root: URL) throws -> URL {
         guard contains(source, root: root), source.resolvingSymlinksInPath().path != root.resolvingSymlinksInPath().path,
               !source.resolvingSymlinksInPath().pathComponents.contains(".git") else {
-            throw Failure("Dieser Pfad darf hier nicht verschoben werden.")
+            throw Failure(String(localized: "This path cannot be moved here."))
         }
         let target = try destination(name: source.lastPathComponent, in: directory, root: root)
         // Resolve existing directories, not the nonexistent destination leaf:
@@ -36,7 +36,7 @@ enum WorkspaceFiles {
         let parent = directory.resolvingSymlinksInPath().path
         let sourcePath = source.resolvingSymlinksInPath().path
         guard parent != sourcePath, !parent.hasPrefix(sourcePath + "/") else {
-            throw Failure("Ein Ordner kann nicht in sich selbst verschoben werden.")
+            throw Failure(String(localized: "A folder cannot be moved into itself."))
         }
         return target
     }
@@ -54,8 +54,8 @@ struct DirectoryCreateMenu: View {
     let root: String
 
     var body: some View {
-        Button("Neue Datei …") { model.createWorkspaceItem(in: directory, root: root, folder: false) }
-        Button("Neuer Ordner …") { model.createWorkspaceItem(in: directory, root: root, folder: true) }
+        Button("New file…") { model.createWorkspaceItem(in: directory, root: root, folder: false) }
+        Button("New folder…") { model.createWorkspaceItem(in: directory, root: root, folder: true) }
     }
 }
 
@@ -69,16 +69,16 @@ struct DirectoryItemMenu: View {
             DirectoryCreateMenu(directory: url, root: root)
             Divider()
         }
-        Button("Umbenennen …") { model.changeWorkspaceItem(url, root: root, rename: true) }
-        Button("Verschieben …") { model.changeWorkspaceItem(url, root: root, rename: false) }
-        Button("In den Papierkorb …", role: .destructive) { model.trashWorkspaceItem(url, root: root) }
+        Button("Rename…") { model.changeWorkspaceItem(url, root: root, rename: true) }
+        Button("Move…") { model.changeWorkspaceItem(url, root: root, rename: false) }
+        Button("Move to Trash…", role: .destructive) { model.trashWorkspaceItem(url, root: root) }
     }
 }
 
 extension AppModel {
     func revealEditorFile(_ focused: URL? = nil, in root: String) {
         guard let file = focused ?? editor.file, WorkspaceFiles.contains(file, root: URL(fileURLWithPath: root)) else {
-            banner = "Die aktive Editor-Datei liegt nicht in diesem Workspace."
+            banner = String(localized: "The active editor file is not in this workspace.")
             return
         }
         var parent = file.deletingLastPathComponent().standardizedFileURL
@@ -106,7 +106,7 @@ extension AppModel {
         let canonicalSource = source.resolvingSymlinksInPath().path
         let parent = target.deletingLastPathComponent().resolvingSymlinksInPath().path
         guard parent != canonicalSource, !parent.hasPrefix(canonicalSource + "/") else {
-            throw WorkspaceFiles.Failure("Ein Ordner kann nicht in sich selbst verschoben werden.")
+            throw WorkspaceFiles.Failure(String(localized: "A folder cannot be moved into itself."))
         }
         try validateWorkspaceChange(source, root: root)
         try FileManager.default.moveItem(at: source, to: target)
@@ -133,7 +133,7 @@ extension AppModel {
         let alert = NSAlert()
         alert.messageText = title
         alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.addButton(withTitle: String(localized: "Cancel"))
         let field = NSTextField(string: initial)
         field.frame = NSRect(x: 0, y: 0, width: 340, height: 24)
         alert.accessoryView = field
@@ -143,7 +143,7 @@ extension AppModel {
     }
 
     func createWorkspaceItem(in directory: URL, root: String, folder: Bool) {
-        guard let name = askName(title: folder ? "Neuer Ordner" : "Neue Datei", initial: "") else { return }
+        guard let name = askName(title: folder ? String(localized: "New folder") : String(localized: "New file"), initial: "") else { return }
         workspaceAction {
             let target = try WorkspaceFiles.destination(name: name, in: directory, root: URL(fileURLWithPath: root))
             if folder {
@@ -161,14 +161,14 @@ extension AppModel {
         guard url.resolvingSymlinksInPath().standardizedFileURL.path != base.resolvingSymlinksInPath().path,
               WorkspaceFiles.contains(url, root: base),
               !url.resolvingSymlinksInPath().pathComponents.contains(".git") else {
-            throw WorkspaceFiles.Failure("Dieser Pfad darf hier nicht verändert werden.")
+            throw WorkspaceFiles.Failure(String(localized: "This path cannot be changed here."))
         }
         let canonicalSource = url.resolvingSymlinksInPath().path
         guard !editor.unsavedDocuments.contains(where: {
             let path = $0.url.resolvingSymlinksInPath().path
             return path == canonicalSource || path.hasPrefix(canonicalSource + "/")
         }) else {
-            throw WorkspaceFiles.Failure("Bitte die ungespeicherten Dateien in diesem Pfad zuerst sichern oder ihre Änderungen verwerfen.")
+            throw WorkspaceFiles.Failure(String(localized: "Please save the unsaved files in this path first or discard their changes."))
         }
     }
 
@@ -178,13 +178,13 @@ extension AppModel {
             let directory: URL
             let name: String
             if rename {
-                guard let answer = askName(title: "Umbenennen", initial: url.lastPathComponent) else { return }
+                guard let answer = askName(title: String(localized: "Rename"), initial: url.lastPathComponent) else { return }
                 if answer == url.lastPathComponent { return }
                 directory = url.deletingLastPathComponent()
                 name = answer
             } else {
                 let panel = NSOpenPanel()
-                panel.title = "Zielordner für „\(url.lastPathComponent)“"
+                panel.title = String(localized: "Target folder for “\(url.lastPathComponent)”")
                 panel.directoryURL = URL(fileURLWithPath: root)
                 panel.canChooseDirectories = true
                 panel.canChooseFiles = false
@@ -203,11 +203,11 @@ extension AppModel {
         workspaceAction {
             try validateWorkspaceChange(url, root: root)
             let alert = NSAlert()
-            alert.messageText = "„\(url.lastPathComponent)“ in den Papierkorb verschieben?"
-            alert.informativeText = "Bei Ordnern wird auch der gesamte Inhalt verschoben. Wiederherstellen ist über den Finder möglich."
+            alert.messageText = String(localized: "Move “\(url.lastPathComponent)” to the Trash?")
+            alert.informativeText = String(localized: "For folders, everything inside is moved too. You can restore it in the Finder.")
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "In den Papierkorb")
-            alert.addButton(withTitle: "Abbrechen")
+            alert.addButton(withTitle: String(localized: "Move to Trash"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
             try validateWorkspaceChange(url, root: root)
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
@@ -327,35 +327,35 @@ extension AppModel {
         }
         let directory = file?.isDirectory == true ? file!.url : URL(fileURLWithPath: root)
         if file == nil || file?.isDirectory == true {
-            add("Neue Datei …") { self.createWorkspaceItem(in: directory, root: root, folder: false) }
-            add("Neuer Ordner …") { self.createWorkspaceItem(in: directory, root: root, folder: true) }
+            add(String(localized: "New file…")) { self.createWorkspaceItem(in: directory, root: root, folder: false) }
+            add(String(localized: "New folder…")) { self.createWorkspaceItem(in: directory, root: root, folder: true) }
             menu.addItem(.separator())
         }
         guard let file else {
-            add("Aktualisieren") { self.workspace.revision += 1 }
+            add(String(localized: "Refresh")) { self.workspace.revision += 1 }
             return menu
         }
         let url = file.url
         if !file.isDirectory {
-            add("Im Editor öffnen") { self.editor.open(url) }
+            add(String(localized: "Open in editor")) { self.editor.open(url) }
             let relative = String(url.path.dropFirst(root.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            if markers[relative] != nil { add("Diff anzeigen") { self.editor.open(url, mode: .diff) } }
+            if markers[relative] != nil { add(String(localized: "Show diff")) { self.editor.open(url, mode: .diff) } }
         }
-        add("Umbenennen …") { self.changeWorkspaceItem(url, root: root, rename: true) }
-        add("Verschieben …") { self.changeWorkspaceItem(url, root: root, rename: false) }
-        add("In den Papierkorb …") { self.trashWorkspaceItem(url, root: root) }
+        add(String(localized: "Rename…")) { self.changeWorkspaceItem(url, root: root, rename: true) }
+        add(String(localized: "Move…")) { self.changeWorkspaceItem(url, root: root, rename: false) }
+        add(String(localized: "Move to Trash…")) { self.trashWorkspaceItem(url, root: root) }
         menu.addItem(.separator())
-        add("Im Standardprogramm öffnen") { NSWorkspace.shared.open(url) }
-        add("Im Finder zeigen") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-        add("Pfad kopieren") {
+        add(String(localized: "Open with default app")) { NSWorkspace.shared.open(url) }
+        add(String(localized: "Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        add(String(localized: "Copy path")) {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(url.path, forType: .string)
         }
-        add("Relativen Pfad kopieren") {
+        add(String(localized: "Copy relative path")) {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(String(url.path.dropFirst(root.count + 1)), forType: .string)
         }
-        add("Im Chat erwähnen") { self.mention(url) }
+        add(String(localized: "Mention in chat")) { self.mention(url) }
         return menu
     }
 }

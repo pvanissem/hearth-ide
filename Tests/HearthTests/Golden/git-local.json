@@ -19,7 +19,7 @@
     ]
   },
   "meta" : {
-    "description" : "Hearth IDE: Git (lokal) (generated, do not edit)",
+    "description" : "Hearth IDE: Git (local) (generated, do not edit)",
     "name" : "hearth-git-local"
   },
   "network" : {

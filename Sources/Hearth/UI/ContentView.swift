@@ -24,41 +24,41 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button { model.agents.startSheet = .init() } label: { Label("Agent starten", systemImage: "plus") }
-                    .help("Agent in einer Sandbox starten (Ordner und Agent wählen)")
+                Button { model.agents.startSheet = .init() } label: { Label("Start agent", systemImage: "plus") }
+                    .help("Start an agent in a sandbox (choose folder and agent)")
                 Menu {
-                    Section("Bereich hinzufügen") {
+                    Section("Add area") {
                         ForEach(InspectorTab.allCases) { tab in
                             Button { model.layout.addPane(tab) } label: { Label(tab.title, systemImage: tab.symbol) }
                                 .disabled(model.layout.paneTree.contains(tab: tab))
                         }
                     }
-                    Section("Am Fensterrand") {
+                    Section("At the window edge") {
                         Menu {
                             ForEach(InspectorTab.allCases) { tab in
                                 Button { model.layout.addPane(tab, atWindowEdge: .windowBottom) } label: { Label(tab.title, systemImage: tab.symbol) }
                             }
-                        } label: { Label("Unten über ganze Breite", systemImage: "rectangle.bottomthird.inset.filled") }
+                        } label: { Label("Bottom, full width", systemImage: "rectangle.bottomthird.inset.filled") }
                         Menu {
                             ForEach(InspectorTab.allCases) { tab in
                                 Button { model.layout.addPane(tab, atWindowEdge: .windowRight) } label: { Label(tab.title, systemImage: tab.symbol) }
                             }
-                        } label: { Label("Rechts über ganze Höhe", systemImage: "rectangle.righthalf.inset.filled") }
+                        } label: { Label("Right, full height", systemImage: "rectangle.righthalf.inset.filled") }
                     }
                     Section("Layouts") {
                         ForEach(LayoutPreset.allCases) { preset in
                             Button { withAnimation(.easeOut(duration: 0.2)) { model.layout.apply(preset) } } label: {
-                                Label(preset.rawValue, systemImage: preset.symbol)
+                                Label(preset.title, systemImage: preset.symbol)
                             }
                         }
                     }
                     if model.layout.maximizedPane != nil {
-                        Button("Maximierung aufheben") { model.layout.maximizedPane = nil }
+                        Button("Restore layout") { model.layout.maximizedPane = nil }
                     }
                 } label: {
                     Label("Layout", systemImage: "rectangle.3.group")
                 }
-                .help("Bereiche hinzufügen, Layouts wählen – Bereiche lassen sich an der Kopfzeile verschieben")
+                .help("Add areas, choose layouts – drag an area by its header to move it")
             }
         }
         .overlay(alignment: .bottom) {

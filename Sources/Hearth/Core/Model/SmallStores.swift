@@ -43,7 +43,7 @@ final class TextZoomStore {
         case .chat: "Chat"; case .inspector: "Inspector"; case .sidebar: "Sessions"
         case .pane(_, let tab): tab.title
         }
-        notify("Schriftgröße \(name): \(Int((next * 100).rounded())) %")
+        notify(String(localized: "Text size \(name): \(Int((next * 100).rounded())) %"))
     }
 
     func zoomAll(by factor: Double) {
@@ -55,12 +55,12 @@ final class TextZoomStore {
 
     func reset(_ area: TextArea) {
         scales[area.rawValue] = nil
-        notify("Schriftgröße zurückgesetzt")
+        notify(String(localized: "Text size reset"))
     }
 
     func reset() {
         scales = [:]
-        notify("Schriftgröße zurückgesetzt")
+        notify(String(localized: "Text size reset"))
     }
 }
 

@@ -32,9 +32,9 @@ struct AgentRunView: View {
                     VStack {
                         Spacer()
                         HStack(spacing: 10) {
-                            Text(run.exitCode.map { "Sitzung beendet (Code \($0))" } ?? "Sitzung beendet").font(.callout)
+                            Text(run.exitCode.map { "Session ended (code \($0))" } ?? "Session ended").font(.callout)
                             if run.purpose == .session {
-                                Button(run.canResume ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
+                                Button(run.canResume ? "Resume" : "Restart") { model.agents.resume(run) }
                                     .controlSize(.small)
                             }
                         }
@@ -45,10 +45,10 @@ struct AgentRunView: View {
                 }
             }
         }
-        .alert("Sitzung umbenennen", isPresented: renaming.projectedValue) {
-            TextField("Titel", text: newTitle.projectedValue)
-            Button("Umbenennen") { model.agents.rename(run, to: newTitle.wrappedValue) }
-            Button("Abbrechen", role: .cancel) {}
+        .alert("Rename session", isPresented: renaming.projectedValue) {
+            TextField("Title", text: newTitle.projectedValue)
+            Button("Rename") { model.agents.rename(run, to: newTitle.wrappedValue) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -72,24 +72,24 @@ struct AgentRunView: View {
             SandboxBadge(kind: run.kind, running: run.isRunning)
             if run.isRunning {
                 Button { model.agents.stop(run) } label: { Image(systemName: "stop.circle") }
-                    .help("Sitzung beenden")
+                    .help("End session")
             } else if run.purpose == .session {
                 Button { model.agents.resume(run) } label: { Image(systemName: "play.circle") }
-                    .help(run.canResume ? "Gespräch fortsetzen" : "Neu starten")
+                    .help(run.canResume ? "Resume the conversation" : "Restart")
             }
             Menu {
-                Button("Umbenennen …") { newTitle.wrappedValue = run.title; renaming.wrappedValue = true }
-                Button("Neue Sitzung im selben Ordner") { model.startAgent(run.kind, directory: run.directory) }
-                Button("Im Finder zeigen") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: run.directory) }
+                Button("Rename…") { newTitle.wrappedValue = run.title; renaming.wrappedValue = true }
+                Button("New session in the same folder") { model.startAgent(run.kind, directory: run.directory) }
+                Button("Show in Finder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: run.directory) }
                 Divider()
-                Button("Sandbox-Profil anzeigen") {
+                Button("Show sandbox profile") {
                     NSWorkspace.shared.open(SandboxManager.runDirectory(run.id).appendingPathComponent("nono-profile.json"))
                 }
-                Button("Sandbox-Protokoll anzeigen") {
+                Button("Show sandbox log") {
                     NSWorkspace.shared.open(SandboxManager.runDirectory(run.id).appendingPathComponent("nono.log"))
                 }
                 Divider()
-                Button("Sitzung entfernen", role: .destructive) { model.agents.remove(run) }
+                Button("Remove session", role: .destructive) { model.agents.remove(run) }
             } label: { Image(systemName: "ellipsis.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }
@@ -111,10 +111,10 @@ struct AgentRunView: View {
             Label(run.title, systemImage: run.kind.symbol)
         } description: {
             Text(run.canResume
-                 ? "Diese Sitzung ist beendet. \(run.kind.displayName) kann das Gespräch in einer neuen Sandbox fortsetzen."
-                 : "Diese Sitzung ist beendet.")
+                 ? "This session has ended. \(run.kind.displayName) can resume the conversation in a new sandbox."
+                 : "This session has ended.")
         } actions: {
-            Button(run.canResume ? "Fortsetzen" : "Neu starten") { model.agents.resume(run) }
+            Button(run.canResume ? "Resume" : "Restart") { model.agents.resume(run) }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -137,13 +137,13 @@ struct SandboxBadge: View {
     private var summary: String {
         let spec = kind.sandbox
         let home = AgentHome.layout(for: kind, support: SandboxManager.supportDirectory.path, home: NSHomeDirectory())
-        let own: String = home.root != nil ? " und Hearths eigener \(kind.displayName)-Ordner"
+        let own: String = home.root != nil ? String(localized: " and Hearth’s own \(kind.displayName) folder")
             : home.hostReadWrite.map { $0.replacingOccurrences(of: NSHomeDirectory(), with: "~") }.joined(separator: ", ")
-        var lines: [String] = ["nono-Sandbox (Seatbelt)",
-                     "Schreiben: nur dieser Ordner" + (own.isEmpty || own.hasPrefix(" ") ? own : " und " + own),
-                     "Gesperrt: SSH-Schlüssel, Shell-Konfiguration, Browserdaten, übriges Home",
-                     "Netzwerk: LLM-APIs, Paket-Registries, GitHub/GitLab, Doku" + (spec.domains.isEmpty ? "" : ", " + spec.domains.joined(separator: ", "))]
-        if spec.keychain { lines.append("Schlüsselbund: freigegeben (Login des Agenten)") }
+        var lines: [String] = [String(localized: "nono sandbox (Seatbelt)"),
+                     String(localized: "Write: only this folder") + (own.isEmpty || own.hasPrefix(" ") ? own : String(localized: " and ") + own),
+                     String(localized: "Blocked: SSH keys, shell configuration, browser data, the rest of your home folder"),
+                     String(localized: "Network: LLM APIs, package registries, GitHub/GitLab, documentation") + (spec.domains.isEmpty ? "" : ", " + spec.domains.joined(separator: ", "))]
+        if spec.keychain { lines.append(String(localized: "Keychain: allowed (the agent’s login)")) }
         return lines.joined(separator: "\n")
     }
 }
@@ -207,7 +207,7 @@ struct AgentRunRow: View {
             HStack(spacing: 4) {
                 Text(run.folderName)
                 Text("·")
-                Text(run.isRunning ? "läuft" : "beendet")
+                Text(run.isRunning ? String(localized: "running") : String(localized: "ended"))
                 Text("·")
                 Text(run.updated.formatted(.relative(presentation: .named)))
             }
@@ -222,28 +222,28 @@ struct AgentRunRow: View {
         .padding(.vertical, 2)
         .contextMenu {
             if run.isRunning {
-                Button { model.agents.stop(run) } label: { Label("Sitzung beenden", systemImage: "stop.circle") }
+                Button { model.agents.stop(run) } label: { Label("End session", systemImage: "stop.circle") }
             } else if run.purpose == .session {
                 Button { model.agents.resume(run); model.selectRun(run.id) } label: {
-                    Label(run.canResume ? "Fortsetzen" : "Neu starten", systemImage: "play.circle")
+                    Label(run.canResume ? "Resume" : "Restart", systemImage: "play.circle")
                 }
             }
             Button { newTitle.wrappedValue = run.title; renaming.wrappedValue = true } label: {
-                Label("Umbenennen …", systemImage: "pencil")
+                Label("Rename…", systemImage: "pencil")
             }
             Button { model.startAgent(run.kind, directory: run.directory) } label: {
-                Label("Neue Sitzung im selben Ordner", systemImage: "plus.bubble")
+                Label("New session in the same folder", systemImage: "plus.bubble")
             }
             Button { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: run.directory) } label: {
-                Label("Im Finder zeigen", systemImage: "folder")
+                Label("Show in Finder", systemImage: "folder")
             }
             Divider()
-            Button(role: .destructive) { model.agents.remove(run) } label: { Label("Entfernen", systemImage: "trash") }
+            Button(role: .destructive) { model.agents.remove(run) } label: { Label("Remove", systemImage: "trash") }
         }
-        .alert("Sitzung umbenennen", isPresented: renaming.projectedValue) {
-            TextField("Titel", text: newTitle.projectedValue)
-            Button("Umbenennen") { model.agents.rename(run, to: newTitle.wrappedValue) }
-            Button("Abbrechen", role: .cancel) {}
+        .alert("Rename session", isPresented: renaming.projectedValue) {
+            TextField("Title", text: newTitle.projectedValue)
+            Button("Rename") { model.agents.rename(run, to: newTitle.wrappedValue) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 }

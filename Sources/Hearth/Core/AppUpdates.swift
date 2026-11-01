@@ -30,7 +30,7 @@ struct InstalledAppVersion: Sendable {
         release = channel == "development" ? nil : ReleaseVersion(label)
     }
     static var current: Self {
-        Self(label: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Entwicklungsbuild",
+        Self(label: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? String(localized: "development build"),
              channel: Bundle.main.object(forInfoDictionaryKey: "HearthBuildChannel") as? String)
     }
 }
@@ -84,9 +84,9 @@ struct UpdateService: Sendable {
         case invalidFeed, http(Int), unreachable
         var errorDescription: String? {
             switch self {
-            case .invalidFeed: "Der Update-Server lieferte keine gültige Release-Version."
-            case .http(let code): "Update-Prüfung fehlgeschlagen (HTTP \(code)). Gegebenenfalls VPN/Pages-Erreichbarkeit prüfen."
-            case .unreachable: "Der Update-Server ist nicht erreichbar. Gegebenenfalls VPN-Verbindung prüfen und erneut versuchen."
+            case .invalidFeed: String(localized: "The update server returned no valid release version.")
+            case .http(let code): String(localized: "Update check failed (HTTP \(code)). Check your network connection.")
+            case .unreachable: String(localized: "The update server cannot be reached. Check your network connection and try again.")
             }
         }
     }
@@ -178,9 +178,9 @@ final class UpdateChecker {
 
     func reportPreviousInstall(_ outcome: AppUpdateInstaller.Outcome?) {
         switch outcome {
-        case .failed?: installMessage = "Das letzte Update ist fehlgeschlagen; die bisherige Version läuft weiter. Details: ~/Library/Logs/Hearth IDE/update.log"
-        case .aborted?: installMessage = "Das letzte Update wurde abgebrochen, weil die App nicht beendet wurde."
-        case .succeeded?: installMessage = "Hearth IDE wurde auf \(installed.label) aktualisiert."
+        case .failed?: installMessage = String(localized: "The last update failed; the previous version keeps running. Details: ~/Library/Logs/Hearth IDE/update.log")
+        case .aborted?: installMessage = String(localized: "The last update was cancelled because the app did not quit.")
+        case .succeeded?: installMessage = String(localized: "Hearth IDE was updated to \(installed.label).")
         case nil: break
         }
     }

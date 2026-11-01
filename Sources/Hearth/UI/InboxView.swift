@@ -18,26 +18,26 @@ struct InboxView: View {
             })) {
             Section {
                 if attention.isEmpty {
-                    Text("Alles ruhig – kein Agent wartet.").foregroundStyle(.secondary).scaledFont(.callout)
+                    Text("All quiet – no agent is waiting.").foregroundStyle(.secondary).scaledFont(.callout)
                 } else {
-                    Text("\(attention.count) Sitzungen mit Ergebnissen, Rückfragen oder Fehlern.")
+                    Text("\(attention.count) sessions with results, questions or errors.")
                         .scaledFont(.caption).foregroundStyle(.secondary)
                 }
                 if !attention.isEmpty || onlyAttention.wrappedValue {
-                    Button(onlyAttention.wrappedValue ? "Alle Sitzungen anzeigen" : "Nur diese Sitzungen anzeigen") {
+                    Button(onlyAttention.wrappedValue ? "Show all sessions" : "Show only these sessions") {
                         onlyAttention.wrappedValue.toggle()
                     }
                     .buttonStyle(.link).scaledFont(.caption)
                 }
             } header: {
-                Text("Braucht Aufmerksamkeit (\(attention.count))\(onlyAttention.wrappedValue ? " · Filter aktiv" : "")")
+                Text(onlyAttention.wrappedValue ? String(localized: "Needs attention (\(attention.count)) · filtered") : String(localized: "Needs attention (\(attention.count))"))
                     .scaledFont(.caption, bold: true)
             }
 
             Section {
                 if runs.isEmpty {
                     Button { model.agents.startSheet = .init() } label: {
-                        Label("Agent starten …", systemImage: "plus.circle")
+                        Label("Start agent…", systemImage: "plus.circle")
                     }
                     .buttonStyle(.link).scaledFont(.callout)
                 }
@@ -46,10 +46,10 @@ struct InboxView: View {
                 }
             } header: {
                 HStack {
-                    Text("Agenten (\(model.agents.runningCount) aktiv)").scaledFont(.caption, bold: true)
+                    Text("Agents (\(model.agents.runningCount) active)").scaledFont(.caption, bold: true)
                     Spacer()
                     Button { model.agents.startSheet = .init() } label: { Image(systemName: "plus") }
-                        .buttonStyle(.borderless).help("Agent starten")
+                        .buttonStyle(.borderless).help("Start agent")
                 }
                 .textCase(nil)
             }

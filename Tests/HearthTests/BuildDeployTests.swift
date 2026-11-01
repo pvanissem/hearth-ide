@@ -131,7 +131,7 @@ struct BuildDeployTests {
         api.reset([.exit(1)])
         let failed = try need(await store.start(build, root: "/w/repo", serverID: "s1", client: api))
         try await wait { !failed.state.isActive }
-        try require(failed.state == .failed("Exit 1"), "Exit code not reported: \(failed.state)")
+        try require(failed.state == .failed("exit 1"), "Exit code not reported: \(failed.state)")
 
         // Service: health becomes up via the host probe, stop removes the command.
         let service = BuildTask(id: "Go::run", tool: .go, project: "", title: "Run", kind: .service, argv: ["go", "run", "."], port: 18_080, healthPath: "/health")
@@ -150,7 +150,7 @@ struct BuildDeployTests {
         // Port already used on the host: refuse before starting anything.
         api.reset([])
         let blocked = try need(await store.start(service, root: "/w/repo", serverID: "s1", client: api))
-        try require(blocked.state == .failed("Port belegt") && api.requests.isEmpty, "Port conflict not detected")
+        try require(blocked.state == .failed("port in use") && api.requests.isEmpty, "Port conflict not detected")
         FakeLocalService.listening = []
 
         // Missing tool in sandbox: nothing starts, no host fallback.
@@ -160,13 +160,13 @@ struct BuildDeployTests {
         try require(store.unavailableReason(npm, serverID: "s2") != nil && store.unavailableReason(build, serverID: "s2") == nil, "Tool probe")
         api.reset([])
         let missing = try need(await store.start(npm, root: "/w/repo", serverID: "s2", client: api))
-        try require(missing.state == .failed("nicht verfügbar") && api.requests.isEmpty, "Unavailable tool executed")
+        try require(missing.state == .failed("not available") && api.requests.isEmpty, "Unavailable tool executed")
 
         // A sandbox that cannot start reports it and never falls back to the host.
         api.reset([])
         api.failStart = true
         let refused = try need(await store.start(build, root: "/w/repo", serverID: "s1", client: api))
-        try require(refused.state == .failed("Start fehlgeschlagen") && refused.output.contains("Keine Ausführung auf dem Host"), "Start failure")
+        try require(refused.state == .failed("start failed") && refused.output.contains("Nothing was run on the host"), "Start failure")
 
         // Re-attach a running service; ignore commands of others.
         api.reset([.running])
@@ -186,7 +186,7 @@ struct BuildDeployTests {
         try require(store.runs.filter { $0.shellID == "sh_adopt" }.count == 1, "Adopted twice")
 
         store.serverGone("s1")
-        try require(adopted[0].state == .lost("Sandbox beendet"), "Sandbox loss not reflected")
+        try require(adopted[0].state == .lost("sandbox ended"), "Sandbox loss not reflected")
     }
 
     private func wait(_ condition: @escaping () -> Bool) async throws {

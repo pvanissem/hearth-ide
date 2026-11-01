@@ -9,10 +9,10 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            GeneralSettings().tabItem { Label("Allgemein", systemImage: "gearshape") }
-            AgentSettings().tabItem { Label("Agenten", systemImage: "sparkles") }
+            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
+            AgentSettings().tabItem { Label("Agents", systemImage: "sparkles") }
             SandboxRuleSettings().tabItem { Label("Sandbox", systemImage: "lock.shield") }
-            ProjectSettings().tabItem { Label("Projekte", systemImage: "folder.badge.gearshape") }
+            ProjectSettings().tabItem { Label("Projects", systemImage: "folder.badge.gearshape") }
             CredentialSettings().tabItem { Label("Credentials", systemImage: "key") }
             UpdateSettings(checker: model.updates).tabItem { Label("Updates", systemImage: "arrow.down.circle") }
         }
@@ -23,7 +23,7 @@ struct SettingsView: View {
 /// Sandbox rules are read at start; offers to restart running sessions.
 private struct RestartHint: View {
     @Environment(AppModel.self) private var model
-    var text = "Änderungen gelten für neu gestartete Sitzungen."
+    var text = String(localized: "Changes apply to newly started sessions.")
 
     var body: some View {
         HStack {
@@ -32,9 +32,9 @@ private struct RestartHint: View {
             Spacer()
             let running = model.agents.runningCount
             if running > 0 {
-                Button("Laufende Sitzungen neu starten (\(running))") { model.agents.restartRunning() }
+                Button("Restart running sessions (\(running))") { model.agents.restartRunning() }
                     .controlSize(.small)
-                    .help("Beendet die laufenden Agenten und startet sie mit den neuen Regeln. Claude Code und Codex setzen ihr Gespräch fort.")
+                    .help("Stops the running agents and starts them with the new rules. Claude Code and Codex resume their conversation.")
             }
         }
     }
@@ -54,8 +54,8 @@ private struct FolderRow: View {
                 .lineLimit(1).truncationMode(.head).help(folder.path)
             Spacer()
             Picker("", selection: Binding(get: { folder.write }, set: setWrite)) {
-                Text("lesen").tag(false)
-                Text("lesen + schreiben").tag(true)
+                Text("read").tag(false)
+                Text("read + write").tag(true)
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
             Button(action: remove) { Image(systemName: "trash") }.buttonStyle(.borderless)
@@ -82,11 +82,29 @@ private struct GeneralSettings: View {
     private let appearance = State(initialValue: AppAppearance.current)
     private let lastWindow = State(initialValue: QuitPreferences.onLastWindow)
     private let welcome = State(initialValue: AppModel.welcomeEnabled)
+    private let language = State(initialValue: AppLanguage.chosen)
 
     var body: some View {
         Form {
-            Section("Darstellung") {
-                Picker("Erscheinungsbild", selection: Binding(get: { appearance.wrappedValue }, set: {
+            Section("Language") {
+                Picker("Language", selection: Binding(get: { language.wrappedValue }, set: {
+                    language.wrappedValue = $0
+                    AppLanguage.choose($0)
+                })) {
+                    ForEach(AppLanguage.allCases) { Text(verbatim: $0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                if language.wrappedValue != AppLanguage.active {
+                    HStack {
+                        Text("The new language is used after a restart.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Restart now") { AppLanguage.relaunch() }
+                    }
+                }
+            }
+            Section("Appearance") {
+                Picker("Appearance", selection: Binding(get: { appearance.wrappedValue }, set: {
                     appearance.wrappedValue = $0
                     AppAppearance.current = $0
                 })) {
@@ -95,31 +113,31 @@ private struct GeneralSettings: View {
                 .pickerStyle(.segmented)
             }
             Section("Terminal") {
-                Picker("Externes Terminal", selection: Binding(get: { terminal.wrappedValue }, set: {
+                Picker("External terminal", selection: Binding(get: { terminal.wrappedValue }, set: {
                     terminal.wrappedValue = $0
                     TerminalLauncher.preferred = $0
                 })) {
                     ForEach(TerminalLauncher.installed) { Text($0.rawValue).tag($0) }
                 }
-                Text("Die eingebauten Terminals übernehmen Schrift und Farben aus dem iTerm2-Profil, wenn iTerm2 gewählt ist.")
+                Text("The built-in terminals use the font and colours of your iTerm2 profile when iTerm2 is selected.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Layout") {
-                Button("Layout zurücksetzen") { model.layout.resetLayout() }
+                Button("Reset layout") { model.layout.resetLayout() }
             }
             Section("Start") {
-                Toggle("Willkommensdialog anzeigen, wenn kein Agent läuft", isOn: Binding(
+                Toggle("Show the welcome dialog when no agent is running", isOn: Binding(
                     get: { welcome.wrappedValue }, set: { welcome.wrappedValue = $0; AppModel.welcomeEnabled = $0 }))
-                Button("Willkommensdialog jetzt öffnen") { model.showWelcome = true }
+                Button("Open the welcome dialog now") { model.showWelcome = true }
             }
-            Section("Beenden") {
-                Picker("Beim Schließen des Fensters", selection: Binding(get: { lastWindow.wrappedValue }, set: {
+            Section("Quit") {
+                Picker("When the window closes", selection: Binding(get: { lastWindow.wrappedValue }, set: {
                     lastWindow.wrappedValue = $0
                     QuitPreferences.onLastWindow = $0
                 })) {
                     ForEach(QuitPreferences.OnLastWindow.allCases) { Text($0.title).tag($0) }
                 }
-                Text("Laufende Agent-Sitzungen werden beim Beenden gestoppt; Claude Code und Codex lassen sich danach fortsetzen.")
+                Text("Running agent sessions are stopped when you quit; Claude Code and Codex can be resumed afterwards.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -141,20 +159,20 @@ private struct AgentSettings: View {
                     agentRow(kind)
                 }
             } header: {
-                Text("Agenten")
+                Text("Agents")
             } footer: {
-                Text("Jeder Agent nutzt seinen eigenen Login (Claude-Abo, ChatGPT, GitHub …). „Anmelden“ startet den Login des Agenten in einer Sandbox.")
+                Text("Every agent uses its own login (Claude subscription, ChatGPT, GitHub …). “Sign in” starts the agent’s login in a sandbox.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("Logins im Schlüsselbund") {
-                Toggle("Agenten dürfen den Schlüsselbund verwenden", isOn: Binding(
+            Section("Logins in the keychain") {
+                Toggle("Agents may use the keychain", isOn: Binding(
                     get: { model.sandboxSettings.agentKeychain },
                     set: { on in model.updateSandboxSettings { $0.agentKeychain = on } }))
-                Text("Claude Code, Codex und GitHub Copilot speichern ihren Login im macOS-Schlüsselbund. Ohne diese Freigabe müssen sie sich per API-Key anmelden (siehe Credentials).")
+                Text("Claude Code, Codex and GitHub Copilot keep their login in the macOS keychain. Without this, they have to sign in with an API key (see Credentials).")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("MCP-Server") {
-                Text("MCP-Server richtest du im jeweiligen Agenten in Hearth ein, z. B. mit `claude mcp add` in einer Sitzung. Sie laufen in derselben Sandbox wie der Agent; zusätzliche Hosts gibst du unter „Sandbox“ frei.")
+            Section("MCP servers") {
+                Text("Set up MCP servers in the agent inside Hearth, e.g. with `claude mcp add` in a session. They run in the same sandbox as the agent; allow extra hosts under “Sandbox”.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section { RestartHint() }
@@ -182,19 +200,19 @@ private struct AgentSettings: View {
                         .font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                 } else if loaded.wrappedValue {
                     HStack(spacing: 4) {
-                        Text("Nicht installiert:").font(.caption).foregroundStyle(.secondary)
+                        Text("Not installed:").font(.caption).foregroundStyle(.secondary)
                         Text(kind.installHint).font(.caption.monospaced()).textSelection(.enabled)
                         Button {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(kind.installHint, forType: .string)
                         } label: { Image(systemName: "doc.on.doc") }
-                            .buttonStyle(.borderless).controlSize(.small).help("Befehl kopieren")
+                            .buttonStyle(.borderless).controlSize(.small).help("Copy command")
                     }
                 } else {
                     ProgressView().controlSize(.mini)
                 }
                 if let config = configFolder {
-                    Text("Einstellungen: \(config.replacingOccurrences(of: NSHomeDirectory(), with: "~"))")
+                    Text("Settings: \(config.replacingOccurrences(of: NSHomeDirectory(), with: "~"))")
                         .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
             }
@@ -203,10 +221,10 @@ private struct AgentSettings: View {
                 Button { NSWorkspace.shared.open(URL(fileURLWithPath: config)) } label: {
                     Image(systemName: "folder")
                 }
-                .buttonStyle(.borderless).help("Einstellungsordner im Finder öffnen")
+                .buttonStyle(.borderless).help("Open the settings folder in the Finder")
                 .disabled(!FileManager.default.fileExists(atPath: config))
             }
-            Button("Anmelden …") {
+            Button("Sign in…") {
                 model.startAgent(kind, directory: SandboxManager.loginDirectory.path,
                                  purpose: kind.loginArguments != nil ? .login : .session)
                 NSApp.windows.first { $0.identifier?.rawValue.contains("main") == true || $0.title == "Hearth IDE" }?.makeKeyAndOrderFront(nil)
@@ -230,11 +248,11 @@ private struct SandboxRuleSettings: View {
     var body: some View {
         Form {
             Section {
-                Label("Schreiben nur im Ordner der Sitzung und im Einstellungsordner des Agenten", systemImage: "folder")
-                Label("Gesperrt: SSH-Schlüssel, Shell-Konfiguration, Browserdaten, Cloud-Zugangsdaten, übriges Home", systemImage: "hand.raised")
-                Label("Netzwerk: LLM-APIs, Paket-Registries, GitHub/GitLab, Doku und die API-Hosts des Agenten", systemImage: "network")
+                Label("Write only in the session’s folder and in the agent’s settings folder", systemImage: "folder")
+                Label("Blocked: SSH keys, shell configuration, browser data, cloud credentials, the rest of your home folder", systemImage: "hand.raised")
+                Label("Network: LLM APIs, package registries, GitHub/GitLab, documentation and the agent’s API hosts", systemImage: "network")
             } header: {
-                Text("Grundregeln (immer aktiv)")
+                Text("Base rules (always on)")
             }
             .font(.callout)
 
@@ -249,15 +267,15 @@ private struct SandboxRuleSettings: View {
                 }
                 HStack {
                     TextField("Domain", text: domain.projectedValue,
-                              prompt: Text(verbatim: "api.example.com, *.example.com oder https://github.com/org/**"))
+                              prompt: Text(verbatim: String(localized: "api.example.com, *.example.com or https://github.com/org/**")))
                         .labelsHidden().onSubmit(addDomain)
-                    Button("Hinzufügen", action: addDomain)
+                    Button("Add", action: addDomain)
                         .disabled(!SandboxSettings.validDomain(domain.wrappedValue))
                 }
             } header: {
-                Text("Zusätzliche Domains")
+                Text("Extra domains")
             } footer: {
-                Text("Gilt für alle Sitzungen, Build & Deployment und Git.").font(.caption).foregroundStyle(.secondary)
+                Text("Applies to all sessions, Build & Deployment and Git.").font(.caption).foregroundStyle(.secondary)
             }
 
             Section {
@@ -272,13 +290,13 @@ private struct SandboxRuleSettings: View {
                 HStack {
                     TextField("Port", text: port.projectedValue, prompt: Text(verbatim: "8080"))
                         .labelsHidden().frame(width: 100).onSubmit(addPort)
-                    Button("Hinzufügen", action: addPort).disabled(Int(port.wrappedValue).map { !(1...65535).contains($0) } ?? true)
+                    Button("Add", action: addPort).disabled(Int(port.wrappedValue).map { !(1...65535).contains($0) } ?? true)
                     Spacer()
                 }
             } header: {
-                Text("Lokale Ports")
+                Text("Local ports")
             } footer: {
-                Text("Ein Dienst in der Sandbox darf auf diesem Port lauschen und sich selbst erreichen (z. B. Spring-Boot-Tests). Build & Deployment gibt den Port eines Dienstes automatisch frei.")
+                Text("A service in the sandbox may listen on this port and reach itself (e.g. Spring Boot tests). Build & Deployment opens a service’s port automatically.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -289,30 +307,30 @@ private struct SandboxRuleSettings: View {
                                   if let i = s.folders.firstIndex(where: { $0.path == f.path }) { s.folders[i].write = w } } },
                               remove: { model.updateSandboxSettings { $0.folders.removeAll { $0.path == f.path } } })
                 }
-                Button { addFolder() } label: { Label("Ordner hinzufügen …", systemImage: "plus") }
+                Button { addFolder() } label: { Label("Add folder…", systemImage: "plus") }
                 if let error = error.wrappedValue { Text(error).font(.caption).foregroundStyle(.red) }
             } header: {
-                Text("Zusätzliche Ordner für alle Sitzungen")
+                Text("Extra folders for all sessions")
             } footer: {
-                Text("Nur für einen Projektordner? Dann unter „Projekte“.").font(.caption).foregroundStyle(.secondary)
+                Text("Only for one project folder? Use “Projects”.").font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Git-Bereich") {
-                Toggle("Fetch, Pull und Clone über SSH erlauben", isOn: Binding(
+            Section("Git area") {
+                Toggle("Allow fetch, pull and clone over SSH", isOn: Binding(
                     get: { model.sandboxSettings.gitSSH },
                     set: { on in model.updateSandboxSettings { $0.gitSSH = on } }))
-                Text("Nur die festen Git-Befehle des Git-Bereichs (kein Agent) dürfen dann ~/.ssh lesen und Port 22 erreichen. Einstellungen wie sshCommand oder credential.helper kommen nur aus deiner globalen ~/.gitconfig, nie aus dem Repository.")
+                Text("Only the Git area’s fixed Git commands (never an agent) may then read ~/.ssh and reach port 22. Settings such as sshCommand or credential.helper come only from your global ~/.gitconfig, never from the repository.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Erzeugtes Profil ansehen") {
+            Section("View the generated profile") {
                 HStack {
                     Picker("Agent", selection: previewKind.projectedValue) {
                         ForEach(AgentKind.allCases) { Text($0.displayName).tag($0) }
                     }
-                    Button("Anzeigen") { showProfile() }
+                    Button("Show") { showProfile() }
                 }
-                Text("So startet Hearth nono für diesen Agenten (ohne projektbezogene Ordner).")
+                Text("How Hearth starts nono for this agent (without project folders).")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section { RestartHint() }
@@ -334,7 +352,7 @@ private struct SandboxRuleSettings: View {
     }
 
     private func addFolder() {
-        guard let path = chooseFolder(message: "Ordner, den alle Sandboxes lesen dürfen (Schreiben kannst du danach freigeben)") else { return }
+        guard let path = chooseFolder(message: String(localized: "Folder all sandboxes may read (you can allow writing afterwards)")) else { return }
         if let problem = SandboxSettings.validFolder(path) { error.wrappedValue = problem; return }
         error.wrappedValue = nil
         model.updateSandboxSettings { if !$0.folders.contains(where: { $0.path == path }) { $0.folders.append(.init(path: path)) } }
@@ -377,11 +395,11 @@ private struct ProjectSettings: View {
                 }
                 Divider()
                 HStack {
-                    Button { addProject() } label: { Image(systemName: "plus") }.help("Projektordner hinzufügen …")
+                    Button { addProject() } label: { Image(systemName: "plus") }.help("Add project folder…")
                     Button { if let p = project { model.updateSandboxSettings { $0.projects.removeAll { $0.root == p.root } } } } label: {
                         Image(systemName: "minus")
                     }
-                    .disabled(project == nil).help("Projekt entfernen (die Ordner bleiben unverändert)")
+                    .disabled(project == nil).help("Remove project (the folders stay unchanged)")
                     Spacer()
                 }
                 .buttonStyle(.borderless).padding(6)
@@ -394,14 +412,14 @@ private struct ProjectSettings: View {
                         HStack {
                             Text(p.name).font(.title3.bold())
                             Spacer()
-                            Button("Agent hier starten …") { model.agents.startSheet = .init(directory: p.root) }
+                            Button("Start agent here…") { model.agents.startSheet = .init(directory: p.root) }
                         }
-                        LabeledContent("Projektordner (lesen + schreiben)") {
+                        LabeledContent("Project folder (read + write)") {
                             Text(p.root.replacingOccurrences(of: NSHomeDirectory(), with: "~")).lineLimit(1).truncationMode(.head)
                         }
-                        Text("Zusätzliche Ordner").font(.headline)
+                        Text("Extra folders").font(.headline)
                         if p.folders.isEmpty {
-                            Text("Noch keine. Beispiel: eine Bibliothek, die der Agent mitlesen soll.")
+                            Text("None yet. Example: a library the agent should read as well.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(p.folders) { f in
@@ -414,20 +432,20 @@ private struct ProjectSettings: View {
                                           guard let pi = s.projects.firstIndex(where: { $0.root == p.root }) else { return }
                                           s.projects[pi].folders.removeAll { $0.path == f.path } } })
                         }
-                        Button { addFolder(to: p) } label: { Label("Ordner hinzufügen …", systemImage: "plus") }
+                        Button { addFolder(to: p) } label: { Label("Add folder…", systemImage: "plus") }
                         if let error = error.wrappedValue { Text(error).font(.caption).foregroundStyle(.red) }
                         Spacer()
-                        RestartHint(text: "Gilt für Sitzungen, die in genau diesem Ordner starten.")
+                        RestartHint(text: String(localized: "Applies to sessions that start in exactly this folder."))
                     }
                     .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 } else {
                     ContentUnavailableView {
-                        Label("Keine Projekte", systemImage: "folder.badge.gearshape")
+                        Label("No projects", systemImage: "folder.badge.gearshape")
                     } description: {
-                        Text("Ein Projekt gibt Sitzungen in einem Ordner Zugriff auf weitere Ordner, z. B. ein Nachbar-Repository.")
+                        Text("A project gives sessions in one folder access to more folders, e.g. a neighbouring repository.")
                     } actions: {
-                        Button("Projektordner hinzufügen …") { addProject() }
+                        Button("Add project folder…") { addProject() }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -437,7 +455,7 @@ private struct ProjectSettings: View {
     }
 
     private func addProject() {
-        guard let path = chooseFolder(message: "Projektordner wählen (dort startest du die Agenten)") else { return }
+        guard let path = chooseFolder(message: String(localized: "Choose the project folder (where you start the agents)")) else { return }
         if let problem = SandboxSettings.validFolder(path) { error.wrappedValue = problem; return }
         error.wrappedValue = nil
         model.updateSandboxSettings { if $0.project(for: path) == nil { $0.projects.append(.init(root: path)) } }
@@ -445,7 +463,7 @@ private struct ProjectSettings: View {
     }
 
     private func addFolder(to p: SandboxSettings.Project) {
-        guard let path = chooseFolder(message: "Zusätzlicher Ordner für „\(p.name)“ (zunächst nur lesend)") else { return }
+        guard let path = chooseFolder(message: String(localized: "Extra folder for “\(p.name)” (read-only at first)")) else { return }
         if let problem = SandboxSettings.validFolder(path) { error.wrappedValue = problem; return }
         error.wrappedValue = nil
         model.updateSandboxSettings { s in
@@ -475,66 +493,66 @@ private struct CredentialSettings: View {
         Form {
             Section {
                 if model.sandboxSettings.credentials.isEmpty {
-                    Text("Noch keine Credentials.").foregroundStyle(.secondary)
+                    Text("No credentials yet.").foregroundStyle(.secondary)
                 }
                 ForEach(model.sandboxSettings.credentials) { c in credentialRow(c) }
             } header: {
                 Text("Credentials")
             } footer: {
-                Text("Die Werte liegen im macOS-Schlüsselbund (Dienst „nono“), nicht in Hearth. nono liest sie beim Start einer Sandbox.")
+                Text("The values live in the macOS keychain (service “nono”), not in Hearth. nono reads them when a sandbox starts.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Hinzufügen") {
+            Section("Add") {
                 TextField("Name", text: Binding(get: { name.wrappedValue }, set: { name.wrappedValue = $0.uppercased() }),
-                          prompt: Text("z. B. GITHUB_TOKEN"))
-                Picker("Art", selection: mode.projectedValue) {
-                    Text("Proxy (empfohlen)").tag(SandboxSettings.Credential.Mode.proxy)
-                    Text("Umgebungsvariable").tag(SandboxSettings.Credential.Mode.env)
+                          prompt: Text("e.g. GITHUB_TOKEN"))
+                Picker("Kind", selection: mode.projectedValue) {
+                    Text("Proxy (recommended)").tag(SandboxSettings.Credential.Mode.proxy)
+                    Text("Environment variable").tag(SandboxSettings.Credential.Mode.env)
                 }
                 .pickerStyle(.segmented)
                 if mode.wrappedValue == .proxy {
-                    TextField("Ziel-API", text: upstream.projectedValue, prompt: Text(verbatim: "https://api.example.com"))
+                    TextField("Target API", text: upstream.projectedValue, prompt: Text(verbatim: "https://api.example.com"))
                     TextField("Header", text: header.projectedValue)
-                    TextField("Format ({} = Wert)", text: format.projectedValue)
-                    Text("In der Sandbox enthält $\(displayName) nur einen Platzhalter. Anfragen an $\(displayName)_BASE_URL leitet nono an die Ziel-API weiter und setzt dort den echten Wert ein.")
+                    TextField("Format ({} = value)", text: format.projectedValue)
+                    Text("Inside the sandbox $\(displayName) only holds a placeholder. nono forwards requests to $\(displayName)_BASE_URL to the target API and inserts the real value there.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Label("Der Wert steht im Klartext als $\(displayName) in der Sandbox – der Agent kann ihn lesen.", systemImage: "exclamationmark.triangle")
+                    Label("The value is in plain text as $\(displayName) inside the sandbox – the agent can read it.", systemImage: "exclamationmark.triangle")
                         .font(.caption).foregroundStyle(.orange)
                 }
-                SecureField("Wert", text: secret.projectedValue)
+                SecureField("Value", text: secret.projectedValue)
                 HStack {
                     if let error = error.wrappedValue { Text(error).font(.caption).foregroundStyle(.red) }
                     Spacer()
-                    Button("Hinzufügen") { add() }.disabled(!canAdd)
+                    Button("Add") { add() }.disabled(!canAdd)
                 }
             }
             Section { RestartHint() }
         }
         .formStyle(.grouped)
-        .confirmationDialog("Credential „\(confirmDelete.wrappedValue ?? "")“ löschen?",
+        .confirmationDialog(String(localized: "Delete the credential “\(confirmDelete.wrappedValue ?? "")”?"),
                             isPresented: Binding(get: { confirmDelete.wrappedValue != nil }, set: { if !$0 { confirmDelete.wrappedValue = nil } })) {
-            Button("Löschen", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 guard let n = confirmDelete.wrappedValue,
                       let c = model.sandboxSettings.credentials.first(where: { $0.name == n }) else { return }
                 CredentialKeychain.delete(account: c.keychainAccount)
                 model.updateSandboxSettings { $0.credentials.removeAll { $0.name == n } }
             }
-        } message: { Text("Der Wert wird auch aus dem Schlüsselbund entfernt.") }
-        .alert("Neuer Wert für \(changing.wrappedValue ?? "")", isPresented: Binding(
+        } message: { Text("The value is removed from the keychain too.") }
+        .alert(String(localized: "New value for \(changing.wrappedValue ?? "")"), isPresented: Binding(
             get: { changing.wrappedValue != nil }, set: { if !$0 { changing.wrappedValue = nil; newSecret.wrappedValue = "" } })) {
-            SecureField("Wert", text: newSecret.projectedValue)
-            Button("Speichern") {
+            SecureField("Value", text: newSecret.projectedValue)
+            Button("Save") {
                 if let n = changing.wrappedValue, let c = model.sandboxSettings.credentials.first(where: { $0.name == n }),
                    !newSecret.wrappedValue.isEmpty {
                     if !CredentialKeychain.store(newSecret.wrappedValue, account: c.keychainAccount) {
-                        model.banner = "Wert konnte nicht im Schlüsselbund gespeichert werden."
+                        model.banner = String(localized: "The value could not be saved in the keychain.")
                     }
                 }
                 newSecret.wrappedValue = ""
             }
-            Button("Abbrechen", role: .cancel) { newSecret.wrappedValue = "" }
+            Button("Cancel", role: .cancel) { newSecret.wrappedValue = "" }
         }
     }
 
@@ -550,13 +568,13 @@ private struct CredentialSettings: View {
         let stored = CredentialKeychain.exists(account: c.keychainAccount)
         return HStack {
             Image(systemName: stored ? "key.fill" : "key.slash").foregroundStyle(stored ? Color.secondary : Color.red)
-                .help(stored ? "Wert im Schlüsselbund" : "Kein Wert im Schlüsselbund")
+                .help(stored ? "Value in the keychain" : "No value in the keychain")
             VStack(alignment: .leading, spacing: 1) {
                 HStack {
                     Text(c.name).bold().font(.callout.monospaced())
-                    Text(c.mode == .proxy ? "Proxy" : "Umgebung").font(.caption2).padding(.horizontal, 5)
+                    Text(c.mode == .proxy ? "Proxy" : "Environment").font(.caption2).padding(.horizontal, 5)
                         .background((c.mode == .env ? Color.orange : Color.green).opacity(0.15), in: Capsule())
-                        .help(c.mode == .env ? "Wert steht im Klartext in der Sandbox" : "Die Sandbox sieht nur einen Platzhalter")
+                        .help(c.mode == .env ? "Value is in plain text inside the sandbox" : "The sandbox only sees a placeholder")
                 }
                 if c.mode == .proxy {
                     Text("→ \(c.upstream)  ·  \(c.header): \(c.format.replacingOccurrences(of: "{}", with: "…"))")
@@ -567,8 +585,8 @@ private struct CredentialSettings: View {
             Toggle("", isOn: Binding(get: { c.enabled }, set: { on in
                 model.updateSandboxSettings { s in if let i = s.credentials.firstIndex(where: { $0.name == c.name }) { s.credentials[i].enabled = on } }
             }))
-            .toggleStyle(.switch).labelsHidden().help("In Sandboxes verwenden")
-            Button("Wert ändern …") { changing.wrappedValue = c.name }.controlSize(.small)
+            .toggleStyle(.switch).labelsHidden().help("Use in sandboxes")
+            Button("Change value…") { changing.wrappedValue = c.name }.controlSize(.small)
             Button { confirmDelete.wrappedValue = c.name } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
         }
     }
@@ -581,7 +599,7 @@ private struct CredentialSettings: View {
             c.format = format.wrappedValue.contains("{}") ? format.wrappedValue : "{}"
         }
         guard CredentialKeychain.store(secret.wrappedValue, account: c.keychainAccount) else {
-            error.wrappedValue = "Wert konnte nicht im Schlüsselbund gespeichert werden."
+            error.wrappedValue = String(localized: "The value could not be saved in the keychain.")
             return
         }
         error.wrappedValue = nil
