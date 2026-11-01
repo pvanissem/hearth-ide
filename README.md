@@ -113,6 +113,7 @@ Abschnitt `## Unveröffentlicht`; fehlt er, stammen die Notizen aus den Commits.
 - [Sicherheit](docs/security-hardening.md): GitLab-Freigaben, Terminal-/Mermaid-Schutz, Git-Policy, Regressionstests
 - [Build & Deployment](docs/build-and-deployment.md)
 - [App-Updates](docs/app-updates.md)
+- [Security- und Architektur-Review](docs/review-security-architecture.md)
 
 ## Lizenz
 
