@@ -54,7 +54,9 @@ struct PipelinesView: View {
                 content
             }
         }
-        .task(id: "\(root)#\(model.workspace.revision)") {
+        // A new folder: start over. File changes (an agent at work) bump the workspace revision
+        // all the time; they only re-check the remote, quietly, and reload nothing unless it changed.
+        .task(id: root) {
             remoteChecked.wrappedValue = false
             remote.wrappedValue = nil
             let detected = await CIRemote.of(repo: root)
@@ -63,6 +65,18 @@ struct PipelinesView: View {
             remoteRoot.wrappedValue = root
             if let r = remote.wrappedValue { await model.ci.load(for: r.origin) }
             remoteChecked.wrappedValue = true
+            pipelines.wrappedValue = []
+            jobs.wrappedValue = [:]
+            workflows.wrappedValue = []
+        }
+        .task(id: "\(root)#\(model.workspace.revision)") {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, remoteChecked.wrappedValue, remoteRoot.wrappedValue == root else { return }
+            let detected = await CIRemote.of(repo: root)
+            guard !Task.isCancelled, remoteRoot.wrappedValue == root,
+                  detected?.origin != remote.wrappedValue?.origin || detected?.path != remote.wrappedValue?.path else { return }
+            remote.wrappedValue = detected
+            if let r = detected { await model.ci.load(for: r.origin) }
             pipelines.wrappedValue = []
             jobs.wrappedValue = [:]
             workflows.wrappedValue = []

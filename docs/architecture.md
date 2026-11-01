@@ -1,6 +1,6 @@
 # Architektur
 
-Stand v0.2.1. Hearth ist eine SwiftUI-App ohne eigenen Agenten: Sie startet die
+Stand v0.4.3. Hearth ist eine SwiftUI-App ohne eigenen Agenten: Sie startet die
 Agent-CLIs der Nutzer in einer nono-Sandbox und zeigt drumherum Inbox, Editor,
 Git, Tests, Build & Deployment und CI.
 
@@ -18,7 +18,7 @@ flowchart TB
     Editor["EditorStore"]
     WS["WorkspaceState"]
     Zoom["TextZoomStore"]
-    GL["CIAccounts"]
+    CIA["CIAccounts"]
     Agents["AgentHost"]
     Builds["BuildDeployStore"]
     Updates["UpdateChecker"]
@@ -40,28 +40,30 @@ flowchart TB
   Manager --> nono
   HostGit["Git (Host, nur lesen, sandbox-exec)"]
   Model --> HostGit
+  CIA --> CIClients["CIClient: GitLabAPI, GitHubAPI"]
 ```
 
 ## Bausteine
 
 | Bereich | Typen | Aufgabe |
 |---|---|---|
-| Zustand | `AppModel` | Komposition und Auswahl: Die gewählte Agenten-Sitzung bestimmt den Arbeitsordner (`workspaceRoot`) und damit Inspector, Editor-Tabs und Build & Deployment. Startet Agenten, leitet „Auftrag an den Agenten“ ins Terminal. |
+| Zustand | `AppModel` | Komposition und Auswahl: Die gewählte Agenten-Sitzung bestimmt den Arbeitsordner (`workspaceRoot`) und damit Inspector, Editor-Tabs und Build & Deployment. Startet Agenten, leitet „Auftrag an den Agenten“ ins Terminal, hält die privaten `NonoCommandRunner` (ein Runner je Ordner + Zweck). |
 | | `LayoutStore` | Bereiche, Splits, eigene Fenster, Maximieren; gespeichert in `UIStateStore`. |
 | | `EditorStore`, `EditorGroup` | Editoren pro Preview-Bereich, Tabs, ungespeicherte Dokumente, Navigation, „Gehe zu Definition“, Tabs pro Sitzung. |
 | | `WorkspaceState` | Git-Stand, Verzeichnisbaum, Revision (lädt Inspector-Tabs neu, wenn ein Agent Dateien ändert). |
-| | `TextZoomStore`, `CIAccounts` | Schriftgröße pro Bereich; CI-Tokens pro bestätigtem Origin. |
-| Agenten | `AgentKind` | Katalog: Programm, Login, Status-Quelle, API-Hosts. |
+| | `TextZoomStore`, `CIAccounts` | Schriftgröße pro Bereich; CI-Tokens pro bestätigtem Origin (GitLab und GitHub getrennt). |
+| | `AppLanguage` | Sprache der App (Englisch/Deutsch); schreibt `AppleLanguages`, wirkt nach Neustart. |
+| Agenten | `AgentKind` | Katalog: Programm, Login, Status-Quelle, API-Hosts, Sandbox-Spezifikation (`AgentSandboxSpec`). |
 | | `AgentHost`, `AgentRun` | Start, Fortsetzen, Stoppen, Status aus `events.jsonl` (Claude-Hooks, Codex-`notify`), Benachrichtigungen, `runs.json`. |
 | Sandbox | `SandboxPurpose` | Wofür eine Sandbox ist: `.agent(kind)`, `.build`, `.gitNetwork`, `.gitLocal`. |
-| | `SandboxPolicy` | Einzige Quelle aller Rechte: aus Zweck und `SandboxContext` (Home, Arbeitsordner, Einstellungen) wird das nono-Profil. Rein, ohne Dateizugriffe, daher als Golden-Datei testbar. |
+| | `SandboxPolicy` | Einzige Quelle aller Rechte: aus Zweck und `SandboxContext` (Home, Arbeitsordner, Einstellungen) wird das nono-Profil. Rein, ohne Dateizugriffe, daher als Golden-Datei testbar. Erlaubt iCloud Drive, iCloud-„Documents“-Ordner und `~/Library/CloudStorage` (Dropbox, OneDrive, Google Drive) als Arbeitsordner; der Rest von `~/Library` bleibt gesperrt. |
 | | `AgentHome` | Eigener Konfigurationsordner je Agent mit nur-lesenden Links auf die eigene Konfiguration; Schreibsperren für Agenten ohne Ordner-Variable. |
 | | `SandboxManager` | Findet nono und die CLI, prüft den Arbeitsordner, schreibt Profil und Status-Hooks, baut Befehlszeile und Umgebung. |
 | | `SandboxCommandRunner`, `NonoCommandRunner` | Typisierte Schnittstelle für Befehle in der Sandbox (Start, Status, Ausgabe-Seiten, Entfernen); jeder Befehl in einer eigenen nono-Sandbox. |
 | Git | `Git` | Lesende Host-Abfragen und lokale Änderungen unter `sandbox-exec` ohne Netz und ohne Helfer. |
 | | `SandboxGitOperation`, `SandboxGitRunner` | Fetch/Clone in `.gitNetwork`, Fast-forward in `.gitLocal`; Repo-Helfer neutralisiert. |
-| Build | `BuildDetector`, `BuildCommand`, `BuildDeployStore` | Aufgaben aus Projektdateien, sicher gequotete Befehle, Ausführung und Health-Checks über `SandboxCommandRunner`. |
-| CI/CD | `CIClient` (`GitLabAPI`, `GitHubAPI`), `CIAccounts` | GitLab-Pipelines und GitHub Actions über ein gemeinsames Protokoll; Tokens pro bestätigtem Origin. |
+| Build | `BuildDetector`, `BuildTask`, `BuildCommand`, `BuildDeployStore` | Aufgaben aus Projektdateien (Maven, Gradle, npm, Go, Make, eigene) erkennen, sicher gequotete Befehle bauen, ausführen, Health-Checks über `SandboxCommandRunner`. Maven/Gradle/npm bekommen einen eigenen Cache unter `~/Library/Caches/Hearth/`; Java-Programme (auch Spring Boot mit Vaadin) ein eigenes Home dort, Dev-Server dürfen lokale Hilfsprozesse (z. B. Vite) erreichen. |
+| CI/CD | `CIClient` (`GitLabAPI`, `GitHubAPI`), `CIAccounts` | GitLab-Pipelines und GitHub Actions (github.com und Enterprise) über ein gemeinsames Protokoll: Läufe, Jobs als Diagramm oder Liste, Logs, Retry/Cancel, `workflow_dispatch`. Tokens pro bestätigtem Origin. |
 | Sonstiges | `TestReports`, `MermaidScanner`, `SymbolFinder`, `AppUpdates` | Testberichte, Architekturdiagramme, Definitionen, Updates. |
 
 ## Datenablage
@@ -71,7 +73,7 @@ flowchart TB
 | `~/Library/Application Support/Hearth/settings.json` | Sandbox-Regeln der Nutzer (Domains, Ports, Ordner, Projekte, Credentials-Metadaten) |
 | `…/Hearth/runs.json`, `…/Hearth/runs/<id>/` | Sitzungen; je Sitzung nono-Profil, Log, Status-Ereignisse, Hook-Skripte |
 | `…/Hearth/agents/<agent>/` | Hearths Konfigurationsordner der Agenten (Login, Verlauf, Einstellungen) |
-| `UserDefaults` (`ui.*`) | Layout, Editor-Tabs (auch pro Sitzung), Schriftgrößen, Update-Einstellungen |
+| `UserDefaults` (`ui.*`) | Layout, Editor-Tabs (auch pro Sitzung), Schriftgrößen, Sprache, Update-Einstellungen |
 | Schlüsselbund | `nono` / `hearth.<name>`: Credentials für den nono-Proxy; `hearth-gitlab`: CI-Tokens (GitLab, GitHub) |
 
 ## Abläufe
@@ -84,7 +86,296 @@ flowchart TB
 `SandboxGitRunner(.fastForward)` in `.gitLocal`.
 
 **Build-Aufgabe:** `BuildDeployStore.start` → `NonoCommandRunner(.build).start` → Ausgabe seitenweise,
-Health-Check vom Mac aus über `LocalPortProbe`.
+Health-Check vom Mac aus über `LocalPortProbe`. Maven/Gradle greifen über den nono-Proxy der Sandbox
+(`BuildCommand.proxySetup`) statt über `HTTP(S)_PROXY`, das Java ignoriert.
+
+**CI/CD laden:** `CIAccounts` löst aus dem Git-Remote Anbieter und Origin auf → passendes `CIClient`
+(`GitLabAPI` oder `GitHubAPI`) liest Pipelines/Workflows, Jobs und Logs über das gemeinsame Protokoll.
+
+## Klassendiagramme
+
+### Agenten: Start, Sitzung, Katalog
+
+```mermaid
+classDiagram
+  class AppModel {
+    +AgentHost agents
+    +BuildDeployStore builds
+    +CIAccounts ci
+    +startAgent(kind, directory)
+    +ask(prompt)
+    +selectRun(id)
+  }
+  class AgentHost {
+    +AgentRun[] runs
+    +selectedRunID: String?
+    +start(kind, directory, purpose) AgentRun
+    +resume(run)
+    +stop(run)
+    +pollEvents()
+  }
+  class AgentRun {
+    +String id
+    +AgentKind kind
+    +String directory
+    +Purpose purpose
+    +AgentStatus status
+    +String? sessionID
+    +LocalProcessTerminalView? terminal
+    +canResume: Bool
+  }
+  class AgentKind {
+    <<enum>>
+    claude
+    codex
+    opencode
+    copilot
+    gemini
+    shell
+    +displayName: String
+    +sandbox: AgentSandboxSpec
+  }
+  class AgentSandboxSpec {
+    +String[] groups
+    +String[] domains
+    +Int[] openPorts
+    +Bool keychain
+  }
+  class AgentStatus {
+    <<enum>>
+    inactive
+    running
+    needsInput
+    done
+    error
+  }
+  AppModel --> AgentHost
+  AgentHost "1" o-- "*" AgentRun
+  AgentRun --> AgentKind
+  AgentKind --> AgentSandboxSpec
+  AgentRun --> AgentStatus
+```
+
+### Sandbox-Schicht: Rechte, Profile, Befehle
+
+```mermaid
+classDiagram
+  class SandboxPurpose {
+    <<enum>>
+    agent(AgentKind)
+    build
+    gitNetwork
+    gitLocal
+    +kind: AgentKind
+    +isAgent: Bool
+  }
+  class SandboxContext {
+    +String home
+    +String support
+    +String runDirectory
+    +String? workdir
+    +SandboxSettings settings
+    +String[] hookScripts
+    +String[] gitHosts
+  }
+  class SandboxPolicy {
+    +String[] readWrite
+    +String[] read
+    +String[] domains
+    +Int[] openPorts
+    +Dictionary envCredentials
+    +make(purpose, context) SandboxPolicy
+    +profile() String
+  }
+  class AgentHome {
+    +String? root
+    +String[] hostReadWrite
+    +String[] linkTargets
+    +layout(kind, support, home) AgentHome
+  }
+  class SandboxManager {
+    <<enum>>
+    +locateNono() String?
+    +prepare(purpose, context) …
+    +searchPath: String
+  }
+  class SandboxCommandRunner {
+    <<protocol>>
+    +start(request) SandboxCommandInfo
+    +status(id) SandboxCommandState
+    +output(id, page) SandboxOutputPage
+    +remove(id)
+  }
+  class NonoCommandRunner {
+    +String root
+    +SandboxPurpose purpose
+  }
+  class SandboxSettings {
+    +Folder[] folders
+    +Credential[] credentials
+    +String[] domains
+    +Int[] ports
+    +Bool gitSSH
+    +Bool agentKeychain
+    +validFolder(path, home, support) String?
+  }
+  SandboxPolicy ..> SandboxPurpose : uses
+  SandboxPolicy ..> SandboxContext : uses
+  SandboxPolicy ..> AgentHome : resolves
+  SandboxContext --> SandboxSettings
+  SandboxManager --> SandboxPolicy : writes profile from
+  SandboxManager --> AgentHome
+  NonoCommandRunner ..|> SandboxCommandRunner
+  NonoCommandRunner --> SandboxManager : locates nono via
+```
+
+### Git: Host-Lesezugriffe und Sandbox-Operationen
+
+```mermaid
+classDiagram
+  class Git {
+    <<enum>>
+    +snapshot(root) GitSnapshot
+    +diff(root, path) String
+    +networkSandboxOverrides(root) String[]
+  }
+  class GitSnapshot {
+    +GitFileChange[] changes
+    +String? branch
+    +Int ahead
+    +Int behind
+  }
+  class SandboxGitOperation {
+    <<enum>>
+    fetch
+    fetchUpstream
+    fastForward
+    clone(url)
+    +needsNetwork: Bool
+    +command(repoOverrides) String
+  }
+  class SandboxGitRunner {
+    +SandboxCommandRunner runner
+    +URL root
+    +String[] repoOverrides
+    +run(operation) …
+  }
+  class AppModel {
+    +pull()
+  }
+  AppModel --> Git : liest Stand (Host, sandbox-exec)
+  AppModel --> SandboxGitRunner : Fetch/Fast-forward
+  SandboxGitRunner --> SandboxGitOperation
+  SandboxGitRunner --> SandboxCommandRunner
+  Git --> GitSnapshot
+```
+
+### Build & Deployment
+
+```mermaid
+classDiagram
+  class BuildDetector {
+    <<enum>>
+    +scan(root) BuildProject[]
+  }
+  class BuildProject {
+    +String path
+    +String name
+    +Tool[] tools
+    +BuildTask[] tasks
+    +String[] profiles
+  }
+  class BuildTask {
+    +String id
+    +Tool tool
+    +String project
+    +Kind kind
+    +String[] argv
+    +String? script
+    +Int? port
+    +Bool acceptsProfile
+  }
+  class BuildCommand {
+    <<enum>>
+    +quote(value) String
+    +render(task, profile, port) String
+  }
+  class BuildDeployStore {
+    +BuildProject[] projects
+    +BuildRun[] runs
+    +start(task, root) BuildRun
+    +stop(run)
+  }
+  class BuildRun {
+    +String id
+    +String serverID
+    +BuildTask task
+    +SandboxCommandState state
+  }
+  class LocalPortProbe {
+    +healthy(port, path) Bool
+  }
+  BuildDetector --> BuildProject
+  BuildProject "1" o-- "*" BuildTask
+  BuildDeployStore --> BuildDetector : scan on open
+  BuildDeployStore "1" o-- "*" BuildRun
+  BuildRun --> BuildTask
+  BuildDeployStore --> BuildCommand : render argv
+  BuildDeployStore --> LocalPortProbe : health check
+  BuildCommand ..> BuildTask
+```
+
+### CI/CD: GitLab und GitHub über ein Protokoll
+
+```mermaid
+classDiagram
+  class CIClient {
+    <<protocol>>
+    +pipelines(origin, token) CIPipeline[]
+    +jobs(pipeline, token) CIJob[]
+    +log(job, token) String
+    +retry(job, token)
+    +cancel(run, token)
+  }
+  class GitLabAPI {
+    +pipelines(...)
+    +jobs(...)
+  }
+  class GitHubAPI {
+    +workflows(...)
+    +runs(...)
+    +dispatch(workflow, branch)
+  }
+  class CIOrigin {
+    +String host
+    +CIProvider provider
+  }
+  class CIProvider {
+    <<enum>>
+    gitlab
+    github
+  }
+  class CIAccounts {
+    +Dictionary tokens
+    +client(for origin) CIClient
+  }
+  class CIPipeline {
+    +String id
+    +CIStatus status
+  }
+  class CIJob {
+    +String id
+    +String name
+    +CIStatus status
+  }
+  CIAccounts --> CIOrigin
+  CIAccounts --> CIClient : resolves per origin
+  GitLabAPI ..|> CIClient
+  GitHubAPI ..|> CIClient
+  CIOrigin --> CIProvider
+  CIClient --> CIPipeline
+  CIClient --> CIJob
+```
 
 ## Tests und Auslieferung
 

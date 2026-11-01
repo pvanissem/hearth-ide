@@ -1,5 +1,9 @@
 # Hearth IDE – Änderungen
 
+## Unveröffentlicht
+
+- CI/CD: Die Ansicht lädt nicht mehr bei jeder Dateiänderung neu, während ein Agent arbeitet. Sie lädt neu beim Ordnerwechsel, beim Branchwechsel, im gewohnten Intervall (15 s bei laufenden Pipelines, sonst 60 s) und wenn sich das Git-Remote ändert.
+
 ## 0.4.3 · 2026-11-01
 
 - Agenten und Builds laufen jetzt auch in Ordnern in iCloud Drive (`~/Library/Mobile Documents/com~apple~CloudDocs`), im „Documents“-Ordner von iCloud-Apps und bei Cloud-Anbietern wie Dropbox, OneDrive oder Google Drive (`~/Library/CloudStorage`). Vorher hieß es „This folder contains settings of Hearth, macOS or an agent“. Der Rest von `~/Library` bleibt gesperrt.
