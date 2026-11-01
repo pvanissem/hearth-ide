@@ -1,6 +1,6 @@
 # Hearth IDE – Änderungen
 
-## Unveröffentlicht
+## 0.4.0 · 2026-11-01
 
 - Die App ist jetzt standardmäßig auf Englisch. Deutsch lässt sich unter Settings › General › Language wählen (Neustart per Knopf).
 - Landingpage auf Englisch mit deutscher Fassung unter /de/, README auf Englisch.
