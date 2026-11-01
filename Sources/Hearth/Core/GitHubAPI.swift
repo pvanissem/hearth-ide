@@ -55,10 +55,34 @@ struct GitHubAPI: CIClient {
     }
 
     private func request(_ method: String, _ path: String, query: [URLQueryItem] = [], body: [String: Any]? = nil) async throws -> Data {
-        let (data, resp) = try await session.data(for: try authorizedRequest(method, path, query: query, body: body))
+        let (data, resp) = try await send(try authorizedRequest(method, path, query: query, body: body))
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else { throw APIError.http(code, String(decoding: data, as: UTF8.self)) }
         return data
+    }
+
+    /// Sends a request; a renamed or moved repository answers with a redirect to
+    /// `<api>/repositories/<id>/…` on the same API origin, which is followed (with the token).
+    /// Any other redirect is returned to the caller unchanged.
+    private func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        var current = request
+        for _ in 0..<3 {
+            let (data, resp) = try await session.data(for: current)
+            guard let http = resp as? HTTPURLResponse, [301, 302, 307, 308].contains(http.statusCode),
+                  let location = http.value(forHTTPHeaderField: "Location"),
+                  let next = Self.movedRepositoryURL(location, apiBase: remote.apiBase) else { return (data, resp) }
+            current.url = next
+        }
+        throw APIError.http(310, "Zu viele Weiterleitungen")
+    }
+
+    /// The redirect target if it is GitHub's address for a moved repository on the same API origin.
+    static func movedRepositoryURL(_ location: String, apiBase: URL) -> URL? {
+        guard let url = URL(string: location), url.scheme == "https", url.user == nil, url.password == nil,
+              url.host?.lowercased() == apiBase.host?.lowercased(), url.port == apiBase.port,
+              url.path.hasPrefix(apiBase.path + "/repositories/"),
+              url.path.range(of: #"^.*/repositories/\d+/actions/"#, options: .regularExpression) != nil else { return nil }
+        return url
     }
 
     // MARK: Reading
@@ -79,7 +103,7 @@ struct GitHubAPI: CIClient {
     /// GitHub answers with a redirect to a short-lived signed URL. That URL is fetched without
     /// the token, so the credential never leaves the approved API origin.
     func log(job: Int) async throws -> String {
-        let (data, resp) = try await session.data(for: try authorizedRequest("GET", "/repos/\(repo)/actions/jobs/\(job)/logs"))
+        let (data, resp) = try await send(try authorizedRequest("GET", "/repos/\(repo)/actions/jobs/\(job)/logs"))
         let http = resp as? HTTPURLResponse
         let code = http?.statusCode ?? 0
         var raw: Data

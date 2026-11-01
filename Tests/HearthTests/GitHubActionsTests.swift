@@ -83,6 +83,25 @@ struct GitHubActionsTests {
         #expect(FakeGitHub.requests.isEmpty)
     }
 
+    @Test func renamedRepositoriesFollowGitHubsMove() async throws {
+        FakeGitHub.reset()
+        let old = try need(CIRemote.parse("git@github.com:octo/old-name.git"))
+        let (api, session) = client(remote: old)
+        defer { session.invalidateAndCancel() }
+        let runs = try await api.pipelines(ref: "main")
+        #expect(runs.count == 4, "Moved repository not followed")
+        let moved = try need(FakeGitHub.requests.last)
+        #expect(moved.url?.path == "/repositories/99/actions/runs" && moved.url?.query?.contains("branch=main") == true)
+        #expect(moved.value(forHTTPHeaderField: "Authorization") == "Bearer dummy-gh-token")
+        // Only GitHub's moved-repository address on the same API origin is followed.
+        let base = URL(string: "https://api.github.com")!
+        #expect(GitHubAPI.movedRepositoryURL("https://api.github.com/repositories/99/actions/runs", apiBase: base) != nil)
+        #expect(GitHubAPI.movedRepositoryURL("https://evil.example/repositories/99/actions/runs", apiBase: base) == nil)
+        #expect(GitHubAPI.movedRepositoryURL("http://api.github.com/repositories/99/actions/runs", apiBase: base) == nil)
+        #expect(GitHubAPI.movedRepositoryURL("https://api.github.com/user", apiBase: base) == nil)
+        #expect(GitHubAPI.movedRepositoryURL("https://x@api.github.com/repositories/99/actions/runs", apiBase: base) == nil)
+    }
+
     @Test func statusVocabulary() {
         #expect(GitHubAPI.status("completed", "timed_out") == "failed")
         #expect(GitHubAPI.status("completed", "action_required") == "manual")
@@ -130,7 +149,10 @@ private final class FakeGitHub: URLProtocol, @unchecked Sendable {
             return reply(401, "{}")
         }
         switch (request.httpMethod ?? "GET", url.path) {
-        case ("GET", "/repos/octo/app/actions/runs"):
+        case ("GET", "/repos/octo/old-name/actions/runs"):
+            reply(301, #"{"message":"Moved Permanently"}"#,
+                  headers: ["Location": "https://api.github.com/repositories/99/actions/runs?" + (url.query ?? "")])
+        case ("GET", "/repos/octo/app/actions/runs"), ("GET", "/repositories/99/actions/runs"):
             reply(200, """
             {"workflow_runs":[
              {"id":7,"run_number":42,"head_branch":"main","head_sha":"abc","status":"in_progress","conclusion":null,"event":"push","name":"CI","created_at":"2026-11-01T07:00:00Z","html_url":"https://github.com/octo/app/actions/runs/7"},
