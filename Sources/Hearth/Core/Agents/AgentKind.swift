@@ -98,34 +98,30 @@ enum AgentKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var sandbox: AgentSandboxSpec {
         switch self {
         case .claude:
-            AgentSandboxSpec(readWrite: ["~/.claude"], readWriteFiles: ["~/.claude.json", "~/.claude.json.backup"],
-                             groups: ["claude_code_macos"],
+            AgentSandboxSpec(groups: ["claude_code_macos"],
                              domains: ["statsig.anthropic.com", "console.anthropic.com"],
                              keychain: true,
                              openURLOrigins: ["https://claude.ai", "https://platform.claude.com", "https://console.anthropic.com"],
                              environment: ["DISABLE_AUTOUPDATER": "1"])
         case .codex:
-            AgentSandboxSpec(readWrite: ["~/.codex"], groups: ["codex_macos"],
+            AgentSandboxSpec(groups: ["codex_macos"],
                              domains: ["chatgpt.com", "auth.openai.com", "ab.chatgpt.com"],
                              keychain: true,
                              openURLOrigins: ["https://auth.openai.com", "https://chatgpt.com"],
                              allowLocalhost: true, openPorts: [1455])
         case .copilot:
-            AgentSandboxSpec(readWrite: ["~/.copilot", "~/.config/github-copilot"],
-                             domains: ["api.githubcopilot.com", "api.individual.githubcopilot.com",
+            AgentSandboxSpec(domains: ["api.githubcopilot.com", "api.individual.githubcopilot.com",
                                        "api.business.githubcopilot.com", "api.enterprise.githubcopilot.com",
                                        "copilot-proxy.githubusercontent.com", "telemetry.individual.githubcopilot.com",
                                        "origin-tracker.githubusercontent.com"],
                              keychain: true,
                              openURLOrigins: ["https://github.com"])
         case .opencode:
-            AgentSandboxSpec(readWrite: ["~/.config/opencode", "~/.local/share/opencode", "~/.local/state/opencode", "~/.cache/opencode"],
-                             domains: ["models.dev", "opencode.ai", "api.githubcopilot.com", "api.individual.githubcopilot.com"],
+            AgentSandboxSpec(domains: ["models.dev", "opencode.ai", "api.githubcopilot.com", "api.individual.githubcopilot.com"],
                              openURLOrigins: ["https://github.com", "https://opencode.ai"],
                              environment: ["OPENCODE_DISABLE_AUTOUPDATE": "1"])
         case .gemini:
-            AgentSandboxSpec(readWrite: ["~/.gemini"],
-                             domains: ["cloudcode-pa.googleapis.com", "oauth2.googleapis.com", "www.googleapis.com",
+            AgentSandboxSpec(domains: ["cloudcode-pa.googleapis.com", "oauth2.googleapis.com", "www.googleapis.com",
                                        "accounts.google.com", "play.googleapis.com"],
                              openURLOrigins: ["https://accounts.google.com"], allowLocalhost: true)
         case .shell:
@@ -135,9 +131,8 @@ enum AgentKind: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 /// What one agent needs on top of Hearth's base sandbox (project folder, toolchains).
+/// Its configuration folder comes from AgentHome.
 struct AgentSandboxSpec: Sendable {
-    var readWrite: [String] = []
-    var readWriteFiles: [String] = []
     var groups: [String] = []
     var domains: [String] = []
     /// Login keychain access (Claude Code, Codex and Copilot keep their login there).

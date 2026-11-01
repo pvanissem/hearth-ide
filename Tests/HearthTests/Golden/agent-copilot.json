@@ -1,0 +1,57 @@
+{
+  "extends" : "default",
+  "filesystem" : {
+    "allow" : [
+      "\/Users\/test\/Library\/Application Support\/Hearth\/runs\/run-1",
+      "\/Users\/test\/.copilot",
+      "\/Users\/test\/.config\/github-copilot",
+      "\/Users\/test\/Library\/Keychains"
+    ],
+    "bypass_protection" : [
+      "\/Users\/test\/Library\/Keychains"
+    ]
+  },
+  "groups" : {
+    "include" : [
+      "node_runtime",
+      "bun_runtime",
+      "python_runtime",
+      "go_runtime",
+      "go_runtime_macos",
+      "rust_runtime",
+      "java_runtime",
+      "git_config",
+      "user_caches_macos"
+    ]
+  },
+  "meta" : {
+    "description" : "Hearth IDE: GitHub Copilot CLI (generated, do not edit)",
+    "name" : "hearth-copilot"
+  },
+  "network" : {
+    "allow_domain" : [
+      "api.githubcopilot.com",
+      "api.individual.githubcopilot.com",
+      "api.business.githubcopilot.com",
+      "api.enterprise.githubcopilot.com",
+      "copilot-proxy.githubusercontent.com",
+      "telemetry.individual.githubcopilot.com",
+      "origin-tracker.githubusercontent.com"
+    ],
+    "network_profile" : "developer"
+  },
+  "open_urls" : {
+    "allow_localhost" : false,
+    "allow_origins" : [
+      "https:\/\/github.com"
+    ]
+  },
+  "unsafe_macos_seatbelt_rules" : [
+    "(deny file-write* (literal \"\/Users\/test\/.copilot\/mcp-config.json\"))",
+    "(deny file-write* (literal \"\/Users\/test\/code\/project\/.git\/hooks\"))",
+    "(deny file-write* (subpath \"\/Users\/test\/code\/project\/.git\/hooks\"))"
+  ],
+  "workdir" : {
+    "access" : "readwrite"
+  }
+}

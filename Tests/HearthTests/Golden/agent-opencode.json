@@ -1,0 +1,66 @@
+{
+  "environment" : {
+    "set_vars" : {
+      "OPENCODE_DISABLE_AUTOUPDATE" : "1",
+      "XDG_CACHE_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/cache",
+      "XDG_CONFIG_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/config",
+      "XDG_DATA_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/data",
+      "XDG_STATE_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/state"
+    }
+  },
+  "extends" : "default",
+  "filesystem" : {
+    "allow" : [
+      "\/Users\/test\/Library\/Application Support\/Hearth\/runs\/run-1",
+      "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode"
+    ],
+    "read" : [
+      "\/Users\/test\/.config\/opencode\/AGENTS.md",
+      "\/Users\/test\/.config\/opencode\/agent",
+      "\/Users\/test\/.config\/opencode\/agents",
+      "\/Users\/test\/.config\/opencode\/command",
+      "\/Users\/test\/.config\/opencode\/commands",
+      "\/Users\/test\/.config\/git"
+    ]
+  },
+  "groups" : {
+    "include" : [
+      "node_runtime",
+      "bun_runtime",
+      "python_runtime",
+      "go_runtime",
+      "go_runtime_macos",
+      "rust_runtime",
+      "java_runtime",
+      "git_config",
+      "user_caches_macos"
+    ]
+  },
+  "meta" : {
+    "description" : "Hearth IDE: OpenCode (generated, do not edit)",
+    "name" : "hearth-opencode"
+  },
+  "network" : {
+    "allow_domain" : [
+      "models.dev",
+      "opencode.ai",
+      "api.githubcopilot.com",
+      "api.individual.githubcopilot.com"
+    ],
+    "network_profile" : "developer"
+  },
+  "open_urls" : {
+    "allow_localhost" : false,
+    "allow_origins" : [
+      "https:\/\/github.com",
+      "https:\/\/opencode.ai"
+    ]
+  },
+  "unsafe_macos_seatbelt_rules" : [
+    "(deny file-write* (literal \"\/Users\/test\/code\/project\/.git\/hooks\"))",
+    "(deny file-write* (subpath \"\/Users\/test\/code\/project\/.git\/hooks\"))"
+  ],
+  "workdir" : {
+    "access" : "readwrite"
+  }
+}

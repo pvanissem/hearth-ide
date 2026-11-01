@@ -1,0 +1,100 @@
+name: CI
+
+# Every push and pull request: build, run all tests (including the live nono sandbox
+# checks) and produce the app bundle as a download. A pushed version tag (vX.Y.Z,
+# created by scripts/release.sh) additionally publishes the GitHub release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["site/**", "*.md", "docs/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  test:
+    name: Build & Tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n1)"
+          swift --version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            Vendor/nono
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'scripts/fetch-nono.sh') }}
+      - name: Fetch nono (pinned, checksum-verified)
+        run: scripts/fetch-nono.sh
+      - name: Build
+        run: swift build
+      - name: Tests
+        run: scripts/test.sh
+
+  bundle:
+    name: App bundle
+    needs: test
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select the newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n1)"
+      - name: Build "Hearth IDE.app"
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then export VERSION="${GITHUB_REF_NAME}"; fi
+          CONFIG=release scripts/bundle.sh
+          mkdir -p dist
+          ditto -c -k --keepParent "build/Hearth IDE.app" dist/hearth-macos-arm64.zip
+          (cd dist && shasum -a 256 hearth-macos-arm64.zip > hearth-macos-arm64.zip.sha256)
+          cat dist/hearth-macos-arm64.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hearth-macos-arm64
+          path: dist/
+          retention-days: 14
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: hearth-macos-arm64
+          path: dist
+      - name: Release files and notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          printf '%s\n' "$GITHUB_REF_NAME" > dist/latest-version.txt
+          cp install.sh CHANGELOG.md dist/
+          # Notes: this version's section of CHANGELOG.md.
+          awk -v v="$VERSION" '$0 ~ "^## "v" " {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes-changes.md
+          {
+            printf 'Installation / Update:\n\n```bash\ncurl -fsSL https://github.com/%s/releases/latest/download/install.sh | bash\n```\n\n### Änderungen\n' "$GITHUB_REPOSITORY"
+            cat notes-changes.md
+          } > notes.md
+          cat notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "Hearth IDE $GITHUB_REF_NAME" \
+            --notes-file notes.md --latest dist/*

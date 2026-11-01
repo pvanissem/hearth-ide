@@ -81,7 +81,6 @@ private struct GeneralSettings: View {
     private let terminal = State(initialValue: TerminalLauncher.preferred)
     private let appearance = State(initialValue: AppAppearance.current)
     private let lastWindow = State(initialValue: QuitPreferences.onLastWindow)
-    private let onQuit = State(initialValue: QuitPreferences.onQuit)
     private let welcome = State(initialValue: AppModel.welcomeEnabled)
 
     var body: some View {
@@ -106,7 +105,7 @@ private struct GeneralSettings: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Layout") {
-                Button("Layout zurücksetzen") { model.resetLayout() }
+                Button("Layout zurücksetzen") { model.layout.resetLayout() }
             }
             Section("Start") {
                 Toggle("Willkommensdialog anzeigen, wenn kein Agent läuft", isOn: Binding(
@@ -122,14 +121,6 @@ private struct GeneralSettings: View {
                 }
                 Text("Laufende Agent-Sitzungen werden beim Beenden gestoppt; Claude Code und Codex lassen sich danach fortsetzen.")
                     .font(.caption).foregroundStyle(.secondary)
-                if model.cli != nil {
-                    Picker("devkcode-Sandboxes beim Beenden", selection: Binding(get: { onQuit.wrappedValue }, set: {
-                        onQuit.wrappedValue = $0
-                        QuitPreferences.onQuit = $0
-                    })) {
-                        ForEach(QuitPreferences.OnQuit.allCases) { Text($0.title).tag($0) }
-                    }
-                }
             }
         }
         .formStyle(.grouped)
@@ -163,7 +154,7 @@ private struct AgentSettings: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("MCP-Server") {
-                Text("MCP-Server richtest du im jeweiligen Agenten ein, z. B. `claude mcp add` oder in `~/.codex/config.toml`. Sie laufen in derselben Sandbox wie der Agent; zusätzliche Hosts gibst du unter „Sandbox“ frei.")
+                Text("MCP-Server richtest du im jeweiligen Agenten in Hearth ein, z. B. mit `claude mcp add` in einer Sitzung. Sie laufen in derselben Sandbox wie der Agent; zusätzliche Hosts gibst du unter „Sandbox“ frei.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section { RestartHint() }
@@ -180,6 +171,8 @@ private struct AgentSettings: View {
 
     private func agentRow(_ kind: AgentKind) -> some View {
         let path = installed.wrappedValue[kind]
+        let home = AgentHome.layout(for: kind, support: SandboxManager.supportDirectory.path, home: NSHomeDirectory())
+        let configFolder = home.root ?? home.hostReadWrite.first
         return HStack(alignment: .top, spacing: 10) {
             Image(systemName: kind.symbol).frame(width: 20).foregroundStyle(path != nil ? Color.accentColor : .secondary)
             VStack(alignment: .leading, spacing: 3) {
@@ -200,17 +193,18 @@ private struct AgentSettings: View {
                 } else {
                     ProgressView().controlSize(.mini)
                 }
-                if let config = kind.sandbox.readWrite.first {
-                    Text("Einstellungen: \(config)").font(.caption).foregroundStyle(.secondary)
+                if let config = configFolder {
+                    Text("Einstellungen: \(config.replacingOccurrences(of: NSHomeDirectory(), with: "~"))")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
             }
             Spacer()
-            if let config = kind.sandbox.readWrite.first {
-                Button { NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + config.dropFirst())) } label: {
+            if let config = configFolder {
+                Button { NSWorkspace.shared.open(URL(fileURLWithPath: config)) } label: {
                     Image(systemName: "folder")
                 }
                 .buttonStyle(.borderless).help("Einstellungsordner im Finder öffnen")
-                .disabled(!FileManager.default.fileExists(atPath: NSHomeDirectory() + config.dropFirst()))
+                .disabled(!FileManager.default.fileExists(atPath: config))
             }
             Button("Anmelden …") {
                 model.startAgent(kind, directory: SandboxManager.loginDirectory.path,
@@ -348,9 +342,9 @@ private struct SandboxRuleSettings: View {
 
     private func showProfile() {
         let kind = previewKind.wrappedValue
-        let profile = SandboxManager.profile(kind: kind, runDirectory: SandboxManager.runDirectory("<sitzung>"),
-                                             settings: model.sandboxSettings)
-        guard let data = try? JSONSerialization.data(withJSONObject: profile, options: [.prettyPrinted, .sortedKeys]) else { return }
+        let policy = SandboxPolicy.make(.agent(kind), SandboxManager.context(runDirectory: SandboxManager.runDirectory("<sitzung>"),
+                                                                            directory: nil, settings: model.sandboxSettings))
+        let data = policy.profileData
         let url = SandboxManager.supportDirectory.appendingPathComponent("profil-vorschau-\(kind.rawValue).json")
         try? FileManager.default.createDirectory(at: SandboxManager.supportDirectory, withIntermediateDirectories: true)
         try? data.write(to: url, options: .atomic)

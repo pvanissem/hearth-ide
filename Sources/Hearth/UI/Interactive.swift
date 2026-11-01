@@ -88,9 +88,9 @@ struct FileContextMenu: View {
     var changed = false
 
     var body: some View {
-        Button { model.openPreview(url, mode: .file) } label: { Label("Im Editor öffnen", systemImage: "doc.text") }
+        Button { model.editor.open(url, mode: .file) } label: { Label("Im Editor öffnen", systemImage: "doc.text") }
         if changed {
-            Button { model.openPreview(url, mode: .diff) } label: { Label("Diff anzeigen", systemImage: "plusminus") }
+            Button { model.editor.open(url, mode: .diff) } label: { Label("Diff anzeigen", systemImage: "plusminus") }
         }
         Button { NSWorkspace.shared.open(url) } label: { Label("Im Standardprogramm öffnen", systemImage: "arrow.up.forward.app") }
         Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Label("Im Finder zeigen", systemImage: "folder") }

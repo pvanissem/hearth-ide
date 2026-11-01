@@ -9,23 +9,16 @@ struct ContentView: View {
         WorkspaceLayoutView()
         .background(WindowAutosave(name: "HearthMainWindow"))
         .safeAreaInset(edge: .top, spacing: 0) { UpdateNoticeBar(checker: model.updates) }
-        .sheet(item: Binding(get: { model.startRequest }, set: { model.startRequest = $0 })) { req in
-            StartSandboxSheet(request: req)
-        }
         .sheet(item: Binding(get: { model.agents.startSheet }, set: { model.agents.startSheet = $0 })) { req in
             StartAgentSheet(request: req)
         }
         .sheet(isPresented: Binding(get: { model.showWelcome }, set: { model.showWelcome = $0 })) {
             WelcomeView()
         }
-        .sheet(item: Binding(get: { model.copilotUsage }, set: { model.copilotUsage = $0 })) { usage in
-            CopilotUsageView(usage: usage)
-        }
-        .task { await model.loadProfiles() }
         .task {
             // Reopen panes that had their own window; AppKit restores their frames by autosave name.
-            for tab in model.savedDetachedTabs where !model.detachedTabs.contains(tab) {
-                model.detachedTabs.insert(tab)
+            for tab in model.layout.savedDetachedTabs where !model.layout.detachedTabs.contains(tab) {
+                model.layout.detachedTabs.insert(tab)
                 openWindow(value: tab)
             }
         }
@@ -33,39 +26,34 @@ struct ContentView: View {
             ToolbarItemGroup {
                 Button { model.agents.startSheet = .init() } label: { Label("Agent starten", systemImage: "plus") }
                     .help("Agent in einer Sandbox starten (Ordner und Agent wählen)")
-                if model.cli != nil {
-                    Button { model.startRequest = .init() } label: { Label("devkcode-Sandbox starten", systemImage: "shippingbox") }
-                        .help("devkcode-Sandbox starten (Verzeichnis, Repository klonen, Profil, Projekt)")
-                        .disabled(model.busy)
-                }
                 Menu {
                     Section("Bereich hinzufügen") {
                         ForEach(InspectorTab.allCases) { tab in
-                            Button { model.addPane(tab) } label: { Label(tab.title, systemImage: tab.symbol) }
-                                .disabled(model.paneTree.contains(tab: tab))
+                            Button { model.layout.addPane(tab) } label: { Label(tab.title, systemImage: tab.symbol) }
+                                .disabled(model.layout.paneTree.contains(tab: tab))
                         }
                     }
                     Section("Am Fensterrand") {
                         Menu {
                             ForEach(InspectorTab.allCases) { tab in
-                                Button { model.addPane(tab, atWindowEdge: .windowBottom) } label: { Label(tab.title, systemImage: tab.symbol) }
+                                Button { model.layout.addPane(tab, atWindowEdge: .windowBottom) } label: { Label(tab.title, systemImage: tab.symbol) }
                             }
                         } label: { Label("Unten über ganze Breite", systemImage: "rectangle.bottomthird.inset.filled") }
                         Menu {
                             ForEach(InspectorTab.allCases) { tab in
-                                Button { model.addPane(tab, atWindowEdge: .windowRight) } label: { Label(tab.title, systemImage: tab.symbol) }
+                                Button { model.layout.addPane(tab, atWindowEdge: .windowRight) } label: { Label(tab.title, systemImage: tab.symbol) }
                             }
                         } label: { Label("Rechts über ganze Höhe", systemImage: "rectangle.righthalf.inset.filled") }
                     }
                     Section("Layouts") {
                         ForEach(LayoutPreset.allCases) { preset in
-                            Button { withAnimation(.easeOut(duration: 0.2)) { model.apply(preset) } } label: {
+                            Button { withAnimation(.easeOut(duration: 0.2)) { model.layout.apply(preset) } } label: {
                                 Label(preset.rawValue, systemImage: preset.symbol)
                             }
                         }
                     }
-                    if model.maximizedPane != nil {
-                        Button("Maximierung aufheben") { model.maximizedPane = nil }
+                    if model.layout.maximizedPane != nil {
+                        Button("Maximierung aufheben") { model.layout.maximizedPane = nil }
                     }
                 } label: {
                     Label("Layout", systemImage: "rectangle.3.group")
@@ -76,7 +64,6 @@ struct ContentView: View {
         .overlay(alignment: .bottom) {
             if let banner = model.banner {
                 HStack {
-                    if model.busy { ProgressView().controlSize(.small) }
                     Text(banner).font(.callout).lineLimit(3)
                     Button { model.banner = nil } label: { Image(systemName: "xmark") }
                         .buttonStyle(.plain)

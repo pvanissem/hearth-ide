@@ -72,36 +72,30 @@ Für lokale Host-Abfragen gilt zentral in `Git.swift`:
 
 ### Fetch, Pull und Clone: eigener Sandbox-Ausführungspfad
 
-Die Buttons sind nutzbar. Nur der **Host-Dispatcher** lehnt Netzwerkbefehle weiter
-ab. Die Oberfläche verwendet dafür `SandboxGitRunner`:
+Netzwerkaktionen laufen nie über den Host-Git-Pfad, sondern über `SandboxGitRunner`
+auf Hearths nono-Sandbox (`NonoCommandRunner`, Protokoll `SandboxCommandRunner`):
 
-- Direkte Befehle über OpenCodes `/api/shell`, kein Agenten-Prompt/LLM und keine
-  zusätzliche Chat-Session. Argumente werden vollständig shell-quoted; Fetch,
-  Fast-forward-only Pull und Clone sind fest vorgegeben. Hooks, Fsmonitor,
-  `ext::`-Transport und automatische Submodule sind deaktiviert.
-- Wiederverwendung des laufenden, zur Arbeitskopie gehörenden devkcode-Servers.
-  Falls erforderlich startet die App ihn über die bestehende CLI, nicht durch
-  Nachbauen von nono-Profilen. Ein bestehender Server mit abweichendem explizit
-  gewähltem Profil wird nicht still neu gestartet.
-- Clone reserviert atomar einen neuen leeren Zielordner unterhalb von HOME,
-  startet dort die Sandbox und klont **innerhalb** dieser Sandbox. Vorhandene
-  Ordner werden nicht übernommen/überschrieben. Noch leere, von dieser App-Instanz
-  reservierte Ziele können nach einem Fehler erneut versucht werden. Teilweise
-  gefüllte Ziele bleiben zur Diagnose erhalten und werden nicht automatisch gelöscht.
-- Netzwerkzugriffe und Git-Zugänge werden vom gewählten devkcode-Profil kontrolliert.
-  Die geerbte GitLab-Proxy-/Credential-Konfiguration bleibt erhalten. App-PATs
-  aus der CI/CD-Ansicht werden weder in die Shell noch in Clone-URLs übernommen.
-  Für GitLab ggf. vorher `devkcode gitlab login` ausführen; andere Hosts benötigen
-  die passenden Sandbox-Freigaben/Zugänge. HTTPS-Passwörter in URLs und ungeschütztes
-  HTTP werden für Clone nicht akzeptiert.
-- Nur registrierte lokale Loopback-Endpunkte werden angesprochen; Redirects sind
-  gesperrt. Ausgabe wird seitenweise gelesen, Exitstatus geprüft und die retained
-  Shell nach Abschluss/Abbruch entfernt. Eigenes Zeitlimit: zehn Minuten.
-- Git-Helfer/Filter können für Netzwerkaktionen **innerhalb der devkcode-Sandbox**
-  laufen, nie über den Host-Git-Pfad. Hook-Policy bleibt ausdrücklich gesperrt.
-- Bei fehlender Anmeldung, gesperrtem Netzwerk oder nicht verfügbarer Shell-API
-  erscheint ein Fehler. **Kein ungeschützter Host-Fallback.** Der normale eingebettete
-  Host-Shell-Modus ist nicht Teil dieses Ausführungspfads.
+- Feste Befehle, vollständig shell-quoted, kein Agenten-Prompt. Hooks, Fsmonitor,
+  `ext::`- und `file::`-Transport sowie automatische Submodule sind deaktiviert.
+- **Zwei Rechte-Stufen** (`SandboxPurpose`):
+  - `gitNetwork` für Fetch und Clone: liest `~/.ssh`, schreibt `known_hosts`, nutzt
+    den Schlüsselbund (HTTPS-Logins) und darf Port 22 sowie die Hosts der Remotes
+    erreichen. `core.sshCommand` und Credential-Helper kommen nur aus der globalen
+    `~/.gitconfig`. Zusätzlich werden **alle Filter und Credential-Helper aus der
+    Repo-Konfiguration geleert**, auch URL-gebundene wie
+    `credential.https://host.helper` (`Git.networkSandboxOverrides`).
+  - `gitLocal` für das Zusammenführen nach einem Fetch (`merge --ff-only @{u}`):
+    kein `~/.ssh`, kein Schlüsselbund, kein Port 22. Filter (z. B. LFS) laufen nur
+    hier, also mit den Rechten eines Agenten.
+- **Pull = Fetch (gitNetwork) + Fast-forward (gitLocal).** So kann ein vom Agenten
+  in `.git/config` eingetragener Filter beim Pull nicht neben den SSH-Schlüsseln
+  laufen (Befund S1 im Review).
+- Clone reserviert atomar einen neuen leeren Zielordner unterhalb von HOME und
+  klont **innerhalb** der Sandbox. Vorhandene Ordner werden nicht übernommen oder
+  überschrieben. HTTPS-Passwörter in URLs und ungeschütztes HTTP werden abgelehnt.
+- App-Tokens aus der CI/CD-Ansicht werden weder in die Sandbox noch in URLs übernommen.
+- Ausgabe wird seitenweise gelesen, Exitstatus geprüft, der Vorgang nach Abschluss
+  oder Abbruch entfernt. Zeitlimit: zehn Minuten. **Kein Host-Fallback.**
 
 Die lokale Git-Policy ist keine vollständige Dateisystem-Isolation und kein
 Schutz gegen unbekannte Schwachstellen im Git-Binary selbst. `sandbox-exec` ist
@@ -125,48 +119,30 @@ fehlschlagen und benötigen eine Anpassung statt eines offenen Fallbacks.
 - „Preview“ heißt sichtbar „Editor“. Der persistierte Raw-Value `Preview` und
   bestehende Fenster-/Pane-IDs bleiben kompatibel.
 
-## Regressionstests
+## Tests
 
 ```bash
-bash scripts/test-security.sh
-swift build
+scripts/test.sh        # swift test, auch nur mit den Command Line Tools
 ```
 
-`Tests/HearthTests/SecurityRegressionTests.swift` enthält die Tests. Der Runner
-kompiliert produktive Implementierungen in einem isolierten SwiftPM-Harness,
-damit die Tests auch ohne die hier fehlenden Swift-Testing-Makros laufen können.
-Temporäre Harness-Builds liegen unter `$TMPDIR/opencode/security-regression.*`.
+Die Tests laufen in GitHub Actions bei jedem Push (siehe `.github/workflows/ci.yml`).
 
-Abgedeckt:
+- `SandboxPolicyTests`: die nono-Profile aller Sandbox-Arten als Golden-Dateien
+  (`Tests/HearthTests/Golden`); jede Rechteänderung erscheint im Review als Diff.
+  Dazu Invarianten: kein Schreibzugriff auf Agent-/Shell-Konfiguration oder
+  Zugangsdaten, `~/.ssh` und Port 22 nur für `gitNetwork`, `.git/hooks` überall
+  schreibgeschützt, Schlüsselbund nur wo nötig, geschützte Ordner.
+- `LiveSandboxTests`: echte Befehle über nono (Projekt schreibbar, `.git/hooks` nicht,
+  `~/.ssh`/Schlüsselbund nur in `gitNetwork`). Läuft, sobald `scripts/fetch-nono.sh`
+  nono geholt hat.
+- `SandboxGitTests`: feste Befehle, Aufteilung von Pull, Neutralisierung von
+  Repo-Helfern, echtes Wegwerf-Repo mit bösartigem Filter (läuft beim Fetch nicht).
+- `AgentHomeTests`: eigene Konfigurationsordner, nur-lesende Links, einmalige Kopie.
+- `SecurityRegressionTests`: GitLab-Origin-Bindung, Terminal-Zwischenablage,
+  Host-Git ohne Helfer, Directory-Moves, Mermaid in echtem WebKit.
+- `BuildDeployTests`, `DirectoryTests`, `ContextSwitchTests`, `EditorWorkspaceTests`,
+  `AppUpdateTests`: Build-Erkennung und -Runner, natives Drag & Drop, Editor-Wechsel,
+  Tabs pro Sitzung, Updates.
 
-1. Dummy-HTTP-Request über `URLProtocol`, Token-/Origin-Bindung, Porttrennung,
-   Lese-/Schreibtrennung und Redirect-Policy – ohne echten Netzwerkrequest/Token.
-2. Terminal-Clipboard-Callbacks und OSC-52-Parserpfad, ohne Zugriff auf den
-   Inhalt der echten Zwischenablage.
-3. Isoliertes Git-Testrepo mit harmlosen Fsmonitor-/Textconv-/Filter-/Hook-
-   Markerprogrammen: Status, Diff, Commit-Anzeige, Inline-Diff und Branchwechsel.
-4. Directory-Move, Kollisionen, Unterordner-/Wurzelschutz und Symlink-Auswege.
-5. Echtes WebKit: normales Mermaid-Diagramm, `</script>`-Payload,
-   durch CSP blockierter Verbindungsversuch und nichtpersistenter Datenspeicher.
-6. `SandboxGitTests.swift`: Fetch/Pull/Clone über einen HTTP-Mock, vollständig
-   gequotete Kommandos, explizite Location/cwd, mehrere Ausgabeseiten und finale
-   Ausgabe, kein Session-/Prompt-Endpunkt, Cleanup bei Timeout, Ablehnung externer
-   Shell-Server und kein Host-Fallback bei einer fehlenden API. Diese Tests führen
-   keinen echten GitLab-Netzwerkabruf durch.
-7. `DirectoryAndHistoryTests.swift`: native AppKit-Pasteboard-/Drop-Callbacks mit
-   echten Datei-/Ordner-Moves und Reveal sowie Zusammenführung und Sortierung
-   beider Sandbox-Registries. Details: [Directory und Verlauf](directory-history-fixes.md).
-8. `ChatFeedbackTests.swift`: verschachtelte Anbieterfehler, persistierte Fehler
-   ohne Antworttext, Duplikate, Live-Zustand und Activity-Anzeige sowie Hell-/Dunkel-
-   Darstellungen. Details: [Chat-Feedback](chat-feedback.md).
-9. `ModelsAndSessionListTests.swift`: explizite Copilot-Freigaben, Credential-Origin-
-   Grenzen, Refresh-/Fehler-/Widerrufsverhalten, Slash-Liste und persistente
-   Gruppenzustände. Details: [Modelle und Session-Gruppen](models-and-session-groups.md).
-10. `ContextSwitchTests.swift`: Wechsel A/B/A, scoped Stream-Overlays, native Editor-
-    Identität/Fokus/Undo und Markdown-Größenänderungen. Details:
-    [Session-Rendering](session-rendering-fixes.md).
-
-**Zusätzliche manuelle Abnahme:** Drag & Drop, Scrollen zur aktiven Datei in
-einem langen Baum, mehrere Editor-Gruppen, Freigabe-/Widerrufsbedienung sowie
-verschiedene Mermaid-Diagrammtypen. Automatische Harness-Tests ersetzen diese
-interaktive Prüfung nicht.
+**Zusätzliche manuelle Abnahme:** Drag & Drop, mehrere Editor-Gruppen,
+Freigabe-/Widerrufsbedienung sowie verschiedene Mermaid-Diagrammtypen.

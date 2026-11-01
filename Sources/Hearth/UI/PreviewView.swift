@@ -94,9 +94,9 @@ private struct EditorDocumentView: View {
     let root: String
     let paneID: UUID
 
-    private var group: EditorGroup { model.editorGroup(paneID) }
-    private var isActive: Bool { model.activeEditor === group }
-    private func activate() { if !isActive { model.activeEditorID = paneID } }
+    private var group: EditorGroup { model.editor.group(paneID) }
+    private var isActive: Bool { model.editor.active === group }
+    private func activate() { if !isActive { model.editor.activeEditorID = paneID } }
 
     private let pendingClose = State(initialValue: URL?.none)
     private let tabDropTarget = State(initialValue: TabDropSlot?.none)
@@ -117,16 +117,16 @@ private struct EditorDocumentView: View {
     private var currentDiff: FileDiff {
         guard let file = group.file else { return FileDiff() }
         if diffFor.wrappedValue == file { return fileDiff.wrappedValue }
-        return diffCacheKey.flatMap { model.fileDiffCache[$0] } ?? FileDiff()
+        return diffCacheKey.flatMap { model.editor.fileDiffCache[$0] } ?? FileDiff()
     }
     private var currentDiffText: String? { diffFor.wrappedValue == group.file ? diffText.wrappedValue : nil }
     private var currentSelectedHunk: String? { diffFor.wrappedValue == group.file ? selectedHunk.wrappedValue : nil }
     private var presentation: EditorPresentation { EditorPresentation(root: root, file: group.file) }
-    private var displayMode: AppModel.PreviewMode { relativePath == nil ? .file : group.mode }
-    private var loadKey: EditorLoadKey { EditorLoadKey(presentation: presentation, mode: displayMode.rawValue, revision: model.workspaceRevision) }
+    private var displayMode: PreviewMode { relativePath == nil ? .file : group.mode }
+    private var loadKey: EditorLoadKey { EditorLoadKey(presentation: presentation, mode: displayMode.rawValue, revision: model.workspace.revision) }
 
     /// The active tab's document (kept in the model so unsaved edits survive tab switches).
-    private var document: PreviewDocument? { group.file.map(model.document(for:)) }
+    private var document: PreviewDocument? { group.file.map(model.editor.document(for:)) }
 
     var body: some View {
         if let url = group.file {
@@ -144,7 +144,7 @@ private struct EditorDocumentView: View {
                     Label("Geöffnete Datei aus einem anderen Workspace – Git-Review ist hier deaktiviert.", systemImage: "folder.badge.questionmark")
                         .scaledFont(.caption).foregroundStyle(.secondary).padding(6)
                 }
-                if let symbol = model.searchingDefinition {
+                if let symbol = model.editor.searchingDefinition {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
                         Text("Suche Definition von „\(symbol)“ …").font(.caption)
@@ -154,7 +154,7 @@ private struct EditorDocumentView: View {
                 }
                 content
                     .overlay(alignment: .top) {
-                        if let choices = model.definitionChoices { DefinitionChooser(symbol: choices.symbol, locations: choices.locations, root: root) }
+                        if let choices = model.editor.definitionChoices { DefinitionChooser(symbol: choices.symbol, locations: choices.locations, root: root) }
                     }
                     .overlay(alignment: .bottom) {
                         if let id = currentSelectedHunk, let hunk = currentDiff.hunks.first(where: { $0.id == id }),
@@ -167,10 +167,10 @@ private struct EditorDocumentView: View {
                                 isPresented: Binding(get: { pendingClose.wrappedValue != nil }, set: { if !$0 { pendingClose.wrappedValue = nil } }),
                                 presenting: pendingClose.wrappedValue) { u in
                 Button("Sichern") {
-                    if case .saved = model.document(for: u).save(force: false) { model.closeTab(u, in: group); model.workspaceRevision += 1 }
+                    if case .saved = model.editor.document(for: u).save(force: false) { model.editor.closeTab(u, in: group); model.workspace.revision += 1 }
                     else { model.banner = "\(u.lastPathComponent) konnte nicht gesichert werden (extern geändert?)." }
                 }
-                Button("Nicht sichern", role: .destructive) { model.closeTab(u, in: group) }
+                Button("Nicht sichern", role: .destructive) { model.editor.closeTab(u, in: group) }
                 Button("Abbrechen", role: .cancel) {}
             } message: { _ in Text("Ungesicherte Änderungen gehen sonst verloren.") }
             .alert("Gehe zu Zeile", isPresented: goToLineShown.projectedValue) {
@@ -228,7 +228,7 @@ private struct EditorDocumentView: View {
                 }
             }
             .overlay(alignment: .trailing) {
-                Button { model.splitEditor(paneID) } label: { Image(systemName: "square.split.2x1") }
+                Button { model.editor.splitEditor(paneID) } label: { Image(systemName: "square.split.2x1") }
                     .buttonStyle(.borderless).padding(.horizontal, 6)
                     .background(Color(nsColor: .windowBackgroundColor).opacity(0.9))
                     .help("Editor teilen: aktuelle Datei rechts daneben öffnen")
@@ -247,7 +247,7 @@ private struct EditorDocumentView: View {
 
     private func tab(_ url: URL) -> some View {
         let active = url == group.file
-        let dirty = model.documents[url]?.isDirty == true
+        let dirty = model.editor.documents[url]?.isDirty == true
         return HStack(spacing: 5) {
             Image(systemName: FileIcon.symbol(for: url)).foregroundStyle(.secondary).font(.system(size: 10 * scale))
             Text(url.lastPathComponent).scaledFont(.caption, bold: active).lineLimit(1)
@@ -258,12 +258,12 @@ private struct EditorDocumentView: View {
         .background(active ? Color(nsColor: .textBackgroundColor) : Color.clear)
         .overlay(alignment: .top) { if active { Rectangle().fill(Color.accentColor).frame(height: 2) } }
         .contentShape(Rectangle())
-        .onTapGesture { model.draggingTab = nil; activate(); model.openPreview(url, mode: .file) }
+        .onTapGesture { model.editor.draggingTab = nil; activate(); model.editor.open(url, mode: .file) }
         .overlay(alignment: .leading) {
             if tabDropTarget.wrappedValue == .before(url) { Rectangle().fill(Color.accentColor).frame(width: 2) }
         }
         .onDrag {
-            model.draggingTab = AppModel.TabDrag(pane: paneID, url: url)
+            model.editor.draggingTab = EditorStore.TabDrag(pane: paneID, url: url)
             return NSItemProvider(object: ("hearth-tab:" + url.path) as NSString)
         } preview: {
             Label(url.lastPathComponent, systemImage: FileIcon.symbol(for: url))
@@ -274,27 +274,27 @@ private struct EditorDocumentView: View {
         .help(url.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
         .contextMenu {
             Button("Schließen") { requestClose(url) }
-            Button("Nach rechts teilen") { model.splitEditor(paneID, axis: .horizontal, url: url) }
-            Button("Nach unten teilen") { model.splitEditor(paneID, axis: .vertical, url: url) }
-            let others = model.paneTree.panes.filter { $0.tab == .preview && $0.id != paneID }
+            Button("Nach rechts teilen") { model.editor.splitEditor(paneID, axis: .horizontal, url: url) }
+            Button("Nach unten teilen") { model.editor.splitEditor(paneID, axis: .vertical, url: url) }
+            let others = model.layout.paneTree.panes.filter { $0.tab == .preview && $0.id != paneID }
             if !others.isEmpty {
                 Menu("In anderen Editor verschieben") {
                     ForEach(Array(others.enumerated()), id: \.element.id) { i, p in
-                        Button(model.editorGroup(p.id).file?.lastPathComponent ?? "Editor \(i + 2)") {
-                            model.moveTab(url, from: paneID, to: p.id)
+                        Button(model.editor.group(p.id).file?.lastPathComponent ?? "Editor \(i + 2)") {
+                            model.editor.moveTab(url, from: paneID, to: p.id)
                         }
                     }
                 }
             }
             Divider()
-            Button("Andere schließen") { model.closeOtherTabs(in: group, keeping: url) }
+            Button("Andere schließen") { model.editor.closeOtherTabs(in: group, keeping: url) }
             Divider()
             Button("Im Finder zeigen") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         }
     }
 
     private func requestClose(_ url: URL) {
-        if model.documents[url]?.isDirty == true { pendingClose.wrappedValue = url } else { model.closeTab(url, in: group) }
+        if model.editor.documents[url]?.isDirty == true { pendingClose.wrappedValue = url } else { model.editor.closeTab(url, in: group) }
     }
 
     // MARK: Header
@@ -303,11 +303,11 @@ private struct EditorDocumentView: View {
         let doc = document
         return HStack(spacing: 8) {
             HStack(spacing: 0) {
-                Button { activate(); model.navigateBack() } label: { Image(systemName: "chevron.left") }
+                Button { activate(); model.editor.navigateBack() } label: { Image(systemName: "chevron.left") }
                     .disabled(group.back.isEmpty)
                     .keyboardShortcut(isActive ? KeyboardShortcut("[", modifiers: .command) : nil)
                     .help("Zurück (⌘[)")
-                Button { activate(); model.navigateForward() } label: { Image(systemName: "chevron.right") }
+                Button { activate(); model.editor.navigateForward() } label: { Image(systemName: "chevron.right") }
                     .disabled(group.forward.isEmpty)
                     .keyboardShortcut(isActive ? KeyboardShortcut("]", modifiers: .command) : nil)
                     .help("Vor (⌘])")
@@ -344,7 +344,7 @@ private struct EditorDocumentView: View {
                 }
             }
             Picker("", selection: Binding(get: { displayMode }, set: { group.mode = $0 })) {
-                ForEach(AppModel.PreviewMode.allCases, id: \.self) { mode in
+                ForEach(PreviewMode.allCases, id: \.self) { mode in
                     Text(mode.rawValue).disabled(mode == .diff && relativePath == nil)
                 }
             }
@@ -398,7 +398,7 @@ private struct EditorDocumentView: View {
                            fontSize: 12 * scale,
                             onCommandClick: { symbol, qualifier in
                                 activate()
-                                Task { await model.goToDefinition(symbol: symbol, qualifier: qualifier) }
+                                Task { await model.editor.goToDefinition(symbol: symbol, qualifier: qualifier) }
                            },
                            hunks: doc.isDirty ? [] : currentDiff.hunks,
                            selectedHunk: currentSelectedHunk,
@@ -422,7 +422,7 @@ private struct EditorDocumentView: View {
         switch doc.save(force: force) {
         case .saved:
             model.toast("Gespeichert: \(doc.url.lastPathComponent)")
-            model.workspaceRevision += 1
+            model.workspace.revision += 1
         case .conflict:
             confirmOverwrite.wrappedValue = true
         case .failed(let msg):
@@ -538,7 +538,7 @@ private struct EditorDocumentView: View {
             // Show cached hunks for this file right away; refresh below.
             selectedHunk.wrappedValue = nil
             diffText.wrappedValue = nil
-            fileDiff.wrappedValue = model.fileDiffCache[root + "#" + url.path] ?? FileDiff()
+            fileDiff.wrappedValue = model.editor.fileDiffCache[root + "#" + url.path] ?? FileDiff()
             diffFor.wrappedValue = url
         }
         guard let rel = EditorPresentation.relativePath(url, root: root) else {
@@ -546,8 +546,8 @@ private struct EditorDocumentView: View {
             return
         }
         let cacheKey = root + "#" + url.path
-        let revision = model.workspaceRevision
-        if displayMode == .file, model.fileDiffRevision[cacheKey] == revision, let cached = model.fileDiffCache[cacheKey] {
+        let revision = model.workspace.revision
+        if displayMode == .file, model.editor.fileDiffRevision[cacheKey] == revision, let cached = model.editor.fileDiffCache[cacheKey] {
             // Nothing changed in the workspace since this file's diff was loaded: no Git run.
             fileDiff.wrappedValue = cached
             return
@@ -562,8 +562,8 @@ private struct EditorDocumentView: View {
         let diff = await InlineDiff.load(file: url, root: root)
         guard !Task.isCancelled, requests.wrappedValue.accepts(ticket, current: loadKey) else { return }
         diffText.wrappedValue = text
-        model.fileDiffCache[cacheKey] = diff
-        model.fileDiffRevision[cacheKey] = revision
+        model.editor.fileDiffCache[cacheKey] = diff
+        model.editor.fileDiffRevision[cacheKey] = revision
         if diffFor.wrappedValue == url {
             if diff.hunks != fileDiff.wrappedValue.hunks || diff.untracked != fileDiff.wrappedValue.untracked { fileDiff.wrappedValue = diff }
             else { fileDiff.wrappedValue.header = diff.header }
@@ -579,7 +579,7 @@ private struct EditorDocumentView: View {
     private func changed(_ message: String, next: Bool = true) {
         model.toast(message)
         advanceAfterRefresh.wrappedValue = next && selectedHunk.wrappedValue != nil
-        model.workspaceRevision += 1
+        model.workspace.revision += 1
     }
 
     private func revert(_ h: DiffHunk) {
@@ -616,7 +616,7 @@ private struct EditorDocumentView: View {
         let diff = currentDiff
         Task {
             let r = await InlineDiff.stage(h, of: diff, file: rel, root: root)
-            guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspaceRevision += 1 }; return }
+            guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspace.revision += 1 }; return }
             if r.ok { selectedHunk.wrappedValue = nil; changed("Änderung angenommen (gestaged)") }
             else { model.banner = "Annehmen fehlgeschlagen: \(r.output)" }
         }
@@ -627,7 +627,7 @@ private struct EditorDocumentView: View {
         let target = presentation
         Task {
             let r = await Git.mutate(["add", "--", rel], in: root)
-            guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspaceRevision += 1 }; return }
+            guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspace.revision += 1 }; return }
             if r.ok { selectedHunk.wrappedValue = nil; changed("Alle Änderungen angenommen (gestaged)", next: false) }
             else { model.banner = "Annehmen fehlgeschlagen: \(r.output)" }
         }
@@ -693,7 +693,7 @@ private struct DefinitionChooser: View {
             HStack {
                 Text("\(locations.count) Definitionen für „\(symbol)“").font(.caption.bold())
                 Spacer()
-                Button { model.definitionChoices = nil } label: { Image(systemName: "xmark") }
+                Button { model.editor.definitionChoices = nil } label: { Image(systemName: "xmark") }
                     .buttonStyle(.borderless).keyboardShortcut(.cancelAction)
             }
             .padding(.bottom, 4)
@@ -710,7 +710,7 @@ private struct DefinitionChooser: View {
                             }
                             Text(loc.preview).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
                         }
-                        .interactiveRow { model.open(loc, root: root) }
+                        .interactiveRow { model.editor.open(loc, root: root) }
                     }
                 }
             }
@@ -759,7 +759,7 @@ struct TabDropDelegate: DropDelegate {
     let slot: TabDropSlot
     let hover: State<TabDropSlot?>
 
-    func validateDrop(info: DropInfo) -> Bool { model.draggingTab != nil }
+    func validateDrop(info: DropInfo) -> Bool { model.editor.draggingTab != nil }
     func dropEntered(info: DropInfo) { hover.wrappedValue = slot }
     func dropUpdated(info: DropInfo) -> DropProposal? {
         hover.wrappedValue = slot
@@ -768,10 +768,10 @@ struct TabDropDelegate: DropDelegate {
     func dropExited(info: DropInfo) { if hover.wrappedValue == slot { hover.wrappedValue = nil } }
     func performDrop(info: DropInfo) -> Bool {
         hover.wrappedValue = nil
-        guard let drag = model.draggingTab else { return false }
-        model.draggingTab = nil
+        guard let drag = model.editor.draggingTab else { return false }
+        model.editor.draggingTab = nil
         let target: URL? = if case .before(let url) = slot { url } else { nil }
-        model.placeTab(drag.url, from: drag.pane, to: pane, before: target)
+        model.editor.placeTab(drag.url, from: drag.pane, to: pane, before: target)
         return true
     }
 }

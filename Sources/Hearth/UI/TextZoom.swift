@@ -44,14 +44,14 @@ extension EnvironmentValues {
 extension View {
     /// Makes a region zoomable: base font scales, hover tells the event monitor which area to zoom.
     func zoomableText(_ area: TextArea, model: AppModel, baseSize: CGFloat = 13) -> some View {
-        let scale = model.textScale(area)
+        let scale = model.textZoom.scale(area)
         return self
             .environment(\.textScale, scale)
             .font(.system(size: baseSize * scale))
             .onContinuousHover { phase in
                 switch phase {
-                case .active: model.hoveredArea = area
-                case .ended: if model.hoveredArea == area { model.hoveredArea = nil }
+                case .active: model.textZoom.hoveredArea = area
+                case .ended: if model.textZoom.hoveredArea == area { model.textZoom.hoveredArea = nil }
                 }
             }
     }
@@ -69,17 +69,17 @@ final class TextZoomMonitor {
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { [weak self] event in
             guard let self, let model = self.model else { return event }
             // Diagrams handle their own pinch/⌘-scroll zoom.
-            guard !model.hoveringDiagram, let area = model.hoveredArea else { return event }
+            guard !model.textZoom.hoveringDiagram, let area = model.textZoom.hoveredArea else { return event }
             switch event.type {
             case .magnify:
-                model.zoom(area, by: 1 + event.magnification)
+                model.textZoom.zoom(area, by: 1 + event.magnification)
                 return nil
             case .scrollWheel where event.modifierFlags.contains(.command):
                 // Trackpads send many small precise deltas, mouse wheels a few big ones.
                 let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
                 self.scrollAccumulator += delta
                 if abs(self.scrollAccumulator) >= 8 {
-                    model.zoom(area, by: self.scrollAccumulator > 0 ? 1.06 : 1 / 1.06)
+                    model.textZoom.zoom(area, by: self.scrollAccumulator > 0 ? 1.06 : 1 / 1.06)
                     self.scrollAccumulator = 0
                 }
                 return nil

@@ -14,24 +14,23 @@ enum Snapshotter {
         guard let dir = directory else { return }
         Task { @MainActor in
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            // Give the registry poll and server connections time to load.
+            // Give the views time to load.
             try? await Task.sleep(for: .seconds(4))
-            await model.loadProfiles()
             if let z = ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_ZOOM"].flatMap(Double.init) {
-                model.textScales = Dictionary(uniqueKeysWithValues: TextArea.allCases.map { ($0.rawValue, z) })
+                model.textZoom.scales = Dictionary(uniqueKeysWithValues: TextArea.allCases.map { ($0.rawValue, z) })
             }
             if let raw = ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_DOCK_BOTTOM"], let tab = InspectorTab(rawValue: raw) {
-                model.addPane(tab, atWindowEdge: .windowBottom)
+                model.layout.addPane(tab, atWindowEdge: .windowBottom)
             }
             // Comma-separated paths open as editor tabs; the last one is active.
             if let files = ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_PREVIEW"] {
-                for file in files.split(separator: ",") { model.openPreview(URL(fileURLWithPath: String(file)), mode: .file, line: nil) }
+                for file in files.split(separator: ",") { model.editor.open(URL(fileURLWithPath: String(file)), mode: .file, line: nil) }
             }
             if ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_SPLIT_EDITOR"] != nil,
-               let p = model.paneTree.panes.first(where: { $0.tab == .preview }) {
-                model.splitEditor(p.id, url: URL(fileURLWithPath: "/tmp/hearth-snapshot/Package.swift"))
+               let p = model.layout.paneTree.panes.first(where: { $0.tab == .preview }) {
+                model.editor.splitEditor(p.id, url: URL(fileURLWithPath: "/tmp/hearth-snapshot/Package.swift"))
             }
-            if let first = model.inbox.first { model.select(first) }
+            if let first = model.agents.sorted.first { model.selectRun(first.id) }
             try? await Task.sleep(for: .seconds(2))
 
             if let list = ProcessInfo.processInfo.environment["HEARTH_SNAPSHOT_TABBENCH"] {
@@ -40,7 +39,6 @@ enum Snapshotter {
             }
             var views: [(String, AnyView, CGSize)] = [
                 ("main", AnyView(ContentView()), CGSize(width: 1400, height: 860)),
-                ("start-sheet", AnyView(StartSandboxSheet(request: .init(root: model.entries.first?.repoRoot))), CGSize(width: 520, height: 640)),
                 ("agent-start-sheet", AnyView(StartAgentSheet(request: .init())), CGSize(width: 520, height: 640)),
                 ("welcome", AnyView(WelcomeView()), CGSize(width: 600, height: 560)),
                 ("pipeline-graph", AnyView(PipelineGraph(jobs: Self.sampleJobs, onSelect: { _ in }, onRetry: { _ in }, onPlay: { _ in })), CGSize(width: 860, height: 300)),
@@ -73,14 +71,14 @@ enum Snapshotter {
         let host = NSHostingView(rootView: ContentView().environment(model).frame(width: 1500, height: 900))
         window.contentView = host
         window.orderFrontRegardless()
-        for f in files { model.openPreview(f) }
+        for f in files { model.editor.open(f) }
         try? await Task.sleep(for: .seconds(2))
-        var lines: [String] = ["workspace: \(model.workspaceRoot ?? "-") panes: \(describe(model.paneTree))"]
+        var lines: [String] = ["workspace: \(model.workspaceRoot ?? "-") panes: \(describe(model.layout.paneTree))"]
         var samples: [String: [Double]] = [:]
         for round in 0..<(Int(ProcessInfo.processInfo.environment["HEARTH_TABBENCH_ROUNDS"] ?? "") ?? 6) {
             for f in files {
                 let start = CFAbsoluteTimeGetCurrent()
-                model.openPreview(f)
+                model.editor.open(f)
                 host.layoutSubtreeIfNeeded()
                 host.displayIfNeeded()
                 let sync = (CFAbsoluteTimeGetCurrent() - start) * 1000

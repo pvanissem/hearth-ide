@@ -5,14 +5,11 @@ import Foundation
 enum SandboxManager {
     static let nonoVersion = "v0.80.0"
 
-    /// Toolchains every agent may use to build and test the project (read-only grants).
-    static let runtimeGroups = ["node_runtime", "bun_runtime", "python_runtime", "go_runtime", "go_runtime_macos",
-                                "rust_runtime", "java_runtime", "git_config", "user_caches_macos"]
-
     enum Failure: LocalizedError {
         case nonoMissing
         case agentMissing(AgentKind)
         case outsideHome(String)
+        case protectedFolder(String)
 
         var errorDescription: String? {
             switch self {
@@ -22,6 +19,8 @@ enum SandboxManager {
                 "\(kind.displayName) ist nicht installiert (\(kind.executable) nicht im PATH)." + (kind.installHint.isEmpty ? "" : " Installation: \(kind.installHint)")
             case .outsideHome(let dir):
                 "Der Ordner muss unterhalb deines Home-Verzeichnisses liegen: \(dir)"
+            case .protectedFolder(let reason):
+                reason
             }
         }
     }
@@ -94,121 +93,10 @@ enum SandboxManager {
         supportDirectory.appendingPathComponent("runs/\(runID)")
     }
 
-    private static func expand(_ path: String) -> String {
-        path.hasPrefix("~/") ? NSHomeDirectory() + path.dropFirst() : path
-    }
-
-    /// The nono profile for one run: nono's conservative default, the project folder
-    /// read/write, toolchains read-only, the agent's own state, only the hosts in nono's
-    /// developer network profile plus the agent's API hosts, and the user's own
-    /// additions from the settings (domains, ports, folders, project folders, credentials).
-    static func profile(kind: AgentKind, runDirectory: URL, directory: String? = nil,
-                        settings: SandboxSettings = .load(), extraDomains: [String] = [],
-                        extraOpenPorts: [Int] = [], gitAccess: Bool = false) -> [String: Any] {
-        let spec = kind.sandbox
-        let fm = FileManager.default
-        let keychains = expand("~/Library/Keychains")
-        var allow = spec.readWrite.map(expand)
-        allow.append(runDirectory.path)
-        var read: [String] = []
-        var bypass: [String] = []
-        if spec.keychain && settings.agentKeychain {
-            // Claude Code, Codex and Copilot keep their login in the login keychain.
-            allow.append(keychains)
-            bypass.append(keychains)
-        }
-        for dir in spec.readWrite.map(expand) where !fm.fileExists(atPath: dir) {
-            try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        }
-        // The user's extra folders: everywhere, and for this project folder.
-        var userFolders = settings.folders
-        if let directory, let project = settings.project(for: directory) { userFolders += project.folders }
-        for folder in userFolders where SandboxSettings.validFolder(folder.path) == nil && fm.fileExists(atPath: folder.path) {
-            if folder.write { allow.append(folder.path) } else { read.append(folder.path) }
-        }
-        var seatbelt: [String] = []
-        var files = spec.readWriteFiles.map(expand)
-        if gitAccess && settings.gitSSH {
-            // Only for the Git pane's fixed fetch/pull/clone commands: SSH keys (read),
-            // known_hosts, the keychain for HTTPS logins, and SSH's port 22.
-            let ssh = expand("~/.ssh")
-            read.append(ssh)
-            if !allow.contains(keychains) { allow.append(keychains) }
-            bypass += [ssh, keychains]
-            seatbelt.append(#"(allow network-outbound (remote tcp "*:22"))"#)
-            let knownHosts = expand("~/.ssh/known_hosts")
-            if !fm.fileExists(atPath: knownHosts) { fm.createFile(atPath: knownHosts, contents: nil, attributes: [.posixPermissions: 0o644]) }
-            files.append(knownHosts)
-        } else if gitAccess, !allow.contains(keychains) {
-            // HTTPS logins of the Git pane come from the keychain (osxkeychain helper).
-            allow.append(keychains)
-            bypass.append(keychains)
-        }
-        var filesystem: [String: Any] = ["allow": allow]
-        if !read.isEmpty { filesystem["read"] = read }
-        if !bypass.isEmpty { filesystem["bypass_protection"] = Array(Set(bypass)).sorted() }
-        if !files.isEmpty { filesystem["allow_file"] = files }
-        if kind == .claude {
-            // The user's own Claude hooks run inside the sandbox too: let them read their scripts.
-            let scripts = userHookScripts()
-            if !scripts.isEmpty { filesystem["read_file"] = scripts }
-        }
-
-        var network: [String: Any] = ["network_profile": "developer"]
-        let domains = spec.domains + extraDomains + settings.domains.filter(SandboxSettings.validDomain)
-        if !domains.isEmpty { network["allow_domain"] = domains }
-        let ports = spec.openPorts + extraOpenPorts + settings.ports.filter { (1...65535).contains($0) }
-        if !ports.isEmpty { network["open_port"] = Array(Set(ports)).sorted() }
-
-        // Credentials: proxy routes (the sandbox only sees a placeholder token) or plain env.
-        let credentials = settings.credentials.filter { $0.enabled && SandboxSettings.Credential.validName($0.name) }
-        var envCredentials: [String: String] = [:]
-        var routes: [String: Any] = [:]
-        for c in credentials {
-            switch c.mode {
-            case .env:
-                envCredentials[c.keychainAccount] = c.name
-            case .proxy:
-                guard URL(string: c.upstream)?.scheme == "https" else { continue }
-                routes[c.routeName] = ["upstream": c.upstream, "credential_key": c.keychainAccount, "env_var": c.name,
-                                       "inject_mode": "header", "inject_header": c.header.isEmpty ? "Authorization" : c.header,
-                                       "credential_format": c.format.contains("{}") ? c.format : "{}"]
-            }
-        }
-        if !routes.isEmpty {
-            network["credentials"] = routes.keys.sorted()
-            network["custom_credentials"] = routes
-        }
-
-        var profile: [String: Any] = [
-            "extends": "default",
-            "meta": ["name": "hearth-\(kind.rawValue)", "description": "Hearth IDE: \(kind.displayName) (generated, do not edit)"],
-            "groups": ["include": runtimeGroups + spec.groups],
-            "workdir": ["access": "readwrite"],
-            "filesystem": filesystem,
-            "network": network,
-        ]
-        if !envCredentials.isEmpty { profile["env_credentials"] = envCredentials }
-        if !spec.openURLOrigins.isEmpty || spec.allowLocalhost {
-            profile["open_urls"] = ["allow_origins": spec.openURLOrigins, "allow_localhost": spec.allowLocalhost]
-        }
-        if !spec.environment.isEmpty { profile["environment"] = ["set_vars": spec.environment] }
-        if !seatbelt.isEmpty { profile["unsafe_macos_seatbelt_rules"] = seatbelt }
-        return profile
-    }
-
-    /// `--credential` flags that activate the profile's proxy routes.
-    static func credentialFlags(_ settings: SandboxSettings) -> [String] {
-        settings.credentials
-            .filter { $0.enabled && $0.mode == .proxy && SandboxSettings.Credential.validName($0.name) && URL(string: $0.upstream)?.scheme == "https" }
-            .flatMap { ["--credential", $0.routeName] }
-    }
-
-    /// Absolute script paths referenced by hooks in ~/.claude/settings.json (outside the home's
-    /// denied areas), so status scripts like iTerm2's keep working in the sandbox.
-    static func userHookScripts() -> [String] {
-        let url = URL(fileURLWithPath: expand("~/.claude/settings.json"))
-        guard let data = try? Data(contentsOf: url),
+    /// Script files referenced by hooks in the agent's Claude settings (Hearth's copy),
+    /// below home and outside protected areas, so status scripts like iTerm2's keep working.
+    static func claudeHookScripts(settingsFile: String, home: String = NSHomeDirectory()) -> [String] {
+        guard let data = FileManager.default.contents(atPath: settingsFile),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let hooks = root["hooks"] as? [String: Any] else { return [] }
         var commands: [String] = []
@@ -219,11 +107,10 @@ enum SandboxManager {
                 }
             }
         }
-        let home = NSHomeDirectory()
         var paths = Set<String>()
         for command in commands {
             for token in command.split(whereSeparator: { $0 == " " || $0 == "'" || $0 == "\"" }) {
-                let path = expand(String(token))
+                let path = token.hasPrefix("~/") ? home + token.dropFirst() : String(token)
                 guard path.hasPrefix(home + "/"), !path.contains("/.ssh"),
                       FileManager.default.isReadableFile(atPath: path) else { continue }
                 var isDir: ObjCBool = false
@@ -254,7 +141,7 @@ enum SandboxManager {
     }
 
     /// Starts `opencode serve` on the given port, waits until it listens, runs the client and
-    /// stops the server when the client exits (ported from devkcode). Args: opencode, port, log, client args.
+    /// stops the server when the client exits. Args: opencode, port, log, client args.
     static let openCodeLauncher = #"""
     set -eu
     oc="$1"; port="$2"; log="$3"; shift 3
@@ -291,15 +178,43 @@ enum SandboxManager {
         let directory: String
     }
 
-    /// Writes the profile (and status hooks) for `run` and returns how to start it.
-    static func prepare(kind: AgentKind, runID: String, directory: String, agentArguments: [String],
-                        statusHooks: Bool = true, openPorts extraPorts: [Int] = [], gitAccess: Bool = false,
+    /// Checks a folder a sandbox should work in: below home, not a protected area.
+    static func validateWorkdir(_ directory: String) throws -> String {
+        let home = NSHomeDirectory()
+        let resolved = URL(fileURLWithPath: directory).resolvingSymlinksInPath().standardizedFileURL.path
+        guard resolved.hasPrefix(home + "/") else { throw Failure.outsideHome(directory) }
+        if let reason = SandboxSettings.protectedReason(resolved, home: home, support: supportDirectory.path),
+           resolved != loginDirectory.path {
+            throw Failure.protectedFolder(reason)
+        }
+        return resolved
+    }
+
+    /// The context for a sandbox in `directory` (nil: no project folder, e.g. a profile preview).
+    static func context(runDirectory: URL, directory: String?, settings: SandboxSettings,
+                        hookScripts: [String] = [], gitHosts: [String] = [],
+                        extraDomains: [String] = [], extraPorts: [Int] = []) -> SandboxContext {
+        var settings = settings
+        // nono refuses grants for paths that don't exist.
+        let exists = { (f: SandboxSettings.Folder) in FileManager.default.fileExists(atPath: f.path) }
+        settings.folders = settings.folders.filter(exists)
+        settings.projects = settings.projects.map { var p = $0; p.folders = p.folders.filter(exists); return p }
+        return SandboxContext(home: NSHomeDirectory(), support: supportDirectory.path, runDirectory: runDirectory.path,
+                              workdir: directory, settings: settings, hookScripts: hookScripts, gitHosts: gitHosts,
+                              extraDomains: extraDomains, extraPorts: extraPorts)
+    }
+
+    /// Writes the profile (and status hooks) for one sandbox and returns how to start it.
+    static func prepare(_ purpose: SandboxPurpose, runID: String, directory: String, arguments agentArguments: [String],
+                        statusHooks: Bool = true, openPorts extraPorts: [Int] = [], gitHosts: [String] = [],
                         extraDomains: [String] = []) throws -> Launch {
+        let kind = purpose.kind
         guard let nono = locateNono() else { throw Failure.nonoMissing }
         guard let agent = locate(kind) else { throw Failure.agentMissing(kind) }
-        let home = NSHomeDirectory()
-        let resolved = URL(fileURLWithPath: directory).resolvingSymlinksInPath().path
-        guard resolved.hasPrefix(home + "/") else { throw Failure.outsideHome(directory) }
+        let resolved = try validateWorkdir(directory)
+
+        let agentHome = AgentHome.layout(for: kind, support: supportDirectory.path, home: NSHomeDirectory())
+        try agentHome.prepare()
 
         let runDir = runDirectory(runID)
         try FileManager.default.createDirectory(at: runDir, withIntermediateDirectories: true)
@@ -321,17 +236,18 @@ enum SandboxManager {
             program = "/bin/sh"
         }
 
-        let settings = SandboxSettings.load()
+        let hooks = agentHome.root.map { claudeHookScripts(settingsFile: $0 + "/settings.json") } ?? []
+        let policy = SandboxPolicy.make(purpose, context(runDirectory: runDir, directory: resolved, settings: .load(),
+                                                         hookScripts: kind == .claude ? hooks : [],
+                                                         gitHosts: gitHosts, extraDomains: extraDomains,
+                                                         extraPorts: openPorts))
         let profileURL = runDir.appendingPathComponent("nono-profile.json")
-        let data = try JSONSerialization.data(withJSONObject: profile(kind: kind, runDirectory: runDir, directory: resolved,
-                                                                      settings: settings, extraDomains: extraDomains,
-                                                                      extraOpenPorts: openPorts, gitAccess: gitAccess),
-                                              options: [.prettyPrinted, .sortedKeys])
-        try data.write(to: profileURL, options: .atomic)
+        try policy.profileData.write(to: profileURL, options: .atomic)
 
         var env = ProcessInfo.processInfo.environment
         // Never pass on state of an agent session Hearth itself was started from.
         for key in env.keys where key == "CLAUDECODE" || key.hasPrefix("CLAUDE_CODE_") || key.hasPrefix("CLAUDE_AGENT_SDK")
+            || key == "CLAUDE_CONFIG_DIR" || key == "CODEX_HOME" || key.hasPrefix("XDG_")
             || key == "CODEX_SANDBOX" || key.hasPrefix("OPENCODE_") || key.hasPrefix("NONO_") {
             env[key] = nil
         }
@@ -344,11 +260,13 @@ enum SandboxManager {
         env["NONO_NO_SAVE_PROMPT"] = "1"
         env["NONO_NO_PACK_UPDATE_HINTS"] = "1"
         if env["LANG"] == nil { env["LANG"] = "de_DE.UTF-8" }
+        // The agent's private configuration folder (also set in the profile).
+        env.merge(agentHome.environment) { $1 }
         env.merge(extraEnv) { $1 }
 
         let nonoArgs = ["run", "--silent", "--profile", profileURL.path, "--allow-cwd", "--no-diagnostics",
                         "--log-file", runDir.appendingPathComponent("nono.log").path]
-            + credentialFlags(settings) + ["--", program] + args
+            + policy.credentialFlags + ["--", program] + args
         return Launch(executable: nono.path, arguments: nonoArgs,
                       environment: env.map { "\($0.key)=\($0.value)" }, directory: resolved)
     }

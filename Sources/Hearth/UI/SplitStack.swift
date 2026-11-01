@@ -17,7 +17,7 @@ struct SplitStack<Content: View>: View {
         GeometryReader { geo in
             let total = Double(axis == .vertical ? geo.size.height : geo.size.width)
                 - Double(dividerThickness) * Double(count - 1)
-            let w = model.weights(for: id, count: count)
+            let w = model.layout.weights(for: id, count: count)
             let layout = axis == .vertical ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
             layout {
                 ForEach(0..<count, id: \.self) { i in
@@ -29,7 +29,7 @@ struct SplitStack<Content: View>: View {
                         SplitDivider(axis: axis) { delta in
                             resize(at: i, delta: delta, total: total)
                         } onReset: {
-                            model.splitWeights[id] = nil
+                            model.layout.splitWeights[id] = nil
                         }
                         .frame(width: axis == .horizontal ? dividerThickness : nil,
                                height: axis == .vertical ? dividerThickness : nil)
@@ -41,13 +41,13 @@ struct SplitStack<Content: View>: View {
 
     private func resize(at i: Int, delta: CGFloat, total: Double) {
         guard total > 0 else { return }
-        var w = model.weights(for: id, count: count)
+        var w = model.layout.weights(for: id, count: count)
         let d = Double(delta) / total
         let pair = w[i] + w[i + 1]
         let left = min(max(w[i] + d, Self.minFraction), pair - Self.minFraction)
         w[i] = left
         w[i + 1] = pair - left
-        model.splitWeights[id] = w
+        model.layout.splitWeights[id] = w
     }
 }
 

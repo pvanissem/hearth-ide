@@ -67,7 +67,7 @@ mit Query-Parametern.
 überlange Antworten, Redirect-Allowlist, Header, parallele Prüfungen, Einstellungen,
 Fehlerzustände, ausgeblendete Hinweise und Entwicklungsbuilds. Zusätzlich werden
 der echte native Einstellungen-View und der Installer-Abbruch mit ausschließlich
-gemockten Beenden-Befehlen geprüft. Der Runner `scripts/test-security.sh` führt
+gemockten Beenden-Befehlen geprüft. `scripts/test.sh` führt
 diese Tests ohne Zugangsdaten, echten App-Austausch oder echte Downloads aus.
 Der Klick-Updater wird mit dem echten Hilfsskript und nachgebildetem `curl`,
 Installer und `open` geprüft: Warten auf das App-Ende, Erfolg, Wiederöffnen bei

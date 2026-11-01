@@ -1,20 +1,39 @@
 import Foundation
 
+/// Git network operations. A pull is split in two: `fetch` runs in the network sandbox
+/// (SSH keys, keychain), the fast-forward (`merge`) in a plain sandbox without them, so
+/// filters or other repository-controlled commands never run next to the user's keys.
 enum SandboxGitOperation: Sendable {
-    case fetch, pull, clone(String)
+    case fetch, fetchUpstream, fastForward, clone(String)
 
     var name: String {
-        switch self { case .fetch: "fetch"; case .pull: "pull"; case .clone: "clone" }
+        switch self {
+        case .fetch, .fetchUpstream: "fetch"
+        case .fastForward: "merge"
+        case .clone: "clone"
+        }
+    }
+
+    /// Needs the network sandbox (SSH keys, keychain, port 22).
+    var needsNetwork: Bool {
+        if case .fastForward = self { return false }
+        return true
     }
 
     /// Only fixed operations, never an arbitrary command supplied by a repository.
-    func command() throws -> String {
+    /// `repoOverrides`: neutralised repository config keys (see Git.networkSandboxOverrides).
+    func command(repoOverrides: [String] = []) throws -> String {
         let args: [String]
         switch self {
         case .fetch: args = ["fetch", "--all", "--prune", "--no-recurse-submodules", "--progress"]
-        case .pull: args = ["pull", "--ff-only", "--no-recurse-submodules", "--progress"]
+        case .fetchUpstream: args = ["fetch", "--prune", "--no-recurse-submodules", "--progress"]
+        case .fastForward:
+            // No network, no keys: the checkout (and any filter it triggers) runs with an agent's rights.
+            let local = ["/usr/bin/git", "--no-pager", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+                         "-c", "submodule.recurse=false", "merge", "--ff-only", "--no-edit", "@{u}"]
+            return local.map(Self.quote).joined(separator: " ")
         case .clone(let url):
-            guard Self.validCloneURL(url) else { throw SandboxGitRunner.Failure("Bitte eine HTTPS- oder SSH-Git-URL ohne Passwort verwenden.") }
+            guard Self.validCloneURL(url) else { throw SandboxCommandError("Bitte eine HTTPS- oder SSH-Git-URL ohne Passwort verwenden.") }
             args = ["clone", "--progress", "--no-recurse-submodules", "--", url, "."]
         }
         // Keep the sandbox's inherited GitLab proxy/credential configuration intact.
@@ -27,6 +46,7 @@ enum SandboxGitOperation: Sendable {
                       "-c", "protocol.file.allow=never", "-c", "core.gitProxy="]
         // These run with access to SSH keys and the keychain: take them only from the user's
         // global configuration, never from the repository's own (possibly agent-written) .git/config.
+        prefix += repoOverrides
         prefix += ["-c", "core.sshCommand=" + Self.globalConfig.sshCommand, "-c", "credential.helper="]
         for helper in Self.globalConfig.credentialHelpers { prefix += ["-c", "credential.helper=" + helper] }
         return (prefix + args).map(Self.quote).joined(separator: " ")
@@ -65,84 +85,53 @@ enum SandboxGitOperation: Sendable {
     }
 }
 
-/// Marks Hearth's own nono-backed shell API (its commands never run unsandboxed).
-protocol HearthSandboxShell: SandboxShellAPI {}
-
-/// Direct deterministic commands on a sandbox shell API (devkcode's OpenCode server or
-/// Hearth's own nono sandbox). No host Process, agent prompt, chat session, or access to
-/// the app's GitLab PATs.
+/// Runs the fixed Git operations on a sandbox command runner. No host Process, no
+/// agent prompt, no chat session, no access to the app's GitLab tokens.
 struct SandboxGitRunner: Sendable {
-    let client: any SandboxShellAPI
+    let runner: any SandboxCommandRunner
     let root: URL
-    var session: URLSession = GitLabTransport.session // ephemeral, no redirects/cookies
+    /// Neutralised repository config keys for network operations (Git.networkSandboxOverrides).
+    var repoOverrides: [String] = []
     var timeout: TimeInterval = 600
     var pollInterval: Duration = .milliseconds(200)
 
-    struct Failure: LocalizedError {
-        let message: String
-        init(_ message: String) { self.message = message }
-        var errorDescription: String? { message }
-    }
-
-    private var location: [URLQueryItem] { [.init(name: "location[directory]", value: root.path)] }
-
-    static func isLocalServer(_ base: URL) -> Bool {
-        base.scheme == "http" && ["127.0.0.1", "localhost", "[::1]", "::1"].contains(base.host ?? "") &&
-            base.port != nil && base.user == nil && base.password == nil &&
-            (base.path.isEmpty || base.path == "/") && base.query == nil && base.fragment == nil
-    }
+    typealias Failure = SandboxCommandError
 
     func run(_ operation: SandboxGitOperation,
              progress: @escaping @Sendable (String, Double?) -> Void = { _, _ in }) async -> Git.OpResult {
         var id: String?
         do {
-            let validServer = (client as? OpenCodeClient).map { Self.isLocalServer($0.baseURL) } ?? (client is HearthSandboxShell)
-            guard validServer, root.isFileURL, root.path.hasPrefix("/") else {
-                throw Failure("Kein gültiger lokaler Sandbox-Server. Kein Host-Fallback.")
-            }
+            guard root.isFileURL, root.path.hasPrefix("/") else { throw Failure("Ungültiger Ordner. Kein Host-Fallback.") }
             try Task.checkCancellation()
-            let created = try await client.send("POST", "/api/shell", query: location,
-                body: ["command": try operation.command(), "cwd": root.path,
-                       "metadata": ["source": "Hearth IDE", "operation": "git-" + operation.name]], session: session)["data"] as JSON?
-            guard let shellID = created?["id"]?.string, !shellID.isEmpty,
-                  shellID.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
-                throw Failure("Sandbox-Shell lieferte keine gültige Vorgangs-ID.")
-            }
-            id = shellID
-            var status = created ?? .null
+            let commandID = try await runner.start(SandboxCommandRequest(
+                command: try operation.command(repoOverrides: repoOverrides), cwd: root.path,
+                metadata: ["source": "Hearth IDE", "operation": "git-" + operation.name]))
+            id = commandID
             var cursor = 0
             var output = ""
             let deadline = Date().addingTimeInterval(timeout)
             while true {
                 try Task.checkCancellation()
                 guard Date() < deadline else { throw Failure("Git-Vorgang hat das Zeitlimit erreicht und wird in der Sandbox beendet.") }
+                // Read the state first: output written before the exit is then complete below.
+                let state = try await runner.state(of: commandID)
                 // Drain output by byte cursor, including output larger than one page.
-                var more = true
-                while more {
-                    try Task.checkCancellation()
-                    guard Date() < deadline else { throw Failure("Zeitlimit beim Lesen der Git-Ausgabe erreicht.") }
-                    let page = try await client.send("GET", "/api/shell/\(shellID)/output",
-                        query: location + [.init(name: "cursor", value: String(cursor)), .init(name: "limit", value: "65536")], body: nil, session: session)["data"]
-                    let text = page?["output"]?.string ?? ""
-                    let next = max(page?["cursor"]?.double.map(Int.init) ?? cursor, cursor + text.utf8.count)
-                    let size = page?["size"]?.double.map(Int.init) ?? next
-                    more = next > cursor && next < size
-                    cursor = next
-                    if !text.isEmpty {
-                        output += text
-                        if output.count > 200_000 { output = "…\n" + output.suffix(180_000) }
-                        progress(Self.lastLine(text), Self.fraction(text))
-                    }
+                while true {
+                    let page = try await runner.output(of: commandID, from: cursor, limit: 65536)
+                    guard page.next > cursor else { break }
+                    cursor = page.next
+                    output += page.text
+                    if output.count > 200_000 { output = "…\n" + output.suffix(180_000) }
+                    progress(Self.lastLine(page.text), Self.fraction(page.text))
+                    if cursor >= page.size { break }
                 }
-                let state = status["status"]?.string ?? ""
-                if ["exited", "timeout", "killed"].contains(state) {
-                    let ok = state == "exited" && status["exit"]?.double == 0
-                    await remove(shellID)
-                    return Git.OpResult(ok: ok, output: output.isEmpty ? (ok ? "Git \(operation.name) abgeschlossen" : "Git \(operation.name): \(state)") : output.trimmingCharacters(in: .whitespacesAndNewlines))
+                if !state.isRunning {
+                    await runner.remove(commandID)
+                    let ok = state == .exited(0)
+                    let fallback = ok ? "Git \(operation.name) abgeschlossen" : "Git \(operation.name): \(Self.describe(state))"
+                    return Git.OpResult(ok: ok, output: output.isEmpty ? fallback : output.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
-                guard state == "running" else { throw Failure("Unbekannter Sandbox-Shell-Status: \(state)") }
                 try await Task.sleep(for: pollInterval)
-                status = try await client.send("GET", "/api/shell/\(shellID)", query: location, body: nil, session: session)["data"] ?? .null
             }
         } catch {
             if let id { await remove(id) }
@@ -152,11 +141,18 @@ struct SandboxGitRunner: Sendable {
     }
 
     private func remove(_ id: String) async {
-        let client = client, location = location, session = session
+        let runner = runner
         // Cleanup must survive cancellation of the calling UI task.
-        _ = await Task.detached {
-            _ = try? await client.send("DELETE", "/api/shell/\(id)", query: location, body: nil, session: session)
-        }.value
+        await Task.detached { await runner.remove(id) }.value
+    }
+
+    static func describe(_ state: SandboxCommandState) -> String {
+        switch state {
+        case .running: "läuft"
+        case .exited(let code): "Exit \(code)"
+        case .timedOut: "Zeitlimit"
+        case .killed: "abgebrochen"
+        }
     }
 
     private static func lastLine(_ text: String) -> String {

@@ -77,20 +77,20 @@ struct DirectoryItemMenu: View {
 
 extension AppModel {
     func revealEditorFile(_ focused: URL? = nil, in root: String) {
-        guard let file = focused ?? previewFile, WorkspaceFiles.contains(file, root: URL(fileURLWithPath: root)) else {
+        guard let file = focused ?? editor.file, WorkspaceFiles.contains(file, root: URL(fileURLWithPath: root)) else {
             banner = "Die aktive Editor-Datei liegt nicht in diesem Workspace."
             return
         }
         var parent = file.deletingLastPathComponent().standardizedFileURL
         let base = URL(fileURLWithPath: root).standardizedFileURL
         while parent.path != base.path && parent.path.hasPrefix(base.path + "/") {
-            directoryExpandedPaths.insert(parent.path)
+            workspace.expandedPaths.insert(parent.path)
             parent.deleteLastPathComponent()
         }
-        directorySelectedFile = file
-        directoryRevealID = UUID()
-        maximizedPane = nil
-        if !paneTree.contains(tab: .directory) { addPane(.directory) }
+        workspace.selectedFile = file
+        workspace.revealID = UUID()
+        layout.maximizedPane = nil
+        if !layout.paneTree.contains(tab: .directory) { layout.addPane(.directory) }
     }
 
     @discardableResult
@@ -110,12 +110,12 @@ extension AppModel {
         }
         try validateWorkspaceChange(source, root: root)
         try FileManager.default.moveItem(at: source, to: target)
-        directoryExpandedPaths = Set(directoryExpandedPaths.map {
+        workspace.expandedPaths = Set(workspace.expandedPaths.map {
             $0 == source.path || $0.hasPrefix(source.path + "/") ? target.path + String($0.dropFirst(source.path.count)) : $0
         })
-        directoryExpandedPaths.insert(target.deletingLastPathComponent().path)
-        if let selected = directorySelectedFile, selected == source || selected.path.hasPrefix(source.path + "/") {
-            directorySelectedFile = URL(fileURLWithPath: target.path + String(selected.path.dropFirst(source.path.count)))
+        workspace.expandedPaths.insert(target.deletingLastPathComponent().path)
+        if let selected = workspace.selectedFile, selected == source || selected.path.hasPrefix(source.path + "/") {
+            workspace.selectedFile = URL(fileURLWithPath: target.path + String(selected.path.dropFirst(source.path.count)))
         }
         updateWorkspaceTabs(from: source, to: target)
     }
@@ -124,7 +124,7 @@ extension AppModel {
     private func workspaceAction(_ action: () throws -> Void) -> Bool {
         do {
             try action()
-            workspaceRevision += 1
+            workspace.revision += 1
             return true
         } catch { banner = error.localizedDescription; return false }
     }
@@ -150,7 +150,7 @@ extension AppModel {
                 try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false)
             } else {
                 try Data().write(to: target, options: .withoutOverwriting)
-                openPreview(target)
+                editor.open(target)
             }
         }
     }
@@ -164,7 +164,7 @@ extension AppModel {
             throw WorkspaceFiles.Failure("Dieser Pfad darf hier nicht verändert werden.")
         }
         let canonicalSource = url.resolvingSymlinksInPath().path
-        guard !unsavedDocuments.contains(where: {
+        guard !editor.unsavedDocuments.contains(where: {
             let path = $0.url.resolvingSymlinksInPath().path
             return path == canonicalSource || path.hasPrefix(canonicalSource + "/")
         }) else {
@@ -217,7 +217,7 @@ extension AppModel {
 
     private func updateWorkspaceTabs(from source: URL, to destination: URL?) {
         // Include the active/restored group even before its pane has appeared.
-        let groups = Array(editorGroups.values) + [activeEditor]
+        let groups = Array(editor.groups.values) + [editor.active]
         for group in groups {
             let active = group.file
             for old in group.tabs where old == source || old.path.hasPrefix(source.path + "/") {
@@ -228,7 +228,7 @@ extension AppModel {
                 } else {
                     group.remove(old)
                 }
-                documents[old] = nil
+                editor.documents[old] = nil
             }
             // Old paths must not remain in navigation history after a rename/delete.
             group.back.removeAll { $0.url == source || $0.url.path.hasPrefix(source.path + "/") }
@@ -300,7 +300,7 @@ private struct WorkspaceRootDrop: DropDelegate {
         provider.loadDataRepresentation(forTypeIdentifier: WorkspaceFileDrag.type.identifier) { data, _ in
             guard let data else { return }
             Task { @MainActor in
-                guard let drag = WorkspaceFileDrag.decode(data, root: root, token: model.directoryDragToken) else { return }
+                guard let drag = WorkspaceFileDrag.decode(data, root: root, token: model.workspace.dragToken) else { return }
                 model.moveWorkspaceItem(drag.source, into: directory, root: root)
             }
         }
@@ -332,14 +332,14 @@ extension AppModel {
             menu.addItem(.separator())
         }
         guard let file else {
-            add("Aktualisieren") { self.workspaceRevision += 1 }
+            add("Aktualisieren") { self.workspace.revision += 1 }
             return menu
         }
         let url = file.url
         if !file.isDirectory {
-            add("Im Editor öffnen") { self.openPreview(url) }
+            add("Im Editor öffnen") { self.editor.open(url) }
             let relative = String(url.path.dropFirst(root.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            if markers[relative] != nil { add("Diff anzeigen") { self.openPreview(url, mode: .diff) } }
+            if markers[relative] != nil { add("Diff anzeigen") { self.editor.open(url, mode: .diff) } }
         }
         add("Umbenennen …") { self.changeWorkspaceItem(url, root: root, rename: true) }
         add("Verschieben …") { self.changeWorkspaceItem(url, root: root, rename: false) }

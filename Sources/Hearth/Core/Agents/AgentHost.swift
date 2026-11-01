@@ -53,7 +53,8 @@ final class AgentRun: Identifiable {
     var canResume: Bool {
         guard let sid = sessionID else { return false }
         guard kind == .claude else { return true }
-        let projects = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/projects")
+        // Transcripts live in Hearth's own Claude folder (AgentHome).
+        let projects = URL(fileURLWithPath: AgentHome.claudeProjects(support: SandboxManager.supportDirectory.path))
         let dirs = (try? FileManager.default.contentsOfDirectory(atPath: projects.path)) ?? []
         return dirs.contains { FileManager.default.fileExists(atPath: projects.appendingPathComponent("\($0)/\(sid).jsonl").path) }
     }
@@ -170,8 +171,8 @@ final class AgentHost {
         }
         let launch: SandboxManager.Launch
         do {
-            launch = try SandboxManager.prepare(kind: run.kind, runID: run.id, directory: run.directory,
-                                                agentArguments: args, statusHooks: run.purpose == .session)
+            launch = try SandboxManager.prepare(.agent(run.kind), runID: run.id, directory: run.directory,
+                                                arguments: args, statusHooks: run.purpose == .session)
         } catch {
             run.error = error.localizedDescription
             run.status = .blocked

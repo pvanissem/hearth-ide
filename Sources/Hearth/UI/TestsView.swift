@@ -27,7 +27,7 @@ struct TestsView: View {
             }
         }
         .busyOverlay(loading.wrappedValue && report.wrappedValue != nil, label: "Lese Reports …")
-        .task(id: "\(root)#\(model.workspaceRevision)") { await reload() }
+        .task(id: "\(root)#\(model.workspace.revision)") { await reload() }
     }
 
     private var empty: some View {
@@ -141,7 +141,7 @@ struct TestsView: View {
             }
             .help(suite.name)
             .contextMenu {
-                Button { model.openPreview(URL(fileURLWithPath: root).appendingPathComponent(suite.file)) } label: {
+                Button { model.editor.open(URL(fileURLWithPath: root).appendingPathComponent(suite.file)) } label: {
                     Label("Report-Datei anzeigen", systemImage: "doc.text")
                 }
             }
@@ -167,11 +167,11 @@ struct TestsView: View {
             }
             .interactiveRow {
                 if failed { withAnimation(.easeOut(duration: 0.15)) { toggle(expandedCases, c.id) } }
-                else if let loc = location { Task { await model.reveal(fileName: loc.file, line: loc.line) } }
+                else if let loc = location { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } }
             }
             .contextMenu {
                 if let loc = location {
-                    Button { Task { await model.reveal(fileName: loc.file, line: loc.line) } } label: {
+                    Button { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } } label: {
                         Label("Zu \(loc.file):\(loc.line.map(String.init) ?? "?") springen", systemImage: "arrow.right.doc.on.clipboard")
                     }
                 }
@@ -196,7 +196,7 @@ struct TestsView: View {
                     }
                     HStack {
                         if let loc = location {
-                            Button("Zur Stelle") { Task { await model.reveal(fileName: loc.file, line: loc.line) } }
+                            Button("Zur Stelle") { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } }
                         }
                         Button("Agent: fixen") { model.ask(fixPrompt(c)) }
                     }

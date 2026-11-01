@@ -1,7 +1,7 @@
 import Foundation
 
 /// A build step or long-running service offered for a workspace project.
-/// Tasks are derived from project files and always run in the devkcode sandbox.
+/// Tasks are derived from project files and always run in Hearth's nono sandbox.
 struct BuildTask: Identifiable, Hashable, Codable, Sendable {
     enum Kind: String, Codable, Sendable { case task, service }
     enum Tool: String, Codable, Sendable, CaseIterable {
@@ -60,7 +60,7 @@ enum BuildCommand {
     """#
 
     static let mavenProxy = #"""
-    HEARTH_MAVEN_SETTINGS=""; if hearth_proxy; then d="${TMPDIR:-/tmp}/hearth"; mkdir -p "$d"; find "$d" -name 'maven-proxy.*' -mmin +1440 -delete 2>/dev/null; HEARTH_MAVEN_SETTINGS="$(umask 077; mktemp "$d/maven-proxy.XXXXXX")"; { echo '<settings><proxies>'; for proto in https http; do echo "<proxy><id>devk-sandbox-$proto</id><active>true</active><protocol>$proto</protocol><host>$HEARTH_PROXY_HOST</host><port>$HEARTH_PROXY_PORT</port><username>$HEARTH_PROXY_USER</username><password>$HEARTH_PROXY_PASS</password><nonProxyHosts>localhost|127.0.0.1</nonProxyHosts></proxy>"; done; echo '</proxies></settings>'; } > "$HEARTH_MAVEN_SETTINGS"; fi
+    HEARTH_MAVEN_SETTINGS=""; if hearth_proxy; then d="${TMPDIR:-/tmp}/hearth"; mkdir -p "$d"; find "$d" -name 'maven-proxy.*' -mmin +1440 -delete 2>/dev/null; HEARTH_MAVEN_SETTINGS="$(umask 077; mktemp "$d/maven-proxy.XXXXXX")"; { echo '<settings><proxies>'; for proto in https http; do echo "<proxy><id>hearth-sandbox-$proto</id><active>true</active><protocol>$proto</protocol><host>$HEARTH_PROXY_HOST</host><port>$HEARTH_PROXY_PORT</port><username>$HEARTH_PROXY_USER</username><password>$HEARTH_PROXY_PASS</password><nonProxyHosts>localhost|127.0.0.1</nonProxyHosts></proxy>"; done; echo '</proxies></settings>'; } > "$HEARTH_MAVEN_SETTINGS"; fi
     """#
 
     static let gradleProxy = #"""

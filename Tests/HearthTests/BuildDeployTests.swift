@@ -5,15 +5,6 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct BuildDeployTests {
-    private func require(_ value: Bool, _ message: String) throws {
-        if !value { throw SandboxGitRunner.Failure(message) }
-    }
-
-    private func need<T>(_ value: T?, _ message: String = "Erwarteter Wert fehlt") throws -> T {
-        guard let value else { throw SandboxGitRunner.Failure(message) }
-        return value
-    }
-
     private func fixture() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("hearth-build-\(UUID().uuidString)")
         func write(_ path: String, _ text: String) throws {
@@ -115,8 +106,8 @@ struct BuildDeployTests {
                     && oneShot.requiredTool == "go", "Required tool detection")
     }
 
-    @Test func runnerLifecycleAgainstShellAPI() async throws {
-        let api = FakeShellAPI()
+    @Test func runnerLifecycleAgainstSandbox() async throws {
+        let api = FakeCommandRunner()
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [FakeLocalService.self]
         let store = BuildDeployStore()
@@ -127,15 +118,14 @@ struct BuildDeployTests {
 
         // One-shot task: paged output, success, cleanup.
         let build = BuildTask(id: "Go::build", tool: .go, project: "", title: "Build", kind: .task, argv: ["go", "build", "./..."])
-        api.script = [.output("compiling…\n"), .output("\u{1B}[32mok\u{1B}[0m\r\n"), .exit(0)]
+        api.reset([.output("compiling…\n"), .output("\u{1B}[32mok\u{1B}[0m\r\n"), .exit(0)])
         let run = try need(await store.start(build, root: "/w/repo", serverID: "s1", client: api))
         try await wait { run.state == .succeeded }
-        try require(run.output.contains("compiling…") && run.output.contains("ok\n") && !run.output.contains("\u{1B}"), "Output not collected/cleaned")
-        let post = try need(api.requests.first { $0.method == "POST" })
-        try require(post.body?["cwd"] as? String == "/w/repo" && (post.body?["command"] as? String)?.contains("exec 'go' 'build'") == true, "Wrong POST")
-        let metadata = post.body?["metadata"] as? [String: Any]
-        try require(metadata?["source"] as? String == "Hearth IDE" && metadata?["kind"] as? String == "build-deploy" && metadata?["root"] as? String == "/w/repo", "Metadata")
-        try require(api.requests.contains { $0.method == "DELETE" }, "Finished shell not removed")
+        try require(run.output.contains("compiling…") && run.output.contains("ok\n") && !run.output.contains("\u{1B}"), "Output not collected/cleaned: \(run.output)")
+        let start = try need(api.requests.first)
+        try require(start.cwd == "/w/repo" && start.command.contains("exec 'go' 'build'"), "Wrong start request")
+        try require(start.metadata["source"] == "Hearth IDE" && start.metadata["kind"] == "build-deploy" && start.metadata["root"] == "/w/repo", "Metadata")
+        try require(!api.removed.isEmpty, "Finished command not removed")
 
         // Failure keeps exit code.
         api.reset([.exit(1)])
@@ -143,52 +133,60 @@ struct BuildDeployTests {
         try await wait { !failed.state.isActive }
         try require(failed.state == .failed("Exit 1"), "Exit code not reported: \(failed.state)")
 
-        // Service: health becomes up via the host probe, stop sends DELETE.
+        // Service: health becomes up via the host probe, stop removes the command.
         let service = BuildTask(id: "Go::run", tool: .go, project: "", title: "Run", kind: .service, argv: ["go", "run", "."], port: 18_080, healthPath: "/health")
         api.reset([.output("listening\n"), .running])
         let svc = try need(await store.start(service, root: "/w/repo", serverID: "s1", client: api))
+        try require(api.requests.first?.port == 18_080, "Service port not opened in the sandbox")
         try require(store.activeRun(service, root: "/w/repo") === svc, "Service not active")
         let again = await store.start(service, root: "/w/repo", serverID: "s1", client: api)
-        try require(again === svc && api.requests.filter { $0.method == "POST" }.count == 1, "Service started twice")
+        try require(again === svc && api.requests.count == 1, "Service started twice")
         FakeLocalService.listening = [18_080]
         try await wait { svc.health == .up(200) }
         try require(FakeLocalService.paths.contains("/health"), "Health path not probed")
         await store.stop(svc, client: api)
-        try require(svc.state == .stopped && api.requests.contains { $0.method == "DELETE" }, "Service not stopped")
+        try require(svc.state == .stopped && !api.removed.isEmpty, "Service not stopped")
 
-        // Port already used on the host: refuse before creating a shell.
+        // Port already used on the host: refuse before starting anything.
         api.reset([])
         let blocked = try need(await store.start(service, root: "/w/repo", serverID: "s1", client: api))
-        try require(blocked.state == .failed("Port belegt") && !api.requests.contains { $0.method == "POST" }, "Port conflict not detected")
+        try require(blocked.state == .failed("Port belegt") && api.requests.isEmpty, "Port conflict not detected")
         FakeLocalService.listening = []
 
-        // Missing tool in sandbox: no shell, no host fallback.
-        api.reset([.toolList("go\nmvn\n"), .exit(0)])
+        // Missing tool in sandbox: nothing starts, no host fallback.
+        api.reset([.output("go\nmvn\n"), .exit(0)])
         await store.probeTools(client: api, serverID: "s2", root: "/w/repo")
         let npm = BuildTask(id: "Node::install", tool: .node, project: "", title: "i", kind: .task, argv: ["npm", "ci"])
         try require(store.unavailableReason(npm, serverID: "s2") != nil && store.unavailableReason(build, serverID: "s2") == nil, "Tool probe")
         api.reset([])
         let missing = try need(await store.start(npm, root: "/w/repo", serverID: "s2", client: api))
-        try require(missing.state == .failed("nicht verfügbar") && !api.requests.contains { $0.method == "POST" }, "Unavailable tool executed")
+        try require(missing.state == .failed("nicht verfügbar") && api.requests.isEmpty, "Unavailable tool executed")
 
-        // Adopt a running service after an app restart; ignore foreign shells.
+        // A sandbox that cannot start reports it and never falls back to the host.
+        api.reset([])
+        api.failStart = true
+        let refused = try need(await store.start(build, root: "/w/repo", serverID: "s1", client: api))
+        try require(refused.state == .failed("Start fehlgeschlagen") && refused.output.contains("Keine Ausführung auf dem Host"), "Start failure")
+
+        // Re-attach a running service; ignore commands of others.
         api.reset([.running])
+        let started = Date(timeIntervalSince1970: 1_700_000_000)
         api.list = [
-            ["id": "sh_adopt", "status": "running", "command": "x", "time": ["started": 1_700_000_000_000],
-             "metadata": ["source": "Hearth IDE", "kind": "build-deploy", "root": "/w/repo", "task": "Maven:api:spring-boot-run",
-                          "title": "Spring Boot", "service": true, "port": 8081, "display": "mvn spring-boot:run", "tool": "Maven"]],
-            ["id": "sh_other", "status": "running", "metadata": ["source": "agent"]],
-            ["id": "sh_otherrepo", "status": "running", "metadata": ["source": "Hearth IDE", "kind": "build-deploy", "root": "/w/other", "task": "t"]],
+            SandboxCommandInfo(id: "sh_adopt", command: "x", metadata: ["source": "Hearth IDE", "kind": "build-deploy", "root": "/w/repo",
+                "task": "Maven:api:spring-boot-run", "title": "Spring Boot", "service": "true", "port": "8081",
+                "display": "mvn spring-boot:run", "tool": "Maven"], started: started),
+            SandboxCommandInfo(id: "sh_other", command: "y", metadata: ["source": "agent"], started: started),
+            SandboxCommandInfo(id: "sh_otherrepo", command: "z", metadata: ["source": "Hearth IDE", "kind": "build-deploy", "root": "/w/other", "task": "t"], started: started),
         ]
         await store.adopt(client: api, root: "/w/repo", serverID: "s1")
         let adopted = store.runs.filter { $0.shellID == "sh_adopt" }
-        try require(adopted.count == 1 && adopted[0].task.kind == .service && adopted[0].port == 8081, "Service not adopted")
-        try require(!store.runs.contains { $0.shellID == "sh_other" || $0.shellID == "sh_otherrepo" }, "Foreign shell adopted")
+        try require(adopted.count == 1 && adopted[0].task.kind == .service && adopted[0].port == 8081 && adopted[0].startedAt == started, "Service not adopted")
+        try require(!store.runs.contains { $0.shellID == "sh_other" || $0.shellID == "sh_otherrepo" }, "Foreign command adopted")
         await store.adopt(client: api, root: "/w/repo", serverID: "s1")
         try require(store.runs.filter { $0.shellID == "sh_adopt" }.count == 1, "Adopted twice")
 
         store.serverGone("s1")
-        try require(adopted[0].state == .lost("Sandbox beendet"), "Server loss not reflected")
+        try require(adopted[0].state == .lost("Sandbox beendet"), "Sandbox loss not reflected")
     }
 
     private func wait(_ condition: @escaping () -> Bool) async throws {
@@ -196,116 +194,7 @@ struct BuildDeployTests {
             if condition() { return }
             try await Task.sleep(for: .milliseconds(10))
         }
-        throw SandboxGitRunner.Failure("Timeout waiting for runner state")
-    }
-
-    /// Optional live check against a running devkcode sandbox (HEARTH_LIVE_SANDBOX_ROOT).
-    /// Builds and runs a tiny Go HTTP service inside the sandbox and reaches it from the host.
-    func liveSandboxGoService() async throws {
-        guard let repo = ProcessInfo.processInfo.environment["HEARTH_LIVE_SANDBOX_ROOT"] else { return }
-        let entry = try need(try WebSessionRegistry.load().first { $0.repoRoot == repo && WebSessionRegistry.isAlive($0) })
-        let client = OpenCodeClient(baseURL: try need(entry.baseURL), password: try need(entry.password))
-        let project = URL(fileURLWithPath: repo).appendingPathComponent(".build/hearth-live-\(UUID().uuidString.prefix(8))")
-        defer { try? FileManager.default.removeItem(at: project) }
-        try FileManager.default.createDirectory(at: project.appendingPathComponent("cmd/web"), withIntermediateDirectories: true)
-        let port = Int.random(in: 39_000...39_900)
-        try "module live\n\ngo 1.22\n".write(to: project.appendingPathComponent("go.mod"), atomically: true, encoding: .utf8)
-        try """
-        package main
-        import ("fmt"; "net/http"; "os")
-        func main() {
-            http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "live-ok") })
-            fmt.Println("listening")
-            if err := http.ListenAndServe("127.0.0.1:" + os.Getenv("PORT"), nil); err != nil { fmt.Println(err); os.Exit(1) }
-        }
-        """.write(to: project.appendingPathComponent("cmd/web/main.go"), atomically: true, encoding: .utf8)
-        let projects = BuildDetector.scan(root: project.path)
-        let tasks = projects.flatMap(\.tasks)
-        let store = BuildDeployStore()
-        await store.probeTools(client: client, serverID: entry.id, root: project.path)
-        try require(store.availableTools[entry.id]?.contains("go") == true, "go not available in sandbox")
-        let build = try need(tasks.first { $0.id == "Go::build" })
-        let run = try need(await store.start(build, root: project.path, serverID: entry.id, client: client))
-        for _ in 0..<600 where run.state.isActive { try await Task.sleep(for: .milliseconds(200)) }
-        try require(run.state == .succeeded, "Sandbox go build failed: \(run.output)")
-        let service = try need(tasks.first { $0.id == "Go::run:./cmd/web" })
-        let svc = try need(await store.start(service, root: project.path, serverID: entry.id, client: client, port: port))
-        for _ in 0..<600 where svc.health == .unknown || svc.health == .down {
-            guard svc.state.isActive else { break }
-            try await Task.sleep(for: .milliseconds(200))
-        }
-        try require(svc.health == .up(200), "Service not reachable from host: \(svc.state) \(svc.output)")
-        await store.stop(svc, client: client)
-        try await Task.sleep(for: .seconds(4))
-        try require(await LocalPortProbe().status(port: port) == nil, "Service still running after stop")
-
-        // Maven inside the sandbox resolves dependencies through the sandbox proxy.
-        let mavenProject = URL(fileURLWithPath: repo).appendingPathComponent(".build/hearth-live-mvn-\(UUID().uuidString.prefix(8))")
-        defer { try? FileManager.default.removeItem(at: mavenProject) }
-        try FileManager.default.createDirectory(at: mavenProject.appendingPathComponent("src/main/java"), withIntermediateDirectories: true)
-        try """
-        <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>live</groupId><artifactId>live</artifactId><version>1</version>
-        <properties><maven.compiler.release>17</maven.compiler.release></properties>
-        <dependencies><dependency><groupId>org.apache.commons</groupId><artifactId>commons-lang3</artifactId><version>3.12.0</version></dependency></dependencies></project>
-        """.write(to: mavenProject.appendingPathComponent("pom.xml"), atomically: true, encoding: .utf8)
-        try "public class A { String s = org.apache.commons.lang3.StringUtils.trim(\" x \"); }"
-            .write(to: mavenProject.appendingPathComponent("src/main/java/A.java"), atomically: true, encoding: .utf8)
-        let package = try need(BuildDetector.scan(root: mavenProject.path).flatMap(\.tasks).first { $0.id == "Maven::package-skip" })
-        let mvnRun = try need(await store.start(package, root: mavenProject.path, serverID: entry.id, client: client))
-        for _ in 0..<1500 where mvnRun.state.isActive { try await Task.sleep(for: .milliseconds(200)) }
-        try require(mvnRun.state == .succeeded && FileManager.default.fileExists(atPath: mavenProject.appendingPathComponent("target/live-1.jar").path),
-                    "Sandbox Maven package failed: \(mvnRun.output.suffix(3000))")
-    }
-}
-
-/// In-memory model of OpenCode's /api/shell endpoints.
-final class FakeShellAPI: SandboxShellAPI, @unchecked Sendable {
-    enum Step { case output(String), exit(Int), running, toolList(String) }
-    struct Request { let method: String; let path: String; let body: [String: Any]? }
-    private let lock = NSLock()
-    private var _requests: [Request] = []
-    var script: [Step] = []
-    var list: [[String: Any]] = []
-    private var output = ""
-    private var status = "running"
-    private var exit: Int?
-    private var counter = 0
-    var requests: [Request] { lock.lock(); defer { lock.unlock() }; return _requests }
-    func reset(_ steps: [Step]) { lock.lock(); _requests = []; script = steps; output = ""; status = "running"; exit = nil; lock.unlock() }
-
-    private func advance() {
-        guard !script.isEmpty else { return }
-        switch script.removeFirst() {
-        case .output(let text), .toolList(let text): output += text
-        case .exit(let code): status = "exited"; exit = code
-        case .running: script.insert(.running, at: 0)
-        }
-    }
-
-    func send(_ method: String, _ path: String, query: [URLQueryItem], body: [String: Any]?, session: URLSession?) async throws -> JSON {
-        lock.lock(); defer { lock.unlock() }
-        _requests.append(Request(method: method, path: path, body: body))
-        func json(_ value: Any) -> JSON { JSON.parse(try! JSONSerialization.data(withJSONObject: ["data": value]))! }
-        switch (method, path) {
-        case ("POST", "/api/shell"):
-            counter += 1
-            return json(["id": "sh_\(counter)", "status": "running"])
-        case ("GET", "/api/shell"):
-            return json(list)
-        case ("DELETE", _):
-            status = "killed"
-            return .null
-        case ("GET", let p) where p.hasSuffix("/output"):
-            advance()
-            let cursor = Int(query.first { $0.name == "cursor" }?.value ?? "0") ?? 0
-            let bytes = Array(output.utf8)
-            let chunk = cursor < bytes.count ? String(decoding: bytes[cursor...], as: UTF8.self) : ""
-            return json(["output": chunk, "cursor": bytes.count, "size": bytes.count])
-        default:
-            var info: [String: Any] = ["status": status]
-            if let exit { info["exit"] = exit }
-            return json(info)
-        }
+        throw TestFailure(description: "Timeout waiting for runner state")
     }
 }
 

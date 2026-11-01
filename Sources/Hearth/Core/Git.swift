@@ -91,21 +91,46 @@ enum Git {
         return env
     }
 
+    /// Git binaries the hardened host process may execute: Apple's shim and the real Git it
+    /// hands over to, wherever the selected developer directory is (e.g. "Xcode-beta.app").
+    static let gitExecutables: [String] = {
+        var paths = ["/usr/bin/git", "/Library/Developer/CommandLineTools/usr/bin/git",
+                     "/Applications/Xcode.app/Contents/Developer/usr/bin/git"]
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        p.arguments = ["--find", "git"]
+        p.environment = ["PATH": "/usr/bin:/bin"]
+        let out = Pipe()
+        p.standardOutput = out
+        p.standardError = FileHandle.nullDevice
+        p.standardInput = FileHandle.nullDevice
+        if (try? p.run()) != nil {
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            p.waitUntilExit()
+            let found = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            let real = URL(fileURLWithPath: found).resolvingSymlinksInPath().path
+            for path in [found, real] where p.terminationStatus == 0 && path.hasPrefix("/") && path.hasSuffix("/git")
+                && FileManager.default.isExecutableFile(atPath: path) && !paths.contains(path) {
+                paths.append(path)
+            }
+        }
+        return paths
+    }()
+
     /// Defense in depth against config/attribute changes between inspection and
     /// the actual query: only Apple's Git executable may execute, never a helper
     /// shell, filter, hook or transport. Missing Seatbelt support fails closed.
     static func hostProcess(_ arguments: [String]) -> Process {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sandbox-exec")
+        let allowed = gitExecutables.map { "  (literal \(SandboxPolicy.sbString($0)))" }.joined(separator: "\n")
         let profile = """
         (version 1)
         (allow default)
         (deny network*)
         (deny process-exec)
         (allow process-exec
-          (literal "/usr/bin/git")
-          (literal "/Library/Developer/CommandLineTools/usr/bin/git")
-          (literal "/Applications/Xcode.app/Contents/Developer/usr/bin/git"))
+        \(allowed))
         """
         process.arguments = ["-p", profile, "/usr/bin/git"] + arguments
         process.environment = hostEnvironment
@@ -127,6 +152,33 @@ enum Git {
         return Set(keys.filter { $0.lowercased().hasPrefix("filter.") }).sorted().flatMap {
             ["-c", $0 + ($0.lowercased().hasSuffix(".required") ? "=false" : "=")]
         }
+    }
+
+    /// Overrides for repository config keys that would execute something or hand out
+    /// credentials inside the Git network sandbox (which can read SSH keys and the keychain):
+    /// clean/smudge/process filters and credential helpers, including URL-scoped ones
+    /// like `credential.https://host.helper`. Nil when the config can't be read safely.
+    static func networkSandboxOverrides(in dir: String) -> [String]? {
+        let process = hostProcess(hostOptions + ["-C", dir, "config", "--includes", "--null", "--name-only", "--list"])
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let keys = String(decoding: data, as: UTF8.self).split(separator: "\0").map(String.init)
+        return networkSandboxOverrides(forKeys: keys)
+    }
+
+    static func networkSandboxOverrides(forKeys keys: [String]) -> [String] {
+        var seen = Set<String>()
+        return keys.filter { key in
+            let k = key.lowercased()
+            let risky = k.hasPrefix("filter.") || (k.hasPrefix("credential.") && k.hasSuffix(".helper"))
+                || k == "core.askpass" || k.hasSuffix(".sshcommand") || k == "core.gitproxy"
+            return risky && seen.insert(k).inserted
+        }.sorted().flatMap { ["-c", $0 + ($0.lowercased().hasSuffix(".required") ? "=false" : "=")] }
     }
 
     static func safeReadArguments(_ args: [String]) -> [String]? {

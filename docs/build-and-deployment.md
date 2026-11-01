@@ -2,8 +2,9 @@
 
 Neuer Bereich im Pane-System (Tab „Build & Deployment“, Symbol Hammer). Er erkennt
 Build-Werkzeuge und Services des ausgewählten Workspace und führt sie
-**ausschließlich in der devkcode-Sandbox** aus – über die Shell-API des laufenden
-OpenCode-Servers. Es gibt keinen Host-Fallback und keinen LLM-Prompt.
+**ausschließlich in Hearths nono-Sandbox** aus (`NonoCommandRunner`, Zweck `.build`:
+Projektordner schreibbar, keine SSH-Schlüssel, kein Schlüsselbund). Es gibt keinen
+Host-Fallback und keinen LLM-Prompt.
 
 ## Erkennung (nur Dateien lesen, nichts ausführen)
 
@@ -33,11 +34,10 @@ Namen, Pfade außerhalb des Workspace und übergroße Dateien werden ignoriert.
   Derselbe Service läuft pro Workspace höchstens einmal.
 - Stoppen beendet den gesamten Prozessbaum (auch die von `spring-boot:run`
   geforkte JVM) – SIGTERM, nach 3 s SIGKILL.
-- Services laufen weiter, wenn die App geschlossen wird, und werden beim nächsten
-  Öffnen anhand ihrer Shell-Metadaten wieder angezeigt und sind stoppbar. Mit dem
-  Stopp der Sandbox enden sie.
+- Laufende Services werden anhand ihrer Metadaten wieder angezeigt, wenn die
+  Ansicht neu aufgebaut wird, und bleiben stoppbar.
 
-## Sandbox-Besonderheiten (gemessen, devkcode unverändert)
+## Sandbox-Besonderheiten
 
 - **Erreichbarkeit:** Ein Service in der Sandbox kann lauschen und ist vom Mac aus
   erreichbar; aus der Sandbox heraus sind andere localhost-Ports nicht erreichbar.
@@ -47,30 +47,28 @@ Namen, Pfade außerhalb des Workspace und übergroße Dateien werden ignoriert.
   `~/.m2/settings.xml` (Mirror/Server) bleibt unverändert wirksam. Gradle bekommt die
   Proxy-Werte über `GRADLE_OPTS`. Go/Node nutzen die Umgebungsvariablen.
 - **Nicht freigegebene Ziele** (z. B. ein Repository außerhalb der Allowlist)
-  scheitern mit „Operation not permitted“/403. Die App erkennt das und nennt
-  `devkcode allow-domain <host>` (danach Sandbox neu starten).
+  scheitern mit „Operation not permitted“/403. Die App erkennt das und verweist auf
+  die Freigabe unter Einstellungen › Sandbox.
 - **Caches:** Go- und Gradle-Caches liegen unter `$TMPDIR/hearth`, weil die
   Standardorte in der Sandbox nicht beschreibbar sind.
 - **Werkzeuge:** Beim Öffnen wird geprüft, welche Werkzeuge in der Sandbox ausführbar
-  sind. Im aktuellen Profil sind `java`, `mvn`, `go`, `node`, `make` vorhanden, `npm`
-  und `gradle` dagegen nicht (nvm-Verzeichnis gesperrt). Betroffene Aufgaben werden
-  deaktiviert mit Hinweis auf die nötige Profilfreigabe; Wrapper (`./mvnw`,
-  `./gradlew`) bleiben nutzbar.
+  sind. Fehlt eines, wird die Aufgabe mit Hinweis deaktiviert; Wrapper (`./mvnw`,
+  `./gradlew`) bleiben nutzbar. Zusätzliche Werkzeug-Ordner gibst du unter
+  Einstellungen › Sandbox frei.
 - **Docker/Compose** ist mangels Socket-Freigabe der Sandbox nicht unterstützt.
 
 ## Tests
 
-`bash scripts/test-security.sh` (`BuildDeployTests.swift`):
+`scripts/test.sh` (`BuildDeployTests.swift`):
 
 - Erkennung mit Fixture-Projekt (Multi-Module-Maven mit Spring Boot/Actuator/YAML-Port,
   pnpm/Vite, Go `cmd/`, Makefile, eigene Aufgaben, unsichere Eingaben).
 - Befehlserzeugung inkl. **tatsächlicher Ausführung** des Maven-Skripts mit Fake-`mvn`
   und Fake-Proxy unter zsh: Argumente, Exit-Code, Settings-Rechte, Löschung.
-- Runner gegen nachgebildete Shell-API: Ausgabe-Paging, Exit-Codes, Aufräumen,
+- Runner gegen eine In-Memory-Sandbox (`FakeCommandRunner`): Ausgabe-Paging, Exit-Codes, Aufräumen,
   Service-Health, Stoppen, Port-Konflikt, fehlende Werkzeuge, Wiederaufnahme,
   Sandbox-Verlust.
-- Optional live (`HEARTH_LIVE_SANDBOX_ROOT=<repo mit laufender Sandbox>`): Go-Build,
-  Go-HTTP-Service in der Sandbox vom Mac erreichbar und gestoppt, Maven-Package mit
-  Abhängigkeiten über den Sandbox-Proxy.
+- Live gegen echtes nono (`LiveSandboxTests`): Projektordner schreibbar, `.git/hooks`
+  gesperrt, keine SSH-Schlüssel und kein Schlüsselbund in der Build-Sandbox.
 
 Die Bedienung im Fenster selbst (Klickwege, Layout) ist noch manuell abzunehmen.
