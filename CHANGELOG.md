@@ -1,6 +1,6 @@
 # Hearth IDE – Änderungen
 
-## Unveröffentlicht
+## 0.4.5 · 2026-11-01
 
 - Während ein Agent arbeitet, laden Tests, Architektur, Branches, Git-Status, Dateisuche und CI/CD nicht mehr bei jeder geschriebenen Datei neu, sondern sobald es 1,5 s ruhig ist (spätestens alle 10 s). Verzeichnisbaum und Editor folgen weiter sofort, „Aktualisieren“ wirkt sofort. Die Tests-Ansicht flackert beim Nachladen nicht mehr.
 - CI/CD: Laden und Polling stecken jetzt in einem eigenen, getesteten Baustein. An der Bedienung ändert sich nichts.
