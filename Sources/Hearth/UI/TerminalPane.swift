@@ -43,16 +43,14 @@ struct ITermProfile {
     }
 }
 
-/// Embedded terminal pane: login shell in the workspace, optionally the devkcode
-/// session TUI; looks like iTerm2 when that is the preferred terminal.
+/// Embedded terminal pane: the user's login shell in the workspace, on the host (no sandbox,
+/// labelled as such); looks like iTerm2 when that is the preferred terminal.
 struct TerminalPaneView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.textScale) private var scale
     let root: String?
 
-    enum Mode: Equatable { case shell, session(String) }
-    private let mode = State(initialValue: Mode.shell)
     private let generation = State(initialValue: 0)   // bump to restart the process
     private let exited = State(initialValue: Int32?.none)
 
@@ -62,16 +60,8 @@ struct TerminalPaneView: View {
                 Image(systemName: "terminal").foregroundStyle(.secondary)
                 Text(title).scaledFont(.caption, bold: true).lineLimit(1).truncationMode(.middle)
                 Spacer()
-                Menu {
-                    Button { start(.shell) } label: { Label("Shell im Workspace", systemImage: "terminal") }
-                    if let s = model.selectedSession {
-                        Button { start(.session(s.id)) } label: {
-                            Label("Session-Oberfläche: \(s.title)", systemImage: "rectangle.and.text.magnifyingglass")
-                        }
-                    }
-                } label: { Image(systemName: "plus.rectangle.on.rectangle") }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                    .help("Neu starten als Shell oder devkcode-Session-Oberfläche")
+                Text("ohne Sandbox").scaledFont(.caption2).foregroundStyle(.orange)
+                    .help("Diese Shell läuft direkt auf dem Mac, nicht in der Sandbox. Dateien, die ein Agent geschrieben hat, sind nicht vertrauenswürdig.")
                 Button { generation.wrappedValue += 1 } label: { Image(systemName: "arrow.clockwise") }
                     .help("Terminal neu starten")
                 Button { openExternally() } label: { Image(systemName: "arrow.up.forward.app") }
@@ -98,41 +88,16 @@ struct TerminalPaneView: View {
     }
 
     private var title: String {
-        switch mode.wrappedValue {
-        case .shell: (root ?? NSHomeDirectory()).replacingOccurrences(of: NSHomeDirectory(), with: "~")
-        case .session(let id): "devkcode-Session " + (model.inbox.first { $0.id == id }?.title ?? id)
-        }
+        (root ?? NSHomeDirectory()).replacingOccurrences(of: NSHomeDirectory(), with: "~")
     }
 
-    /// argv for the process (login shell, or the shell running devkcode so PATH etc. are set).
+    /// argv for the process: the login shell.
     private var command: [String] {
-        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        switch mode.wrappedValue {
-        case .shell:
-            return [shell, "-l"]
-        case .session(let id):
-            guard let cli = model.cli else { return [shell, "-l"] }
-            let entry = model.servers.values.first { $0.sessions[id] != nil }?.entry
-            let cmd = TerminalLauncher.command(devkcode: cli.executable.path, directory: entry?.repoRoot ?? root ?? NSHomeDirectory(),
-                                               profile: entry?.profileName, project: entry?.projectName, sessionID: id)
-            return [shell, "-l", "-c", cmd]
-        }
-    }
-
-    private func start(_ m: Mode) {
-        mode.wrappedValue = m
-        generation.wrappedValue += 1
+        [ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh", "-l"]
     }
 
     private func openExternally() {
-        let dir = root ?? NSHomeDirectory()
-        let cmd: String
-        if case .session(let id) = mode.wrappedValue, let item = model.inbox.first(where: { $0.id == id }) {
-            model.openInTerminal(item)
-            return
-        } else {
-            cmd = "cd \(TerminalLauncher.shellQuote(dir))"
-        }
+        let cmd = "cd \(TerminalLauncher.shellQuote(root ?? NSHomeDirectory()))"
         Task {
             if let err = await TerminalLauncher.launch(TerminalLauncher.preferred, command: cmd) { model.banner = err }
         }

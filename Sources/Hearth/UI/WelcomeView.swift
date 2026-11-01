@@ -1,14 +1,10 @@
 import SwiftUI
 import AppKit
 
-/// Shown on launch when no sandbox was running: pick a recent one or start a new one.
+/// Shown on launch when no agent was running: continue in a recent folder or start a new one.
 struct WelcomeView: View {
     @Environment(AppModel.self) private var model
     private let showOnLaunch = State(initialValue: AppModel.welcomeEnabled)
-
-    private var recent: [SandboxListing] {
-        model.recentSandboxes
-    }
 
     /// Newest session per folder, so a click starts the same agent there again.
     private var recentAgentFolders: [AgentRun] {
@@ -40,7 +36,7 @@ struct WelcomeView: View {
             UpdateNoticeBar(checker: model.updates, compact: true)
 
             VStack(alignment: .leading, spacing: 8) {
-                if recent.isEmpty && !recentAgentFolders.isEmpty {
+                if !recentAgentFolders.isEmpty {
                     Text("Zuletzt verwendete Ordner").font(.caption.bold()).foregroundStyle(.secondary)
                     ScrollView {
                         LazyVStack(spacing: 2) {
@@ -72,67 +68,10 @@ struct WelcomeView: View {
                         }
                     }
                     .frame(maxHeight: 320)
-                } else if recent.isEmpty {
+                } else {
                     ContentUnavailableView("Noch keine Sitzungen", systemImage: "flame",
                                            description: Text("Wähle einen Ordner und einen Agenten – Claude Code, Codex, Copilot oder OpenCode."))
                         .frame(maxHeight: 180)
-                } else {
-                    Text("Zuletzt verwendet").font(.caption.bold()).foregroundStyle(.secondary)
-                    ScrollView {
-                        LazyVStack(spacing: 2) {
-                            ForEach(recent) { row in
-                                let connected = model.servers.values.contains {
-                                    $0.entry.repoRoot == row.root && $0.entry.projectName == row.project &&
-                                    (row.profile == nil || $0.entry.profileName == row.profile)
-                                }
-                                HStack(spacing: 10) {
-                                    Image(systemName: "shippingbox.fill").foregroundStyle(Color.accentColor)
-                                        .frame(width: 20)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack(spacing: 6) {
-                                            Text(row.name).font(.body.bold())
-                                            ProfileBadge(name: row.profile)
-                                            if let p = row.project {
-                                                Text("Projekt \(p)").font(.caption2).foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        HStack(spacing: 4) {
-                                            Text(row.root.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
-                                                .lineLimit(1).truncationMode(.head)
-                                            if let d = row.lastStarted {
-                                                Text("·")
-                                                Text(d.formatted(.relative(presentation: .named)))
-                                            }
-                                        }
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: connected ? "arrow.up.forward.circle.fill" : "play.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
-                                }
-                                .padding(.vertical, 4)
-                                .interactiveRow {
-                                    model.showWelcome = false
-                                    Task { await model.openRecentSandbox(row) }
-                                }
-                                .help(connected ? "Laufende Sandbox öffnen" : "Mit Profil \(row.profile ?? "Standard") starten")
-                                .overlay(alignment: .trailing) {
-                                    // Separate button (not nested in the row button) for choosing profile/project.
-                                    Button {
-                                        model.welcomeStartNew(.init(root: row.root, project: row.project, profile: row.profile))
-                                    } label: {
-                                        Image(systemName: "gearshape.fill").font(.title3)
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 30, height: 30)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .padding(.trailing, 46)
-                                    .help("Profil oder Projekt wählen und starten …")
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 320)
                 }
             }
             .padding(.horizontal, 24).padding(.vertical, 16)
@@ -159,6 +98,5 @@ struct WelcomeView: View {
             .padding(16)
         }
         .frame(width: 600)
-        .task { model.refreshRegistry(); await model.loadProfiles() }
     }
 }

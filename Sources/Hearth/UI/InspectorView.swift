@@ -7,13 +7,13 @@ struct WorkspaceLayoutView: View {
 
     var body: some View {
         Group {
-            if let id = model.maximizedPane, let pane = model.paneTree.pane(id) {
+            if let id = model.layout.maximizedPane, let pane = model.layout.paneTree.pane(id) {
                 PaneView(pane: pane)
             } else {
-                PaneTreeView(node: model.paneTree)
+                PaneTreeView(node: model.layout.paneTree)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: model.maximizedPane)
+        .animation(.easeOut(duration: 0.18), value: model.layout.maximizedPane)
         .background {
             GeometryReader { g in
                 Color.clear
@@ -22,12 +22,12 @@ struct WorkspaceLayoutView: View {
             }
         }
         .overlay { windowEdgeHighlight }
-        .task(id: "\(model.workspaceRoot ?? "")#\(model.workspaceRevision)") {
-            guard let root = model.workspaceRoot else { model.gitSnapshot = GitSnapshot(); return }
-            let revision = model.workspaceRevision
+        .task(id: "\(model.workspaceRoot ?? "")#\(model.workspace.revision)") {
+            guard let root = model.workspaceRoot else { model.workspace.gitSnapshot = GitSnapshot(); return }
+            let revision = model.workspace.revision
             let snapshot = await Git.snapshot(of: root)
-            guard !Task.isCancelled, model.workspaceRoot == root, model.workspaceRevision == revision else { return }
-            model.gitSnapshot = snapshot
+            guard !Task.isCancelled, model.workspaceRoot == root, model.workspace.revision == revision else { return }
+            model.workspace.gitSnapshot = snapshot
         }
     }
 }
@@ -36,7 +36,7 @@ extension WorkspaceLayoutView {
     /// Strip along the whole window edge while a pane is dragged there.
     @ViewBuilder
     var windowEdgeHighlight: some View {
-        if let zone = model.windowDropZone {
+        if let zone = model.layout.windowDropZone {
             GeometryReader { geo in
                 let w = geo.size.width, h = geo.size.height
                 let r: CGRect = switch zone {
@@ -84,7 +84,7 @@ struct PaneView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     let pane: InspectorPane
-    private let dropZone = State(initialValue: AppModel.DropZone?.none)
+    private let dropZone = State(initialValue: LayoutStore.DropZone?.none)
 
     private var zoomArea: TextArea { .pane(pane.id, pane.tab) }
 
@@ -110,13 +110,13 @@ struct PaneView: View {
     // MARK: Header (drag handle)
 
     private var header: some View {
-        let maximized = model.maximizedPane == pane.id
+        let maximized = model.layout.maximizedPane == pane.id
         return HStack(spacing: 8) {
             Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
                 .help("Ziehen, um den Bereich zu verschieben")
             Menu {
                 ForEach(InspectorTab.allCases) { tab in
-                    Button { model.setTab(tab, for: pane.id) } label: { Label(tab.title, systemImage: tab.symbol) }
+                    Button { model.layout.setTab(tab, for: pane.id) } label: { Label(tab.title, systemImage: tab.symbol) }
                 }
             } label: {
                 Label(pane.tab.title, systemImage: pane.tab.symbol).scaledFont(.caption, bold: true)
@@ -124,33 +124,33 @@ struct PaneView: View {
             .menuStyle(.borderlessButton).fixedSize()
             Spacer()
             Menu {
-                Button { model.zoom(zoomArea, by: 1.1) } label: { Label("Größer", systemImage: "plus.magnifyingglass") }
-                Button { model.zoom(zoomArea, by: 1 / 1.1) } label: { Label("Kleiner", systemImage: "minus.magnifyingglass") }
+                Button { model.textZoom.zoom(zoomArea, by: 1.1) } label: { Label("Größer", systemImage: "plus.magnifyingglass") }
+                Button { model.textZoom.zoom(zoomArea, by: 1 / 1.1) } label: { Label("Kleiner", systemImage: "minus.magnifyingglass") }
                 Divider()
-                Button("Zurücksetzen (\(Int((model.textScale(zoomArea.base) * 100).rounded())) %)") { model.resetZoom(zoomArea) }
+                Button("Zurücksetzen (\(Int((model.textZoom.scale(zoomArea.base) * 100).rounded())) %)") { model.textZoom.reset(zoomArea) }
             } label: {
-                let percent = Int((model.textScale(zoomArea) * 100).rounded())
+                let percent = Int((model.textZoom.scale(zoomArea) * 100).rounded())
                 if percent == 100 { Image(systemName: "textformat.size") } else { Text("\(percent) %").font(.caption2.monospacedDigit()) }
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .foregroundStyle(.secondary)
             .help("Schriftgröße dieses Bereichs (auch ⌘-Scrollen oder Zwei-Finger-Zoom über dem Bereich)")
             // Layout actions only make sense for panes in the main window's tree.
-            if model.paneTree.pane(pane.id) != nil {
-                Button { model.split(pane.id, axis: .horizontal) } label: { Image(systemName: "rectangle.split.2x1") }
+            if model.layout.paneTree.pane(pane.id) != nil {
+                Button { model.layout.split(pane.id, axis: .horizontal) } label: { Image(systemName: "rectangle.split.2x1") }
                     .help("Rechts teilen")
-                Button { model.split(pane.id, axis: .vertical) } label: { Image(systemName: "rectangle.split.1x2") }
+                Button { model.layout.split(pane.id, axis: .vertical) } label: { Image(systemName: "rectangle.split.1x2") }
                     .help("Unten teilen")
-                Button { model.toggleMaximize(pane.id) } label: {
+                Button { model.layout.toggleMaximize(pane.id) } label: {
                     Image(systemName: maximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
                 .help(maximized ? "Wiederherstellen (Doppelklick auf die Kopfzeile)" : "Maximieren (Doppelklick auf die Kopfzeile)")
                 Button {
-                    if let tab = model.detach(pane.id) { openWindow(value: tab) }
+                    if let tab = model.layout.detach(pane.id) { openWindow(value: tab) }
                 } label: { Image(systemName: "macwindow.on.rectangle") }
                     .help("In eigenem Fenster öffnen")
-                if model.paneTree.panes.count > 1 {
-                    Button { model.closePane(pane.id) } label: { Image(systemName: "xmark") }
+                if model.layout.paneTree.panes.count > 1 {
+                    Button { model.layout.closePane(pane.id) } label: { Image(systemName: "xmark") }
                         .help("Bereich schließen")
                 }
             }
@@ -160,9 +160,9 @@ struct PaneView: View {
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(.bar)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.toggleMaximize(pane.id) }
+        .onTapGesture(count: 2) { model.layout.toggleMaximize(pane.id) }
         .onDrag {
-            model.draggingTab = nil
+            model.editor.draggingTab = nil
             return NSItemProvider(object: (paneDragPrefix + pane.id.uuidString) as NSString)
         } preview: {
             Label(pane.tab.title, systemImage: pane.tab.symbol)
@@ -195,7 +195,7 @@ struct PaneView: View {
         }
     }
 
-    static func rect(for zone: AppModel.DropZone, in size: CGSize) -> CGRect {
+    static func rect(for zone: LayoutStore.DropZone, in size: CGSize) -> CGRect {
         let w = size.width, h = size.height
         switch zone {
         case .left: return CGRect(x: 0, y: 0, width: w / 2, height: h)
@@ -228,11 +228,11 @@ struct PaneView: View {
     @ViewBuilder
     private func workspaceContent(_ root: String) -> some View {
         switch pane.tab {
-        case .directory: DirectoryView(root: root, markers: model.gitSnapshot.markers)
-        case .git: GitView(root: root, snapshot: model.gitSnapshot)
+        case .directory: DirectoryView(root: root, markers: model.workspace.gitSnapshot.markers)
+        case .git: GitView(root: root, snapshot: model.workspace.gitSnapshot)
         case .preview:
             PreviewView(root: root, paneID: pane.id)
-                .simultaneousGesture(TapGesture().onEnded { model.activeEditorID = pane.id })
+                .simultaneousGesture(TapGesture().onEnded { model.editor.activeEditorID = pane.id })
         case .pipelines: PipelinesView(root: root)
         case .tests: TestsView(root: root)
         case .architecture: ArchitectureView(root: root)
@@ -245,17 +245,17 @@ struct PaneView: View {
 /// Decides left/right/top/bottom/center from the pointer position (outer 30 % = edge, middle = swap).
 private struct PaneDropDelegate: DropDelegate {
     let target: UUID
-    let zone: State<AppModel.DropZone?>
+    let zone: State<LayoutStore.DropZone?>
     let model: AppModel
 
     /// Outer 30 % of a pane = dock beside it, middle = swap. Within 32 pt of a pane side that is
     /// also the window border, dock along the whole window edge instead.
-    private func zoneFor(_ info: DropInfo, frame: CGRect?) -> AppModel.DropZone {
+    private func zoneFor(_ info: DropInfo, frame: CGRect?) -> LayoutStore.DropZone {
         guard let frame, frame.width > 0, frame.height > 0 else { return .center }
         let p = info.location
         let edgeBand: CGFloat = 32
         if let root = PaneSizes.shared.root {
-            let touches: [(AppModel.DropZone, Bool, CGFloat)] = [
+            let touches: [(LayoutStore.DropZone, Bool, CGFloat)] = [
                 (.windowLeft, abs(frame.minX - root.minX) < 3, p.x),
                 (.windowRight, abs(frame.maxX - root.maxX) < 3, frame.width - p.x),
                 (.windowTop, abs(frame.minY - root.minY) < 3, p.y),
@@ -264,36 +264,36 @@ private struct PaneDropDelegate: DropDelegate {
             if let hit = touches.filter({ $0.1 && $0.2 < edgeBand }).min(by: { $0.2 < $1.2 }) { return hit.0 }
         }
         let x = p.x / frame.width, y = p.y / frame.height
-        let edges: [(AppModel.DropZone, Double)] = [(.left, x), (.right, 1 - x), (.top, y), (.bottom, 1 - y)]
+        let edges: [(LayoutStore.DropZone, Double)] = [(.left, x), (.right, 1 - x), (.top, y), (.bottom, 1 - y)]
         let nearest = edges.min { $0.1 < $1.1 }!
         return nearest.1 < 0.3 ? nearest.0 : .center
     }
 
-    func validateDrop(info: DropInfo) -> Bool { model.draggingTab == nil && info.hasItemsConforming(to: [.plainText]) }
+    func validateDrop(info: DropInfo) -> Bool { model.editor.draggingTab == nil && info.hasItemsConforming(to: [.plainText]) }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        guard model.draggingTab == nil else { return DropProposal(operation: .forbidden) }
+        guard model.editor.draggingTab == nil else { return DropProposal(operation: .forbidden) }
         let z = zoneFor(info, frame: PaneSizes.shared[target])
         zone.wrappedValue = z
-        model.windowDropZone = z.isWindowEdge ? z : nil
+        model.layout.windowDropZone = z.isWindowEdge ? z : nil
         return DropProposal(operation: .move)
     }
 
     func dropExited(info: DropInfo) {
         zone.wrappedValue = nil
-        model.windowDropZone = nil
+        model.layout.windowDropZone = nil
     }
 
     func performDrop(info: DropInfo) -> Bool {
         let z = zoneFor(info, frame: PaneSizes.shared[target])
         zone.wrappedValue = nil
-        model.windowDropZone = nil
+        model.layout.windowDropZone = nil
         guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
         _ = provider.loadObject(ofClass: NSString.self) { obj, _ in
             guard let s = obj as? String, s.hasPrefix(paneDragPrefix),
                   let source = UUID(uuidString: String(s.dropFirst(paneDragPrefix.count))) else { return }
             Task { @MainActor in
-                withAnimation(.easeOut(duration: 0.2)) { model.movePane(source, onto: target, zone: z) }
+                withAnimation(.easeOut(duration: 0.2)) { model.layout.movePane(source, onto: target, zone: z) }
             }
         }
         return true
@@ -343,20 +343,20 @@ struct DirectoryView: View {
     private let searching = State(initialValue: false)
 
     var body: some View {
-        let _ = model.workspaceRevision
+        let _ = model.workspace.revision
         VStack(spacing: 0) {
             HStack {
                 Text(URL(fileURLWithPath: root).lastPathComponent).scaledFont(.caption, bold: true).lineLimit(1)
                 Spacer()
                 Button { model.revealEditorFile(in: root) } label: { Image(systemName: "scope") }
                     .buttonStyle(.borderless).help("Aktive Editor-Datei im Directory zeigen und markieren")
-                    .disabled(model.previewFile == nil)
+                    .disabled(model.editor.file == nil)
                 Menu {
                     DirectoryCreateMenu(directory: URL(fileURLWithPath: root), root: root)
                 } label: { Image(systemName: "plus") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .help("Datei oder Ordner im Workspace anlegen")
-                Button { model.workspaceRevision += 1 } label: { Image(systemName: "arrow.clockwise") }
+                Button { model.workspace.revision += 1 } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless).help("Verzeichnis aktualisieren")
             }
             .padding(.horizontal, 8).padding(.top, 6)
@@ -371,7 +371,7 @@ struct DirectoryView: View {
                     }
                 }
                 .busyOverlay(searching.wrappedValue && results.wrappedValue.isEmpty, label: "Suche …")
-                .task(id: "\(root)#\(query.wrappedValue)#\(model.workspaceRevision)") {
+                .task(id: "\(root)#\(query.wrappedValue)#\(model.workspace.revision)") {
                     try? await Task.sleep(for: .milliseconds(150))
                     if Task.isCancelled { return }
                     searching.wrappedValue = true
@@ -384,28 +384,28 @@ struct DirectoryView: View {
                 tree()
             }
         }
-        .onChange(of: model.directoryRevealID) { query.wrappedValue = "" }
+        .onChange(of: model.workspace.revealID) { query.wrappedValue = "" }
     }
 
     private func tree(matches: [FileSearch.Match]? = nil) -> some View {
-        NativeDirectoryTree(root: root, markers: markers, expandedPaths: model.directoryExpandedPaths,
-            selectedFile: model.directorySelectedFile ?? model.previewFile, revealID: model.directoryRevealID,
-            revision: model.workspaceRevision, scale: scale, dragToken: model.directoryDragToken, matches: matches,
+        NativeDirectoryTree(root: root, markers: markers, expandedPaths: model.workspace.expandedPaths,
+            selectedFile: model.workspace.selectedFile ?? model.editor.file, revealID: model.workspace.revealID,
+            revision: model.workspace.revision, scale: scale, dragToken: model.workspace.dragToken, matches: matches,
             select: { file in
-                model.directorySelectedFile = file.url
-                if !file.isDirectory { model.openPreview(file.url) }
+                model.workspace.selectedFile = file.url
+                if !file.isDirectory { model.editor.open(file.url) }
                 else if matches != nil {
-                    model.directoryExpandedPaths.insert(file.url.path)
+                    model.workspace.expandedPaths.insert(file.url.path)
                     model.revealEditorFile(file.url, in: root)
                 }
             }, expand: { url, expanded in
-                if expanded { model.directoryExpandedPaths.insert(url.path) }
-                else { model.directoryExpandedPaths.remove(url.path) }
+                if expanded { model.workspace.expandedPaths.insert(url.path) }
+                else { model.workspace.expandedPaths.remove(url.path) }
             }, move: { source, destination in
-                let oldSelection = model.directorySelectedFile
-                model.directorySelectedFile = source
+                let oldSelection = model.workspace.selectedFile
+                model.workspace.selectedFile = source
                 let moved = model.moveWorkspaceItem(source, into: destination, root: root)
-                if !moved { model.directorySelectedFile = oldSelection }
+                if !moved { model.workspace.selectedFile = oldSelection }
                 return moved
             }, menu: { file in model.directoryMenu(for: file, root: root, markers: markers) })
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -528,7 +528,7 @@ struct GitView: View {
                 .padding(8)
             }
             .busyOverlay(busy.wrappedValue != nil, label: busy.wrappedValue)
-            .task(id: "\(root)#\(model.workspaceRevision)") { await reloadBranches() }
+            .task(id: "\(root)#\(model.workspace.revision)") { await reloadBranches() }
             .confirmationDialog(checkoutTitle, isPresented: isPresent(pendingCheckout), presenting: pendingCheckout.wrappedValue) { b in
                 Button("Wechseln") { Task { await run("Wechsle zu \(b.localName) …") { await Git.checkout(b, in: root) } } }
             } message: { _ in
@@ -586,7 +586,7 @@ struct GitView: View {
                 Button { Task { await run("Fetch in Sandbox …") { await model.networkGit(.fetch, in: root) } } } label: {
                     Label("Fetch", systemImage: "arrow.triangle.2.circlepath")
                 }
-                Button { Task { await run("Pull in Sandbox …") { await model.networkGit(.pull, in: root) } } } label: {
+                Button { Task { await run("Pull in Sandbox …") { await model.pull(in: root) } } } label: {
                     Label("Pull", systemImage: "arrow.down.circle")
                 }
                 .disabled(snapshot.upstream == nil)
@@ -643,8 +643,8 @@ struct GitView: View {
                     Text("-\(change.removed)").foregroundStyle(.red).scaledFont(.caption, digits: true)
                 }
             }
-            .interactiveRow(selected: model.previewFile == url && model.previewMode == .diff) {
-                model.openPreview(url, mode: .diff)
+            .interactiveRow(selected: model.editor.file == url && model.editor.mode == .diff) {
+                model.editor.open(url, mode: .diff)
             }
             .help("Klicken für Diff")
             .contextMenu {
@@ -756,7 +756,7 @@ struct GitView: View {
         } else {
             model.banner = "Git: " + result.output.lastNonEmptyLines(4)
         }
-        model.workspaceRevision += 1
+        model.workspace.revision += 1
         await reloadBranches()
     }
 
@@ -798,18 +798,18 @@ struct DetachedPaneView: View {
             .toolbar {
                 ToolbarItem {
                     Button {
-                        model.dock(tab)
+                        model.layout.dock(tab)
                         dismissWindow(value: tab)
                     } label: { Label("Wieder andocken", systemImage: "rectangle.portrait.and.arrow.forward") }
                         .help("Zurück ins Hauptfenster")
                 }
             }
             .background(WindowAutosave(name: "HearthPane-\(tab.rawValue)"))
-            .onAppear { model.detachedTabs.insert(tab) }
+            .onAppear { model.layout.detachedTabs.insert(tab) }
             .onDisappear {
                 // Closing during quit keeps the window in the list so it reopens next launch.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    if !model.quitting { model.detachedTabs.remove(tab) }
+                    if !model.layout.quitting { model.layout.detachedTabs.remove(tab) }
                 }
             }
     }

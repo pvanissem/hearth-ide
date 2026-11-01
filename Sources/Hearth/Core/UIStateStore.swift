@@ -3,8 +3,7 @@ import Foundation
 /// Small JSON-in-UserDefaults store for UI state that should survive restarts.
 enum UIStateStore {
     enum Key: String {
-        case paneTree, splitWeights, showInspector, preferredModel, preferredAgent,
-             previewMode, previewFile, selection, textScales, openTabs, detachedTabs, sandboxLastUsed, sessionListDisclosure,
+        case paneTree, splitWeights, previewMode, previewFile, textScales, openTabs, detachedTabs,
              editorWorkspaces, shownEditorWorkspace
     }
 

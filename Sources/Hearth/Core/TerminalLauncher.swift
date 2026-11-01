@@ -1,7 +1,6 @@
 import AppKit
 
-/// Opens `devkcode run` for a session in the user's terminal, mirroring
-/// devkcode's own termlauncher: new tab, wait until the shell is ready,
+/// Opens a command in the user's terminal app: new tab, wait until the shell is ready,
 /// then type the command (typing early gets mangled in Terminal.app).
 enum TerminalLauncher {
     enum App: String, CaseIterable, Identifiable {
@@ -33,16 +32,6 @@ enum TerminalLauncher {
             return installed.first ?? .terminal
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: defaultsKey) }
-    }
-
-    static func command(devkcode: String, directory: String, profile: String?, project: String?, sessionID: String) -> String {
-        var run = "\(shellQuote(devkcode)) run --dir \(shellQuote(directory))"
-        if let project { run += " --project \(shellQuote(project))" }
-        // No "--": devkcode forwards it verbatim and OpenCode 2 then treats
-        // everything after it as positional (directory) arguments.
-        run += " --session \(shellQuote(sessionID))"
-        if let profile { run = "DEVKCODE_CONFIG=\(shellQuote(profile)) " + run }
-        return "cd \(shellQuote(directory)) && \(run)"
     }
 
     static func script(for app: App, command: String) -> String {

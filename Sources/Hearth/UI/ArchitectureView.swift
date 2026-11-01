@@ -26,7 +26,7 @@ struct ArchitectureView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: "\(root)#\(model.workspaceRevision)") {
+        .task(id: "\(root)#\(model.workspace.revision)") {
             let found = await MermaidScanner.scan(root: root)
             diagrams.wrappedValue = found
             if selectedID.wrappedValue == nil || !found.contains(where: { $0.id == selectedID.wrappedValue }) {
@@ -72,7 +72,7 @@ struct ArchitectureView: View {
                 Toggle(isOn: showSource.projectedValue) { Image(systemName: "chevron.left.forwardslash.chevron.right") }
                     .toggleStyle(.button).help("Quelltext anzeigen")
                 Button {
-                    model.openPreview(URL(fileURLWithPath: root).appendingPathComponent(current.file), mode: .file, line: current.line)
+                    model.editor.open(URL(fileURLWithPath: root).appendingPathComponent(current.file), mode: .file, line: current.line)
                 } label: { Image(systemName: "doc.text.magnifyingglass") }
                     .help("Quelle in der Vorschau öffnen")
                 Menu {
@@ -106,7 +106,7 @@ struct ArchitectureView: View {
         MermaidCanvas(source: d.source, title: d.title, onOpenWindow: { openWindow(value: d) },
                       onError: { renderError.wrappedValue = $0 })
             .id(d.id)
-            .onHover { model.hoveringDiagram = $0 }
+            .onHover { model.textZoom.hoveringDiagram = $0 }
     }
 
     private func label(_ d: MermaidDiagram) -> String { "\(d.title) · \(d.kind)" }

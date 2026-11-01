@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// "Build & Deployment": project tasks and services, executed in a sandbox (devkcode or Hearth's nono).
+/// "Build & Deployment": project tasks and services, executed in Hearth's nono sandbox.
 struct BuildDeployView: View {
     @Environment(AppModel.self) private var model
     let root: String
@@ -94,10 +94,8 @@ struct BuildDeployView: View {
     @ViewBuilder
     private var sandboxBadge: some View {
         if let conn = connection {
-            Pill(text: "Sandbox · \(conn.label)", color: .green, symbol: "lock.shield.fill")
-                .help(conn.isLocal
-                      ? "Jede Aufgabe läuft in einer eigenen nono-Sandbox für diesen Ordner – nie direkt auf dem Mac."
-                      : "Alle Aufgaben laufen in der devkcode-Sandbox dieses Workspace – nie direkt auf dem Mac.")
+            Pill(text: "Sandbox · nono", color: .green, symbol: "lock.shield.fill")
+                .help("Jede Aufgabe läuft in einer eigenen nono-Sandbox für diesen Ordner – nie direkt auf dem Mac.")
         } else {
             Pill(text: "Keine Sandbox verfügbar", color: .orange, symbol: "exclamationmark.triangle.fill")
                 .help("nono wurde nicht gefunden (Contents/Helpers/nono bzw. scripts/fetch-nono.sh).")
@@ -110,7 +108,7 @@ struct BuildDeployView: View {
             try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? Data(Self.customTemplate.utf8).write(to: url, options: .withoutOverwriting)
         }
-        model.openPreview(url)
+        model.editor.open(url)
     }
 
     static let customTemplate = """
@@ -311,7 +309,7 @@ struct BuildDeployView: View {
     private func runButton(_ task: BuildTask, project: BuildProject, run: BuildRun?, blocked: String?, prominent: Bool) -> some View {
         if let run, run.state.isActive {
             Button {
-                guard let client = model.buildShell(id: run.serverID) else { store.serverGone(run.serverID); return }
+                guard let client = model.runner(id: run.serverID) else { store.serverGone(run.serverID); return }
                 Task { await store.stop(run, client: client) }
             } label: {
                 Label(prominent ? "Stoppen" : "Abbrechen", systemImage: "stop.fill")

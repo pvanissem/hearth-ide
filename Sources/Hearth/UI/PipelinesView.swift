@@ -34,7 +34,7 @@ struct PipelinesView: View {
 
     private var api: GitLabAPI? {
         guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue else { return nil }
-        return model.gitLabAPI(for: r)
+        return model.gitLab.api(for: r)
     }
 
     var body: some View {
@@ -50,20 +50,20 @@ struct PipelinesView: View {
                 content
             }
         }
-        .task(id: "\(root)#\(model.workspaceRevision)") {
+        .task(id: "\(root)#\(model.workspace.revision)") {
             remoteChecked.wrappedValue = false
             remote.wrappedValue = nil
             let detected = await GitLabRemote.of(repo: root)
             guard !Task.isCancelled else { return }
             remote.wrappedValue = detected
             remoteRoot.wrappedValue = root
-            if let r = remote.wrappedValue { await model.loadGitLabToken(for: r.origin) }
+            if let r = remote.wrappedValue { await model.gitLab.load(for: r.origin) }
             remoteChecked.wrappedValue = true
             pipelines.wrappedValue = []
             jobs.wrappedValue = [:]
         }
         // Poll while visible: every 15 s if something runs, otherwise every 60 s.
-        .task(id: "\(root)#\(remote.wrappedValue?.origin.value ?? "")#\(api != nil)#\(onlyCurrentBranch.wrappedValue)#\(model.gitSnapshot.branch)") {
+        .task(id: "\(root)#\(remote.wrappedValue?.origin.value ?? "")#\(api != nil)#\(onlyCurrentBranch.wrappedValue)#\(model.workspace.gitSnapshot.branch)") {
             while !Task.isCancelled {
                 await refresh()
                 let active = pipelines.wrappedValue.contains { CIStatus.isActive($0.status) }
@@ -79,13 +79,13 @@ struct PipelinesView: View {
         } message: { job in
             Text("Stage „\(job.stage)“. Manuelle Jobs sind oft Deployments oder andere Aktionen mit Wirkung außerhalb des Repos.")
         }
-        .confirmationDialog("Neue Pipeline für „\(model.gitSnapshot.branch)“ starten?", isPresented: confirmRun.projectedValue) {
+        .confirmationDialog("Neue Pipeline für „\(model.workspace.gitSnapshot.branch)“ starten?", isPresented: confirmRun.projectedValue) {
             Button("Pipeline starten") {
-                let ref = model.gitSnapshot.branch
+                let ref = model.workspace.gitSnapshot.branch
                 act("Pipeline für \(ref) gestartet") { try await $0.runPipeline(ref: ref) }
             }
         } message: {
-            Text("Gestartet wird der Stand auf GitLab (origin/\(model.gitSnapshot.branch)), nicht deine lokalen, ungepushten Änderungen.")
+            Text("Gestartet wird der Stand auf GitLab (origin/\(model.workspace.gitSnapshot.branch)), nicht deine lokalen, ungepushten Änderungen.")
         }
     }
 
@@ -118,7 +118,7 @@ struct PipelinesView: View {
                 Button("Zurück zu Pipelines") { configureToken.wrappedValue = false }
                 if let r = remote.wrappedValue {
                     Button("Serverfreigabe widerrufen", role: .destructive) {
-                        model.revokeGitLabOrigin(r.origin)
+                        model.gitLab.revoke(r.origin)
                         pipelines.wrappedValue = []
                         jobs.wrappedValue = [:]
                         tokenInput.wrappedValue = ""
@@ -140,7 +140,7 @@ struct PipelinesView: View {
         alert.addButton(withTitle: "Freigeben")
         alert.addButton(withTitle: "Abbrechen")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        if model.saveGitLabToken(t, for: r.origin, writing: writingToken.wrappedValue) {
+        if model.gitLab.save(t, for: r.origin, writing: writingToken.wrappedValue) {
             tokenInput.wrappedValue = ""
             configureToken.wrappedValue = false
             model.toast("GitLab-Token gespeichert")
@@ -163,7 +163,7 @@ struct PipelinesView: View {
             if pipelines.wrappedValue.isEmpty && !loading.wrappedValue && error.wrappedValue == nil {
                 ContentUnavailableView("Keine Pipelines", systemImage: "checklist",
                                        description: Text(onlyCurrentBranch.wrappedValue
-                                                         ? "Für „\(model.gitSnapshot.branch)“ gibt es noch keine Pipeline."
+                                                         ? "Für „\(model.workspace.gitSnapshot.branch)“ gibt es noch keine Pipeline."
                                                          : "Für dieses Projekt gibt es noch keine Pipeline."))
             } else {
                 ScrollView {
@@ -185,13 +185,13 @@ struct PipelinesView: View {
             Button { configureToken.wrappedValue = true } label: { Image(systemName: "key") }
                 .buttonStyle(.borderless).help("Zugriff für diesen GitLab-Server einrichten")
             Picker("", selection: onlyCurrentBranch.projectedValue) {
-                Text(model.gitSnapshot.branch.isEmpty ? "Branch" : model.gitSnapshot.branch).tag(true)
+                Text(model.workspace.gitSnapshot.branch.isEmpty ? "Branch" : model.workspace.gitSnapshot.branch).tag(true)
                 Text("Alle").tag(false)
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
             Button { confirmRun.wrappedValue = true } label: { Image(systemName: "play.fill") }
                 .buttonStyle(.borderless)
-                .disabled(model.gitSnapshot.branch.isEmpty)
+                .disabled(model.workspace.gitSnapshot.branch.isEmpty)
                 .help("Neue Pipeline für den aktuellen Branch starten")
             Button { Task { await refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.borderless)
@@ -426,7 +426,7 @@ struct PipelinesView: View {
         loading.wrappedValue = true
         defer { loading.wrappedValue = false }
         do {
-            let ref = onlyCurrentBranch.wrappedValue && !model.gitSnapshot.branch.isEmpty ? model.gitSnapshot.branch : nil
+            let ref = onlyCurrentBranch.wrappedValue && !model.workspace.gitSnapshot.branch.isEmpty ? model.workspace.gitSnapshot.branch : nil
             let list = try await api.pipelines(ref: ref)
             guard !Task.isCancelled, self.api?.remote == api.remote else { return }
             pipelines.wrappedValue = list
@@ -448,7 +448,7 @@ struct PipelinesView: View {
     }
 
     private func act(_ message: String, _ action: @escaping (GitLabAPI) async throws -> Void) {
-        guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue, let api = model.gitLabAPI(for: r, writing: true) else {
+        guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue, let api = model.gitLab.api(for: r, writing: true) else {
             writingToken.wrappedValue = true
             configureToken.wrappedValue = true
             model.banner = "Bitte separaten Schreibzugriff für diesen GitLab-Server freigeben."

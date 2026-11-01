@@ -136,8 +136,11 @@ struct SandboxBadge: View {
 
     private var summary: String {
         let spec = kind.sandbox
-        var lines = ["nono-Sandbox (Seatbelt)",
-                     "Schreiben: nur dieser Ordner" + (spec.readWrite.isEmpty ? "" : " und " + spec.readWrite.joined(separator: ", ")),
+        let home = AgentHome.layout(for: kind, support: SandboxManager.supportDirectory.path, home: NSHomeDirectory())
+        let own: String = home.root != nil ? " und Hearths eigener \(kind.displayName)-Ordner"
+            : home.hostReadWrite.map { $0.replacingOccurrences(of: NSHomeDirectory(), with: "~") }.joined(separator: ", ")
+        var lines: [String] = ["nono-Sandbox (Seatbelt)",
+                     "Schreiben: nur dieser Ordner" + (own.isEmpty || own.hasPrefix(" ") ? own : " und " + own),
                      "Gesperrt: SSH-Schlüssel, Shell-Konfiguration, Browserdaten, übriges Home",
                      "Netzwerk: LLM-APIs, Paket-Registries, GitHub/GitLab, Doku" + (spec.domains.isEmpty ? "" : ", " + spec.domains.joined(separator: ", "))]
         if spec.keychain { lines.append("Schlüsselbund: freigegeben (Login des Agenten)") }

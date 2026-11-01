@@ -129,6 +129,33 @@ enum Git {
         }
     }
 
+    /// Overrides for repository config keys that would execute something or hand out
+    /// credentials inside the Git network sandbox (which can read SSH keys and the keychain):
+    /// clean/smudge/process filters and credential helpers, including URL-scoped ones
+    /// like `credential.https://host.helper`. Nil when the config can't be read safely.
+    static func networkSandboxOverrides(in dir: String) -> [String]? {
+        let process = hostProcess(hostOptions + ["-C", dir, "config", "--includes", "--null", "--name-only", "--list"])
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let keys = String(decoding: data, as: UTF8.self).split(separator: "\0").map(String.init)
+        return networkSandboxOverrides(forKeys: keys)
+    }
+
+    static func networkSandboxOverrides(forKeys keys: [String]) -> [String] {
+        var seen = Set<String>()
+        return keys.filter { key in
+            let k = key.lowercased()
+            let risky = k.hasPrefix("filter.") || (k.hasPrefix("credential.") && k.hasSuffix(".helper"))
+                || k == "core.askpass" || k.hasSuffix(".sshcommand") || k == "core.gitproxy"
+            return risky && seen.insert(k).inserted
+        }.sorted().flatMap { ["-c", $0 + ($0.lowercased().hasSuffix(".required") ? "=false" : "=")] }
+    }
+
     static func safeReadArguments(_ args: [String]) -> [String]? {
         guard let command = args.first,
               ["rev-parse", "status", "diff", "log", "for-each-ref", "ls-files", "config", "show"].contains(command) else { return nil }

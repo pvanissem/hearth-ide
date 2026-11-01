@@ -32,9 +32,9 @@ struct HearthApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(after: .toolbar) {
-                Button("Text größer") { model.zoomAll(by: 1.1) }.keyboardShortcut("+", modifiers: .command)
-                Button("Text kleiner") { model.zoomAll(by: 1 / 1.1) }.keyboardShortcut("-", modifiers: .command)
-                Button("Originalgröße") { model.resetZoom() }.keyboardShortcut("0", modifiers: .command)
+                Button("Text größer") { model.textZoom.zoomAll(by: 1.1) }.keyboardShortcut("+", modifiers: .command)
+                Button("Text kleiner") { model.textZoom.zoomAll(by: 1 / 1.1) }.keyboardShortcut("-", modifiers: .command)
+                Button("Originalgröße") { model.textZoom.reset() }.keyboardShortcut("0", modifiers: .command)
             }
         }
 

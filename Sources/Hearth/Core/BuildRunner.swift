@@ -43,12 +43,6 @@ final class BuildRun: Identifiable {
     var browserURL: URL? { port.flatMap { URL(string: "http://localhost:\($0)") } }
 }
 
-/// The subset of the OpenCode shell API needed here; abstracted for tests.
-protocol SandboxShellAPI: Sendable {
-    func send(_ method: String, _ path: String, query: [URLQueryItem], body: [String: Any]?, session: URLSession?) async throws -> JSON
-}
-extension OpenCodeClient: SandboxShellAPI {}
-
 /// Checks whether something answers on a host localhost port (no redirects/cookies).
 struct LocalPortProbe: Sendable {
     var session: URLSession = LocalPortProbe.defaultSession
@@ -111,11 +105,9 @@ final class BuildDeployStore {
         return "„\(tool)“ ist in dieser Sandbox nicht verfügbar. Es gibt keinen Host-Fallback."
     }
 
-    private static func location(_ root: String) -> [URLQueryItem] { [.init(name: "location[directory]", value: root)] }
-
     // MARK: Tools
 
-    func probeTools(client: SandboxShellAPI, serverID: String, root: String) async {
+    func probeTools(client: any SandboxCommandRunner, serverID: String, root: String) async {
         guard availableTools[serverID] == nil else { return }
         let script = Self.probedTools.map { "command -v \($0) >/dev/null 2>&1 && echo \($0)" }.joined(separator: "; ") + "; true"
         guard let result = try? await runToEnd(client: client, root: root, command: script, operation: "tool-probe") else { return }
@@ -124,20 +116,15 @@ final class BuildDeployStore {
     }
 
     /// Short helper commands (tool probe) – bounded output, always removed.
-    private func runToEnd(client: SandboxShellAPI, root: String, command: String, operation: String) async throws -> String {
-        let created = try await client.send("POST", "/api/shell", query: Self.location(root),
-            body: ["command": command, "cwd": root, "timeout": 30_000,
-                   "metadata": ["source": Self.source, "operation": operation]], session: GitLabTransport.session)["data"]
-        guard let id = created?["id"]?.string, Self.validShellID(id) else { throw SandboxGitRunner.Failure("Ungültige Shell-ID") }
-        defer { Task.detached { _ = try? await client.send("DELETE", "/api/shell/\(id)", query: Self.location(root), body: nil, session: GitLabTransport.session) } }
+    private func runToEnd(client: any SandboxCommandRunner, root: String, command: String, operation: String) async throws -> String {
+        let id = try await client.start(SandboxCommandRequest(command: command, cwd: root, timeout: .seconds(30),
+                                                              metadata: ["source": Self.source, "operation": operation]))
+        defer { Task.detached { await client.remove(id) } }
         for _ in 0..<150 {
-            let status = try await client.send("GET", "/api/shell/\(id)", query: Self.location(root), body: nil, session: GitLabTransport.session)["data"]
-            if status?["status"]?.string != "running" { break }
+            if try await client.state(of: id) != .running { break }
             try await Task.sleep(for: .milliseconds(200))
         }
-        let page = try await client.send("GET", "/api/shell/\(id)/output",
-            query: Self.location(root) + [.init(name: "cursor", value: "0"), .init(name: "limit", value: "8192")], body: nil, session: GitLabTransport.session)["data"]
-        return page?["output"]?.string ?? ""
+        return try await client.output(of: id, from: 0, limit: 8192).text
     }
 
     static func validShellID(_ id: String) -> Bool {
@@ -147,7 +134,7 @@ final class BuildDeployStore {
     // MARK: Start / stop
 
     @discardableResult
-    func start(_ task: BuildTask, root: String, serverID: String, client: SandboxShellAPI,
+    func start(_ task: BuildTask, root: String, serverID: String, client: any SandboxCommandRunner,
                profile: String? = nil, port overridePort: Int? = nil) async -> BuildRun? {
         if let existing = activeRun(task, root: root) { selectedRunID = existing.id; return existing }
         let port = task.kind == .service ? (overridePort ?? task.port) : nil
@@ -168,17 +155,14 @@ final class BuildDeployStore {
             finish(run, .failed("ungültiges Verzeichnis"), note: "Projektverzeichnis liegt außerhalb des Workspace.")
             return run
         }
-        var metadata: [String: Any] = ["source": Self.source, "kind": Self.kind, "task": task.id, "root": root,
-                                       "title": task.title, "service": task.kind == .service, "display": task.display,
-                                       "tool": task.tool.rawValue, "project": task.project]
-        if let port { metadata["port"] = port }
+        var metadata: [String: String] = ["source": Self.source, "kind": Self.kind, "task": task.id, "root": root,
+                                          "title": task.title, "service": task.kind == .service ? "true" : "false",
+                                          "display": task.display, "tool": task.tool.rawValue, "project": task.project]
+        if let port { metadata["port"] = String(port) }
         if let health = task.healthPath { metadata["health"] = health }
         do {
-            let created = try await client.send("POST", "/api/shell", query: Self.location(root),
-                body: ["command": command, "cwd": cwd, "metadata": metadata], session: GitLabTransport.session)["data"]
-            guard let id = created?["id"]?.string, Self.validShellID(id) else {
-                throw SandboxGitRunner.Failure("Sandbox-Shell lieferte keine gültige Vorgangs-ID.")
-            }
+            let id = try await client.start(SandboxCommandRequest(command: command, cwd: cwd, port: port, metadata: metadata))
+            guard Self.validShellID(id) else { throw SandboxCommandError("Sandbox lieferte keine gültige Vorgangs-ID.") }
             run.shellID = id
             adopted.insert(id)
             if run.stopRequested { await stop(run, client: client); return run }
@@ -191,10 +175,10 @@ final class BuildDeployStore {
         return run
     }
 
-    func stop(_ run: BuildRun, client: SandboxShellAPI) async {
+    func stop(_ run: BuildRun, client: any SandboxCommandRunner) async {
         run.stopRequested = true
         guard let id = run.shellID else { if run.state.isActive { finish(run, .stopped) }; return }
-        _ = try? await client.send("DELETE", "/api/shell/\(id)", query: Self.location(run.root), body: nil, session: GitLabTransport.session)
+        await client.remove(id)
         if run.state.isActive { finish(run, .stopped) }
     }
 
@@ -223,21 +207,21 @@ final class BuildDeployStore {
 
     /// Services started earlier (by this or a previous app launch) keep running in
     /// the sandbox. Re-adopt them by their metadata so they can be watched/stopped.
-    func adopt(client: SandboxShellAPI, root: String, serverID: String) async {
-        guard let list = try? await client.send("GET", "/api/shell", query: Self.location(root), body: nil, session: GitLabTransport.session)["data"]?.array else { return }
-        for item in list {
-            guard let id = item["id"]?.string, Self.validShellID(id), !adopted.contains(id),
-                  let meta = item["metadata"], meta["source"]?.string == Self.source, meta["kind"]?.string == Self.kind,
-                  meta["root"]?.string == root, let taskID = meta["task"]?.string else { continue }
+    func adopt(client: any SandboxCommandRunner, root: String, serverID: String) async {
+        for item in await client.running() {
+            let meta = item.metadata
+            guard Self.validShellID(item.id), !adopted.contains(item.id),
+                  meta["source"] == Self.source, meta["kind"] == Self.kind,
+                  meta["root"] == root, let taskID = meta["task"] else { continue }
+            let id = item.id
             adopted.insert(id)
-            let service = meta["service"] == .bool(true)
-            let port = meta["port"]?.double.flatMap { BuildDetector.port(String(Int($0))) }
-            let task = BuildTask(id: taskID, tool: BuildTask.Tool(rawValue: meta["tool"]?.string ?? "") ?? .custom,
-                                 project: meta["project"]?.string ?? "", title: meta["title"]?.string ?? taskID,
-                                 kind: service ? .service : .task, script: meta["display"]?.string ?? "", port: port,
-                                 healthPath: meta["health"]?.string)
-            let started = item["time"]?["started"]?.double.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date()
-            let run = BuildRun(task: task, root: root, serverID: serverID, port: port, command: item["command"]?.string ?? "", startedAt: started)
+            let service = meta["service"] == "true"
+            let port = meta["port"].flatMap { BuildDetector.port($0) }
+            let task = BuildTask(id: taskID, tool: BuildTask.Tool(rawValue: meta["tool"] ?? "") ?? .custom,
+                                 project: meta["project"] ?? "", title: meta["title"] ?? taskID,
+                                 kind: service ? .service : .task, script: meta["display"] ?? "", port: port,
+                                 healthPath: meta["health"])
+            let run = BuildRun(task: task, root: root, serverID: serverID, port: port, command: item.command, startedAt: item.started)
             run.shellID = id
             run.state = .running
             runs.append(run)
@@ -247,9 +231,8 @@ final class BuildDeployStore {
 
     // MARK: Polling
 
-    private func poll(_ run: BuildRun, client: SandboxShellAPI) {
+    private func poll(_ run: BuildRun, client: any SandboxCommandRunner) {
         guard let id = run.shellID else { return }
-        let location = Self.location(run.root)
         let interval = pollInterval
         pollers[run.id] = Task { [weak self] in
             var cursor = 0
@@ -258,29 +241,25 @@ final class BuildDeployStore {
             while !Task.isCancelled {
                 guard let self, run.state.isActive else { return }
                 do {
-                    var more = true
-                    while more {
-                        let page = try await client.send("GET", "/api/shell/\(id)/output",
-                            query: location + [.init(name: "cursor", value: String(cursor)), .init(name: "limit", value: "65536")],
-                            body: nil, session: GitLabTransport.session)["data"]
-                        let text = page?["output"]?.string ?? ""
-                        let next = max(page?["cursor"]?.double.map(Int.init) ?? cursor, cursor + text.utf8.count)
-                        let size = page?["size"]?.double.map(Int.init) ?? next
-                        more = next > cursor && next < size
-                        cursor = next
-                        if !text.isEmpty { self.append(run, text) }
+                    // State first: output written before the exit is then complete below.
+                    let state = try await client.state(of: id)
+                    while true {
+                        let page = try await client.output(of: id, from: cursor, limit: 65536)
+                        guard page.next > cursor else { break }
+                        cursor = page.next
+                        if !page.text.isEmpty { self.append(run, page.text) }
+                        if cursor >= page.size { break }
                     }
-                    let status = try await client.send("GET", "/api/shell/\(id)", query: location, body: nil, session: GitLabTransport.session)["data"] ?? .null
                     failures = 0
-                    let state = status["status"]?.string ?? ""
-                    if state != "running" {
+                    if state != .running {
                         guard run.state.isActive else { return }
-                        let code = status["exit"]?.double.map { Int($0) }
-                        if run.stopRequested || state == "killed" { self.finish(run, .stopped) }
-                        else if state == "exited", code == 0 { self.finish(run, run.task.kind == .service ? .failed("beendet") : .succeeded) }
-                        else if state == "timeout" { self.finish(run, .failed("Zeitlimit")) }
-                        else { self.finish(run, .failed("Exit \(code.map(String.init) ?? state)"), note: Self.networkHint(run.output)) }
-                        _ = try? await client.send("DELETE", "/api/shell/\(id)", query: location, body: nil, session: GitLabTransport.session)
+                        switch state {
+                        case _ where run.stopRequested, .killed: self.finish(run, .stopped)
+                        case .exited(0): self.finish(run, run.task.kind == .service ? .failed("beendet") : .succeeded)
+                        case .timedOut: self.finish(run, .failed("Zeitlimit"))
+                        default: self.finish(run, .failed(SandboxGitRunner.describe(state)), note: Self.networkHint(run.output))
+                        }
+                        await client.remove(id)
                         return
                     }
                 } catch is CancellationError { return }
@@ -309,7 +288,7 @@ final class BuildDeployStore {
         let host = tail.range(of: #"https?://[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, options: .regularExpression)
             .map { String(tail[$0]).replacingOccurrences(of: #"^https?://"#, with: "", options: .regularExpression) }
         return "Netzwerkzugriff in der Sandbox verweigert" + (host.map { " (vermutlich \($0))" } ?? "")
-            + ". Nicht freigegebene Ziele lassen sich mit „devkcode allow-domain <host>“ für das Profil freigeben; danach Sandbox neu starten."
+            + ". Nicht freigegebene Hosts gibst du in den Einstellungen unter „Sandbox“ frei und startest die Aufgabe dann neu."
     }
 
     private static let maxOutput = 400_000

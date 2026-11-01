@@ -99,12 +99,28 @@ struct SandboxSettings: Codable, Equatable {
         return v.range(of: #"^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$"#, options: .regularExpression) != nil
     }
 
-    static func validFolder(_ path: String) -> String? {
+    /// Extra folders from the settings: below home, never a protected area (see `protectedReason`).
+    static func validFolder(_ path: String, home: String = NSHomeDirectory(),
+                            support: String = SandboxManager.supportDirectory.path) -> String? {
         let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
-        let home = NSHomeDirectory()
         guard resolved.hasPrefix(home + "/") else { return "Nur Ordner unterhalb deines Home-Verzeichnisses." }
-        for denied in ["/.ssh", "/Library/Keychains", "/.gnupg", "/.aws", "/Library/Cookies"] where resolved.hasPrefix(home + denied) {
-            return "Dieser Ordner enthält Zugangsdaten und bleibt gesperrt."
+        return protectedReason(resolved, home: home, support: support)
+    }
+
+    /// Why a folder must not be given to a sandbox, or nil. Covers the folder itself, anything
+    /// inside a protected area and any folder that contains one.
+    static func protectedReason(_ resolved: String, home: String, support: String) -> String? {
+        let credentials = ["/.ssh", "/.gnupg", "/.aws", "/Library/Keychains", "/Library/Cookies"].map { home + $0 }
+        // Hearth's own settings and agent homes, autostart, agent and shell configuration.
+        let configuration = [support, home + "/Library", home + "/.claude", home + "/.claude.json", home + "/.codex",
+                             home + "/.gemini", home + "/.copilot", home + "/.config",
+                             home + "/.zshrc", home + "/.zprofile", home + "/.bashrc", home + "/.bash_profile", home + "/.profile"]
+        func overlaps(_ protected: String) -> Bool {
+            resolved == protected || resolved.hasPrefix(protected + "/") || protected.hasPrefix(resolved + "/")
+        }
+        if credentials.contains(where: overlaps) { return "Dieser Ordner enthält Zugangsdaten und bleibt gesperrt." }
+        if configuration.contains(where: overlaps) {
+            return "Dieser Ordner enthält Einstellungen von Hearth, macOS oder einem Agenten und bleibt gesperrt."
         }
         return nil
     }
