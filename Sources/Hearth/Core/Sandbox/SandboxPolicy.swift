@@ -12,6 +12,11 @@ enum SandboxPurpose: Equatable {
     /// Git fast-forward after a fetch: no keys, no keychain (repository filters run here).
     case gitLocal
 
+    var isAgent: Bool {
+        if case .agent = self { return true }
+        return false
+    }
+
     var kind: AgentKind {
         if case .agent(let kind) = self { return kind }
         return .shell
@@ -121,6 +126,16 @@ struct SandboxPolicy: Equatable {
         p.allowLocalhostURLs = spec.allowLocalhost
         p.environment = spec.environment.merging(agentHome.environment) { $1 }
 
+        // Build tools: the user's caches (~/.m2, ~/.npm, ~/.gradle) are read-only in the
+        // sandbox, so Maven, Gradle and npm write into a private cache instead and still
+        // reuse what the host already downloaded.
+        if purpose == .build || purpose.isAgent {
+            // JDKs installed per user (IntelliJ, SDKMAN) and Gradle's download cache, read-only.
+            p.read += [c.home + "/Library/Java/JavaVirtualMachines", c.home + "/.sdkman/candidates",
+                       c.home + "/.gradle/caches"]
+            p.environment.merge(Self.buildToolEnvironment(home: c.home)) { current, _ in current }
+        }
+
         // Write protection: files on the host that run commands outside the sandbox.
         let protectedFiles = agentHome.writeProtectedFiles
         var protectedFolders = agentHome.writeProtectedFolders
@@ -175,6 +190,19 @@ struct SandboxPolicy: Equatable {
 
     /// `--credential` flags that activate the profile's proxy routes.
     var credentialFlags: [String] { credentialRoutes.keys.sorted().flatMap { ["--credential", $0] } }
+
+    /// Private caches for build tools, under ~/Library/Caches (writable via user_caches_macos).
+    /// Maven ≥ 3.9 reads the host's ~/.m2/repository as a read-only "tail"; Gradle uses
+    /// ~/.gradle/caches as its read-only dependency cache.
+    static func buildToolEnvironment(home: String) -> [String: String] {
+        let cache = home + "/Library/Caches/Hearth"
+        return [
+            "MAVEN_ARGS": "-Dmaven.repo.local=\(cache)/m2/repository -Dmaven.repo.local.tail=\(home)/.m2/repository",
+            "GRADLE_USER_HOME": cache + "/gradle",
+            "GRADLE_RO_DEP_CACHE": home + "/.gradle/caches",
+            "npm_config_cache": cache + "/npm",
+        ]
+    }
 
     // MARK: Helpers
 

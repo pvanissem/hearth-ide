@@ -25,17 +25,19 @@ struct BuildDeployView: View {
             VStack(spacing: 0) {
                 header
                 Divider()
+                // The task list keeps its place (and scroll position) in both layouts: the
+                // narrow layout only adds the log below it once a run is selected.
                 if geometry.size.width >= 860 {
                     HSplitView {
-                        taskList.frame(minWidth: 340, idealWidth: geometry.size.width * 0.45, maxWidth: .infinity, maxHeight: .infinity)
+                        taskList.frame(minWidth: 340, idealWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
                         logPane.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
                     }
-                } else if store.selectedRun?.root != root {
-                    taskList.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     VSplitView {
                         taskList.frame(maxWidth: .infinity, minHeight: 150, maxHeight: .infinity)
-                        logPane.frame(maxWidth: .infinity, minHeight: 110, maxHeight: .infinity)
+                        if store.selectedRun?.root == root {
+                            logPane.frame(maxWidth: .infinity, minHeight: 110, maxHeight: .infinity)
+                        }
                     }
                 }
             }
@@ -132,7 +134,7 @@ struct BuildDeployView: View {
                 description: Text("Supported: Maven, Gradle, Node, Go, Makefile and custom tasks in .hearth/tasks.json."))
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 18) {
                     ForEach(projects.wrappedValue) { project in
                         let tasks = visible(project.tasks)
                         if !tasks.isEmpty { projectSection(project, tasks: tasks) }

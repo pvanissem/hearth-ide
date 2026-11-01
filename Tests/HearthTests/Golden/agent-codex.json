@@ -1,7 +1,11 @@
 {
   "environment" : {
     "set_vars" : {
-      "CODEX_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/codex"
+      "CODEX_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/codex",
+      "GRADLE_RO_DEP_CACHE" : "\/Users\/test\/.gradle\/caches",
+      "GRADLE_USER_HOME" : "\/Users\/test\/Library\/Caches\/Hearth\/gradle",
+      "MAVEN_ARGS" : "-Dmaven.repo.local=\/Users\/test\/Library\/Caches\/Hearth\/m2\/repository -Dmaven.repo.local.tail=\/Users\/test\/.m2\/repository",
+      "npm_config_cache" : "\/Users\/test\/Library\/Caches\/Hearth\/npm"
     }
   },
   "extends" : "default",
@@ -17,7 +21,10 @@
     "read" : [
       "\/Users\/test\/.codex\/AGENTS.md",
       "\/Users\/test\/.codex\/prompts",
-      "\/Users\/test\/.codex\/skills"
+      "\/Users\/test\/.codex\/skills",
+      "\/Users\/test\/Library\/Java\/JavaVirtualMachines",
+      "\/Users\/test\/.sdkman\/candidates",
+      "\/Users\/test\/.gradle\/caches"
     ]
   },
   "groups" : {

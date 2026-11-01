@@ -44,12 +44,12 @@ struct BuildProject: Identifiable, Hashable, Sendable {
 enum BuildCommand {
     static func quote(_ value: String) -> String { "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
-    /// Caches the sandbox cannot write in their default location are redirected
-    /// into the (sandbox-writable) temp directory. No credentials are added.
+    /// Go caches the sandbox cannot write in their default location are redirected into the
+    /// (sandbox-writable) temp directory. Maven, Gradle and npm get a persistent private cache
+    /// from the sandbox profile (SandboxPolicy.buildToolEnvironment). No credentials are added.
     static let prelude = [
         "export TERM=dumb NO_COLOR=1",
         "export GOCACHE=\"${TMPDIR:-/tmp}/hearth/go/cache\" GOMODCACHE=\"${TMPDIR:-/tmp}/hearth/go/mod\" GOPATH=\"${TMPDIR:-/tmp}/hearth/go/path\"",
-        "export GRADLE_USER_HOME=\"${TMPDIR:-/tmp}/hearth/gradle\"",
     ].joined(separator: "; ")
 
     /// Java ignores HTTP(S)_PROXY. The sandbox only allows network access via its

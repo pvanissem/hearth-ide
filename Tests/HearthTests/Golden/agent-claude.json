@@ -2,7 +2,11 @@
   "environment" : {
     "set_vars" : {
       "CLAUDE_CONFIG_DIR" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/claude",
-      "DISABLE_AUTOUPDATER" : "1"
+      "DISABLE_AUTOUPDATER" : "1",
+      "GRADLE_RO_DEP_CACHE" : "\/Users\/test\/.gradle\/caches",
+      "GRADLE_USER_HOME" : "\/Users\/test\/Library\/Caches\/Hearth\/gradle",
+      "MAVEN_ARGS" : "-Dmaven.repo.local=\/Users\/test\/Library\/Caches\/Hearth\/m2\/repository -Dmaven.repo.local.tail=\/Users\/test\/.m2\/repository",
+      "npm_config_cache" : "\/Users\/test\/Library\/Caches\/Hearth\/npm"
     }
   },
   "extends" : "default",
@@ -20,7 +24,10 @@
       "\/Users\/test\/.claude\/skills",
       "\/Users\/test\/.claude\/agents",
       "\/Users\/test\/.claude\/commands",
-      "\/Users\/test\/.claude\/output-styles"
+      "\/Users\/test\/.claude\/output-styles",
+      "\/Users\/test\/Library\/Java\/JavaVirtualMachines",
+      "\/Users\/test\/.sdkman\/candidates",
+      "\/Users\/test\/.gradle\/caches"
     ]
   },
   "groups" : {

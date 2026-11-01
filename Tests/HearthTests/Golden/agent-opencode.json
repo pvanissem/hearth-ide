@@ -1,6 +1,10 @@
 {
   "environment" : {
     "set_vars" : {
+      "GRADLE_RO_DEP_CACHE" : "\/Users\/test\/.gradle\/caches",
+      "GRADLE_USER_HOME" : "\/Users\/test\/Library\/Caches\/Hearth\/gradle",
+      "MAVEN_ARGS" : "-Dmaven.repo.local=\/Users\/test\/Library\/Caches\/Hearth\/m2\/repository -Dmaven.repo.local.tail=\/Users\/test\/.m2\/repository",
+      "npm_config_cache" : "\/Users\/test\/Library\/Caches\/Hearth\/npm",
       "OPENCODE_DISABLE_AUTOUPDATE" : "1",
       "XDG_CACHE_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/cache",
       "XDG_CONFIG_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/opencode\/config",
@@ -20,7 +24,10 @@
       "\/Users\/test\/.config\/opencode\/agents",
       "\/Users\/test\/.config\/opencode\/command",
       "\/Users\/test\/.config\/opencode\/commands",
-      "\/Users\/test\/.config\/git"
+      "\/Users\/test\/.config\/git",
+      "\/Users\/test\/Library\/Java\/JavaVirtualMachines",
+      "\/Users\/test\/.sdkman\/candidates",
+      "\/Users\/test\/.gradle\/caches"
     ]
   },
   "groups" : {

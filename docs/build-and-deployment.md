@@ -43,14 +43,24 @@ Namen, Pfade außerhalb des Workspace und übergroße Dateien werden ignoriert.
   erreichbar; aus der Sandbox heraus sind andere localhost-Ports nicht erreichbar.
 - **Netzwerk nur über den Sandbox-Proxy.** Java ignoriert `HTTPS_PROXY`. Für Maven
   erzeugt jeder Lauf eine temporäre globale Settings-Datei (0600, nur Proxy, wird nach
-  dem Lauf gelöscht, Reste nach 24 h entfernt) und übergibt sie mit `-gs`; deine
-  `~/.m2/settings.xml` (Mirror/Server) bleibt unverändert wirksam. Gradle bekommt die
+  dem Lauf gelöscht, Reste nach 24 h entfernt) und übergibt sie mit `-gs`. Deine
+  `~/.m2/settings.xml` ist in der Sandbox nicht lesbar (sie enthält oft Passwörter). Gradle bekommt die
   Proxy-Werte über `GRADLE_OPTS`. Go/Node nutzen die Umgebungsvariablen.
 - **Nicht freigegebene Ziele** (z. B. ein Repository außerhalb der Allowlist)
   scheitern mit „Operation not permitted“/403. Die App erkennt das und verweist auf
   die Freigabe unter Einstellungen › Sandbox.
-- **Caches:** Go- und Gradle-Caches liegen unter `$TMPDIR/hearth`, weil die
-  Standardorte in der Sandbox nicht beschreibbar sind.
+- **Caches:** `~/.m2/repository`, `~/.npm` und `~/.gradle` sind in der Sandbox
+  höchstens lesbar. Maven, Gradle und npm schreiben deshalb in einen eigenen Cache unter
+  `~/Library/Caches/Hearth/` (`m2/repository`, `gradle`, `npm`), gesetzt über
+  `MAVEN_ARGS`, `GRADLE_USER_HOME` und `npm_config_cache` im Sandbox-Profil – für
+  Build & Deployment und für Agenten. Was schon in `~/.m2/repository` liegt, nutzt
+  Maven (ab 3.9) lesend weiter (`maven.repo.local.tail`), Gradle entsprechend
+  `~/.gradle/caches` (`GRADLE_RO_DEP_CACHE`). So kann ein Build in der Sandbox keine
+  Artefakte in das Repository legen, aus dem deine IDE außerhalb der Sandbox baut.
+  Folge: `mvn install` in Hearth landet im Hearth-Cache, nicht in `~/.m2`.
+  Go-Caches liegen unter `$TMPDIR/hearth`.
+- **JDKs** unter `~/Library/Java/JavaVirtualMachines` (z. B. von IntelliJ) und
+  `~/.sdkman/candidates` sind lesbar, ebenso `/Library/Java` und Homebrew.
 - **Werkzeuge:** Beim Öffnen wird geprüft, welche Werkzeuge in der Sandbox ausführbar
   sind. Fehlt eines, wird die Aufgabe mit Hinweis deaktiviert; Wrapper (`./mvnw`,
   `./gradlew`) bleiben nutzbar. Zusätzliche Werkzeug-Ordner gibst du unter
