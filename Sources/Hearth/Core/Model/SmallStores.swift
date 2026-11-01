@@ -64,24 +64,24 @@ final class TextZoomStore {
     }
 }
 
-/// GitLab access tokens per approved HTTPS origin (CI/CD pane), read and write kept apart.
+/// CI access tokens (GitLab, GitHub) per approved HTTPS origin (CI/CD pane), read and write kept apart.
 @MainActor
 @Observable
-final class GitLabAccounts {
-    var readTokens: [GitLabOrigin: String] = [:]
-    var writeTokens: [GitLabOrigin: String] = [:]
-    var loadedOrigins: Set<GitLabOrigin> = []
-    private var credentialRevision: [GitLabOrigin: Int] = [:]
+final class CIAccounts {
+    var readTokens: [CIOrigin: String] = [:]
+    var writeTokens: [CIOrigin: String] = [:]
+    var loadedOrigins: Set<CIOrigin> = []
+    private var credentialRevision: [CIOrigin: Int] = [:]
     private static let approvedKey = "gitlab.approvedOrigins.v2"
 
-    func load(for origin: GitLabOrigin) async {
+    func load(for origin: CIOrigin) async {
         guard !loadedOrigins.contains(origin) else { return }
         loadedOrigins.insert(origin)
         let approved = UserDefaults.standard.stringArray(forKey: Self.approvedKey) ?? []
         guard Snapshotter.directory == nil, approved.contains(origin.value) else { return }
         let revision = credentialRevision[origin, default: 0]
         let (read, write) = await Task.detached {
-            (GitLabToken.load(origin: origin, writing: false), GitLabToken.load(origin: origin, writing: true))
+            (CIToken.load(origin: origin, writing: false), CIToken.load(origin: origin, writing: true))
         }.value
         guard credentialRevision[origin, default: 0] == revision else { return }
         readTokens[origin] = read
@@ -89,8 +89,8 @@ final class GitLabAccounts {
     }
 
     /// Only call after explicit confirmation of the displayed HTTPS origin.
-    func save(_ token: String, for origin: GitLabOrigin, writing: Bool) -> Bool {
-        guard GitLabToken.save(token, origin: origin, writing: writing) else { return false }
+    func save(_ token: String, for origin: CIOrigin, writing: Bool) -> Bool {
+        guard CIToken.save(token, origin: origin, writing: writing) else { return false }
         credentialRevision[origin, default: 0] += 1
         if writing { writeTokens[origin] = token } else { readTokens[origin] = token }
         var approved = Set(UserDefaults.standard.stringArray(forKey: Self.approvedKey) ?? [])
@@ -99,18 +99,18 @@ final class GitLabAccounts {
         return true
     }
 
-    func api(for remote: GitLabRemote, writing: Bool = false) -> GitLabAPI? {
+    func api(for remote: CIRemote, writing: Bool = false) -> (any CIClient)? {
         // A write token is never silently used for polling/read requests.
         guard let token = (writing ? writeTokens : readTokens)[remote.origin] else { return nil }
-        return GitLabAPI(remote: remote, credential: GitLabCredential(origin: remote.origin, token: token, allowsWrites: writing))
+        return remote.client(CICredential(origin: remote.origin, token: token, allowsWrites: writing))
     }
 
-    func revoke(_ origin: GitLabOrigin) {
+    func revoke(_ origin: CIOrigin) {
         credentialRevision[origin, default: 0] += 1
         readTokens[origin] = nil
         writeTokens[origin] = nil
-        GitLabToken.delete(origin: origin, writing: false)
-        GitLabToken.delete(origin: origin, writing: true)
+        CIToken.delete(origin: origin, writing: false)
+        CIToken.delete(origin: origin, writing: true)
         let approved = UserDefaults.standard.stringArray(forKey: Self.approvedKey) ?? []
         UserDefaults.standard.set(approved.filter { $0 != origin.value }, forKey: Self.approvedKey)
     }

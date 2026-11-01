@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// GitLab-style pipeline graph: one column per stage, job nodes, connectors between stages.
+/// Pipeline graph (GitLab stages, GitHub job groups): one column per stage, job nodes, connectors between stages.
 struct PipelineGraph: View {
     @Environment(\.textScale) private var scale
     let jobs: [CIJob]
@@ -90,7 +90,7 @@ struct PipelineGraph: View {
         .contextMenu {
             Button { onSelect(job) } label: { Label("Log anzeigen", systemImage: "doc.text") }
             if let url = job.webURL {
-                Button { NSWorkspace.shared.open(url) } label: { Label("In GitLab öffnen", systemImage: "arrow.up.forward.square") }
+                Button { NSWorkspace.shared.open(url) } label: { Label("Im Browser öffnen", systemImage: "arrow.up.forward.square") }
             }
             if let onPlay, job.status == "manual" {
                 Button { onPlay(job) } label: { Label("Manuell starten …", systemImage: "play.fill") }

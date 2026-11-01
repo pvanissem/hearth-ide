@@ -28,17 +28,17 @@ struct SecurityRegressionTests {
     }
 
     @Test func gitLabOriginBinding() async throws {
-        let trusted = GitLabRemote.parse("https://git.example.test/group/repo.git")!
-        let attacker = GitLabRemote.parse("https://attacker.invalid/group/repo.git")!
-        let credential = GitLabCredential(origin: trusted.origin, token: "dummy-test-token", allowsWrites: false)
-        try require(GitLabRemote.parse("http://git.example.test/group/repo.git") == nil, "HTTP remote accepted")
-        try require(GitLabRemote.parse("https://user:pass@git.example.test/g/r") == nil, "Credential URL accepted")
-        try require(GitLabOrigin.parse("https://GIT.EXAMPLE.TEST:443/") == trusted.origin, "Origin normalization")
-        try require(GitLabOrigin.parse("https://git.example.test:8443") != trusted.origin, "Ports conflated")
-        try require(GitLabOrigin.parse("https://git.example.test@attacker.invalid") == nil, "Userinfo origin accepted")
+        let trusted = CIRemote.parse("https://git.example.test/group/repo.git")!
+        let attacker = CIRemote.parse("https://attacker.invalid/group/repo.git")!
+        let credential = CICredential(origin: trusted.origin, token: "dummy-test-token", allowsWrites: false)
+        try require(CIRemote.parse("http://git.example.test/group/repo.git") == nil, "HTTP remote accepted")
+        try require(CIRemote.parse("https://user:pass@git.example.test/g/r") == nil, "Credential URL accepted")
+        try require(CIOrigin.parse("https://GIT.EXAMPLE.TEST:443/") == trusted.origin, "Origin normalization")
+        try require(CIOrigin.parse("https://git.example.test:8443") != trusted.origin, "Ports conflated")
+        try require(CIOrigin.parse("https://git.example.test@attacker.invalid") == nil, "Userinfo origin accepted")
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [DummyGitLabProtocol.self]
-        let transport = GitLabTransport()
+        let transport = NoRedirectTransport()
         let session = URLSession(configuration: config, delegate: transport, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let client = GitLabAPI(remote: trusted, credential: credential, session: session)

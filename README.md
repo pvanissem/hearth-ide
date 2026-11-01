@@ -3,7 +3,8 @@
 Native macOS-App (SwiftUI) für KI-Coding-Agenten, die in einer Sandbox laufen.
 Hearth bündelt alle laufenden Agenten in einer Inbox, zeigt jeden Agenten als
 Terminal im Chat-Bereich und bietet einen Inspector mit Directory, Git, Editor,
-Tests, Architecture (Mermaid), Build & Deployment und CI-Pipelines.
+Tests, Architecture (Mermaid), Build & Deployment und CI/CD (GitLab-Pipelines
+und GitHub Actions).
 
 ## Agenten in der Sandbox
 

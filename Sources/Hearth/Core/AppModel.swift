@@ -16,7 +16,7 @@ final class AppModel {
     let editor: EditorStore
     let workspace = WorkspaceState()
     let textZoom = TextZoomStore()
-    let gitLab = GitLabAccounts()
+    let ci = CIAccounts()
 
     /// The user's sandbox rules (domains, ports, folders, projects, credentials).
     private(set) var sandboxSettings = SandboxSettings.load()

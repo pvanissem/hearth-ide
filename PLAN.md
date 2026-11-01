@@ -52,7 +52,8 @@ Hearth IDE.app
 - [ ] **3 ACP-Chat** – Agent-Schnittstelle in der App, ACP-Client mit eigenen
       Chat-Views (Permissions, Modelle, Modi, Slash-Commands) als zweite
       Darstellung neben dem Terminal.
-- [ ] **4 Feinschliff** – Pipelines für GitHub Actions und GitLab (freie URL),
+- [x] **CI/CD für GitHub Actions** neben GitLab (gemeinsames `CIClient`-Protokoll).
+- [ ] **4 Feinschliff** – GitLab-Pipelines für frei wählbare URL,
       Signierung/Notarisierung, Agent-spezifische Verbrauchsanzeigen.
 
 ## Risiken
