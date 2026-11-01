@@ -1,6 +1,6 @@
 # Hearth IDE – Änderungen
 
-## Unveröffentlicht
+## 0.3.0 · 2026-11-01
 
 - CI/CD zeigt jetzt auch GitHub Actions (github.com und GitHub Enterprise): Workflow-Läufe des aktuellen Branchs oder aller Branches, Jobs als Diagramm oder Liste, Job-Logs, fehlgeschlagene Jobs wiederholen, Läufe abbrechen und Workflows mit `workflow_dispatch` für den aktuellen Branch starten. Zugang per Fine-grained Token, getrennt für Lesen („Actions: Read-only“) und Schreiben, gebunden an den bestätigten Server – Job-Logs werden von GitHubs signierter Adresse ohne Token geladen.
 
