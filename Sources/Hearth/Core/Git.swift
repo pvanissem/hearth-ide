@@ -91,21 +91,46 @@ enum Git {
         return env
     }
 
+    /// Git binaries the hardened host process may execute: Apple's shim and the real Git it
+    /// hands over to, wherever the selected developer directory is (e.g. "Xcode-beta.app").
+    static let gitExecutables: [String] = {
+        var paths = ["/usr/bin/git", "/Library/Developer/CommandLineTools/usr/bin/git",
+                     "/Applications/Xcode.app/Contents/Developer/usr/bin/git"]
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        p.arguments = ["--find", "git"]
+        p.environment = ["PATH": "/usr/bin:/bin"]
+        let out = Pipe()
+        p.standardOutput = out
+        p.standardError = FileHandle.nullDevice
+        p.standardInput = FileHandle.nullDevice
+        if (try? p.run()) != nil {
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            p.waitUntilExit()
+            let found = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            let real = URL(fileURLWithPath: found).resolvingSymlinksInPath().path
+            for path in [found, real] where p.terminationStatus == 0 && path.hasPrefix("/") && path.hasSuffix("/git")
+                && FileManager.default.isExecutableFile(atPath: path) && !paths.contains(path) {
+                paths.append(path)
+            }
+        }
+        return paths
+    }()
+
     /// Defense in depth against config/attribute changes between inspection and
     /// the actual query: only Apple's Git executable may execute, never a helper
     /// shell, filter, hook or transport. Missing Seatbelt support fails closed.
     static func hostProcess(_ arguments: [String]) -> Process {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sandbox-exec")
+        let allowed = gitExecutables.map { "  (literal \(SandboxPolicy.sbString($0)))" }.joined(separator: "\n")
         let profile = """
         (version 1)
         (allow default)
         (deny network*)
         (deny process-exec)
         (allow process-exec
-          (literal "/usr/bin/git")
-          (literal "/Library/Developer/CommandLineTools/usr/bin/git")
-          (literal "/Applications/Xcode.app/Contents/Developer/usr/bin/git"))
+        \(allowed))
         """
         process.arguments = ["-p", profile, "/usr/bin/git"] + arguments
         process.environment = hostEnvironment

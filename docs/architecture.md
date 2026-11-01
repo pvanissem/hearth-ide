@@ -1,6 +1,6 @@
 # Architektur
 
-Stand v0.3. Hearth ist eine SwiftUI-App ohne eigenen Agenten: Sie startet die
+Stand v0.2.1. Hearth ist eine SwiftUI-App ohne eigenen Agenten: Sie startet die
 Agent-CLIs der Nutzer in einer nono-Sandbox und zeigt drumherum Inbox, Editor,
 Git, Tests, Build & Deployment und CI.
 

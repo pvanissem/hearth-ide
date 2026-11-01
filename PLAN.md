@@ -40,7 +40,7 @@ Hearth IDE.app
 - [x] **2b Einstellungen** – nativ statt devkcode-CLI: Domains, Ports, Ordner,
       Projekte, Credentials (nono-Proxy oder env), Git über SSH; Build &
       Deployment und Git laufen in Hearths nono-Sandbox.
-- [x] **2c Härtung & Architektur (v0.3)** – Befunde aus dem
+- [x] **2c Härtung & Architektur (v0.2.1)** – Befunde aus dem
       [Review](docs/review-security-architecture.md): Pull geteilt (S1), eigene
       Konfigurationsordner pro Agent (S2), geschützte Ordner (S6); devkcode-/
       OpenCode-Server-Pfad entfernt, `AppModel` in Stores geteilt, Sandbox-Regeln

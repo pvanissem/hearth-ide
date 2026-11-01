@@ -56,32 +56,36 @@ final class FakeCommandRunner: SandboxCommandRunner, @unchecked Sendable {
     }
 
     func start(_ request: SandboxCommandRequest) async throws -> String {
-        lock.lock(); defer { lock.unlock() }
-        _requests.append(request)
-        if failStart { throw SandboxCommandError("Sandbox nicht verfügbar") }
-        counter += 1
-        return "sh_\(counter)"
+        try lock.withLock {
+            _requests.append(request)
+            if failStart { throw SandboxCommandError("Sandbox nicht verfügbar") }
+            counter += 1
+            return "sh_\(counter)"
+        }
     }
 
     func state(of id: String) async throws -> SandboxCommandState {
-        lock.lock(); defer { lock.unlock() }
-        // A real process keeps working between polls.
-        advance()
-        return state
+        lock.withLock {
+            // A real process keeps working between polls.
+            advance()
+            return state
+        }
     }
 
     func output(of id: String, from cursor: Int, limit: Int) async throws -> SandboxOutputPage {
-        lock.lock(); defer { lock.unlock() }
-        advance()
-        let bytes = Array(output.utf8)
-        let start = min(max(cursor, 0), bytes.count), end = min(start + limit, bytes.count)
-        return SandboxOutputPage(text: String(decoding: bytes[start..<end], as: UTF8.self), next: end, size: bytes.count)
+        lock.withLock {
+            advance()
+            let bytes = Array(output.utf8)
+            let start = min(max(cursor, 0), bytes.count), end = min(start + limit, bytes.count)
+            return SandboxOutputPage(text: String(decoding: bytes[start..<end], as: UTF8.self), next: end, size: bytes.count)
+        }
     }
 
     func remove(_ id: String) async {
-        lock.lock(); defer { lock.unlock() }
-        _removed.append(id)
-        if state == .running { state = .killed }
+        lock.withLock {
+            _removed.append(id)
+            if state == .running { state = .killed }
+        }
     }
 
     func running() async -> [SandboxCommandInfo] { list }
