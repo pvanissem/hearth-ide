@@ -30,7 +30,7 @@ Agent-agnostic and sandbox-first: Hearth does not ship its own model or agent; i
 
 ## Capabilities and Constraints
 
-- Version 0.2.1, early: terminal chat today; native chat over ACP (Agent Client Protocol) is the next step.
+- Version 0.3, early: terminal chat today; native chat over ACP (Agent Client Protocol) is the next step.
 - macOS 14+, Apple Silicon only. Ad-hoc signed, not notarized (browser downloads need "Open anyway"; the curl installer does not).
 - Bundles nono v0.80.0 (Apache-2.0). App licensed MIT.
 - Network allowlist: LLM APIs, package registries, GitHub/GitLab, documentation, plus the agent's own API hosts and user additions.
