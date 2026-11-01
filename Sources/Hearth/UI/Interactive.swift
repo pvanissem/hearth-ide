@@ -88,25 +88,25 @@ struct FileContextMenu: View {
     var changed = false
 
     var body: some View {
-        Button { model.editor.open(url, mode: .file) } label: { Label("Im Editor öffnen", systemImage: "doc.text") }
+        Button { model.editor.open(url, mode: .file) } label: { Label("Open in editor", systemImage: "doc.text") }
         if changed {
-            Button { model.editor.open(url, mode: .diff) } label: { Label("Diff anzeigen", systemImage: "plusminus") }
+            Button { model.editor.open(url, mode: .diff) } label: { Label("Show diff", systemImage: "plusminus") }
         }
-        Button { NSWorkspace.shared.open(url) } label: { Label("Im Standardprogramm öffnen", systemImage: "arrow.up.forward.app") }
-        Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Label("Im Finder zeigen", systemImage: "folder") }
+        Button { NSWorkspace.shared.open(url) } label: { Label("Open with default app", systemImage: "arrow.up.forward.app") }
+        Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Label("Show in Finder", systemImage: "folder") }
         Divider()
-        Button { copy(url.path) } label: { Label("Pfad kopieren", systemImage: "doc.on.doc") }
+        Button { copy(url.path) } label: { Label("Copy path", systemImage: "doc.on.doc") }
         if let root = model.workspaceRoot, url.path.hasPrefix(root) {
             Button { copy(String(url.path.dropFirst(root.count + 1))) } label: {
-                Label("Relativen Pfad kopieren", systemImage: "doc.on.doc")
+                Label("Copy relative path", systemImage: "doc.on.doc")
             }
         }
-        Button { model.mention(url) } label: { Label("Im Chat erwähnen", systemImage: "text.bubble") }
+        Button { model.mention(url) } label: { Label("Mention in chat", systemImage: "text.bubble") }
     }
 
     private func copy(_ s: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(s, forType: .string)
-        model.toast("In Zwischenablage kopiert")
+        model.toast(String(localized: "Copied to the clipboard"))
     }
 }

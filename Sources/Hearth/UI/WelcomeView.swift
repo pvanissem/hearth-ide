@@ -20,9 +20,9 @@ struct WelcomeView: View {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable().frame(width: 72, height: 72)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Willkommen bei Hearth IDE").font(.title.bold())
+                    Text("Welcome to Hearth IDE").font(.title.bold())
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Alle Agenten in sicheren Sandboxes – womit möchtest du loslegen?")
+                    Text("All your agents in safe sandboxes – where do you want to start?")
                         .foregroundStyle(.secondary)
                         .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
@@ -37,7 +37,7 @@ struct WelcomeView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 if !recentAgentFolders.isEmpty {
-                    Text("Zuletzt verwendete Ordner").font(.caption.bold()).foregroundStyle(.secondary)
+                    Text("Recent folders").font(.caption.bold()).foregroundStyle(.secondary)
                     ScrollView {
                         LazyVStack(spacing: 2) {
                             ForEach(recentAgentFolders, id: \.directory) { run in
@@ -63,14 +63,14 @@ struct WelcomeView: View {
                                     model.showWelcome = false
                                     model.startAgent(run.kind, directory: run.directory)
                                 }
-                                .help("\(run.kind.displayName) in diesem Ordner starten")
+                                .help("Start \(run.kind.displayName) in this folder")
                             }
                         }
                     }
                     .frame(maxHeight: 320)
                 } else {
-                    ContentUnavailableView("Noch keine Sitzungen", systemImage: "flame",
-                                           description: Text("Wähle einen Ordner und einen Agenten – Claude Code, Codex, Copilot oder OpenCode."))
+                    ContentUnavailableView("No sessions yet", systemImage: "flame",
+                                           description: Text("Choose a folder and an agent – Claude Code, Codex, Copilot or OpenCode."))
                         .frame(maxHeight: 180)
                 }
             }
@@ -79,18 +79,18 @@ struct WelcomeView: View {
             Divider()
 
             HStack {
-                Toggle("Beim Start anzeigen", isOn: Binding(get: { showOnLaunch.wrappedValue }, set: {
+                Toggle("Show at launch", isOn: Binding(get: { showOnLaunch.wrappedValue }, set: {
                     showOnLaunch.wrappedValue = $0
                     AppModel.welcomeEnabled = $0
                 }))
                 .toggleStyle(.checkbox)
                 Spacer()
-                Button("Ohne Agent fortfahren") { model.showWelcome = false }
+                Button("Continue without an agent") { model.showWelcome = false }
                     .keyboardShortcut(.cancelAction)
                 Button {
                     model.welcomeStartAgent()
                 } label: {
-                    Label("Agent starten …", systemImage: "plus")
+                    Label("Start agent…", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)

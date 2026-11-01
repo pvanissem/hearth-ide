@@ -64,12 +64,12 @@ struct BuildDeployView: View {
             sandboxBadge
             let active = store.runs(for: root).filter { $0.state.isActive }.count
             if active > 0 {
-                Pill(text: "\(active) aktiv", color: .accentColor, symbol: "bolt.fill")
+                Pill(text: String(localized: "\(active) active"), color: .accentColor, symbol: "bolt.fill")
             }
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).imageScale(.small)
-                TextField("Aufgaben filtern", text: filter.projectedValue).textFieldStyle(.plain)
+                TextField("Filter tasks", text: filter.projectedValue).textFieldStyle(.plain)
                 if !filter.wrappedValue.isEmpty {
                     Button { filter.wrappedValue = "" } label: { Image(systemName: "xmark.circle.fill") }
                         .buttonStyle(.borderless).foregroundStyle(.secondary)
@@ -80,11 +80,11 @@ struct BuildDeployView: View {
             .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
             .frame(maxWidth: 200)
             Button { Task { await rescan() } } label: { Image(systemName: "arrow.clockwise") }
-                .buttonStyle(.borderless).help("Projektdateien neu einlesen")
+                .buttonStyle(.borderless).help("Rescan project files")
             Menu {
-                Button("Beendete Läufe entfernen") { store.clearFinished(root: root) }
+                Button("Remove finished runs") { store.clearFinished(root: root) }
                 Divider()
-                Button("Eigene Aufgaben bearbeiten (.hearth/tasks.json)") { openCustomTasks() }
+                Button("Edit custom tasks (.hearth/tasks.json)") { openCustomTasks() }
             } label: { Image(systemName: "ellipsis.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }
@@ -95,10 +95,10 @@ struct BuildDeployView: View {
     private var sandboxBadge: some View {
         if let conn = connection {
             Pill(text: "Sandbox · nono", color: .green, symbol: "lock.shield.fill")
-                .help("Jede Aufgabe läuft in einer eigenen nono-Sandbox für diesen Ordner – nie direkt auf dem Mac.")
+                .help("Every task runs in its own nono sandbox for this folder – never directly on the Mac.")
         } else {
-            Pill(text: "Keine Sandbox verfügbar", color: .orange, symbol: "exclamationmark.triangle.fill")
-                .help("nono wurde nicht gefunden (Contents/Helpers/nono bzw. scripts/fetch-nono.sh).")
+            Pill(text: String(localized: "No sandbox available"), color: .orange, symbol: "exclamationmark.triangle.fill")
+                .help("nono was not found (Contents/Helpers/nono or scripts/fetch-nono.sh).")
         }
     }
 
@@ -114,8 +114,8 @@ struct BuildDeployView: View {
     static let customTemplate = """
     {
       "tasks": [
-        { "name": "Beispiel: Build", "command": "mvn -B verify" },
-        { "name": "Beispiel: Service", "command": "java -jar target/app.jar", "service": true, "port": 8080, "health": "/actuator/health" }
+        { "name": "Example: build", "command": "mvn -B verify" },
+        { "name": "Example: Service", "command": "java -jar target/app.jar", "service": true, "port": 8080, "health": "/actuator/health" }
       ]
     }
 
@@ -128,8 +128,8 @@ struct BuildDeployView: View {
         if !scanned.wrappedValue {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if projects.wrappedValue.isEmpty {
-            ContentUnavailableView("Keine Build-Konfiguration gefunden", systemImage: "hammer",
-                description: Text("Unterstützt: Maven, Gradle, Node, Go, Makefile und eigene Aufgaben in .hearth/tasks.json."))
+            ContentUnavailableView("No build configuration found", systemImage: "hammer",
+                description: Text("Supported: Maven, Gradle, Node, Go, Makefile and custom tasks in .hearth/tasks.json."))
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
@@ -178,23 +178,23 @@ struct BuildDeployView: View {
             if !project.path.isEmpty, project.path != project.name {
                 Text(project.path).scaledFont(.caption).foregroundStyle(.secondary)
             }
-            ForEach(project.tools, id: \.self) { Pill(text: $0.rawValue, color: .secondary) }
+            ForEach(project.tools, id: \.self) { Pill(text: $0 == .custom ? String(localized: "Custom") : $0.rawValue, color: .secondary) }
             Spacer()
             if !project.profiles.isEmpty {
-                Picker("Profil", selection: Binding(get: { profiles.wrappedValue[project.id] ?? "" },
+                Picker("Profile", selection: Binding(get: { profiles.wrappedValue[project.id] ?? "" },
                                                     set: { profiles.wrappedValue[project.id] = $0 })) {
-                    Text("Kein Profil").tag("")
+                    Text("No profile").tag("")
                     ForEach(project.profiles, id: \.self) { Text($0).tag($0) }
                 }
                 .labelsHidden().controlSize(.small).fixedSize()
-                .help("Maven-Profil (-P) für Aufgaben dieses Projekts")
+                .help("Maven profile (-P) for this project’s tasks")
             }
         }
         .padding(.horizontal, 2)
     }
 
     private func reason(_ task: BuildTask) -> String? {
-        guard let conn = connection else { return "Keine Sandbox verfügbar (nono nicht gefunden)." }
+        guard let conn = connection else { return String(localized: "No sandbox available (nono not found).") }
         return store.unavailableReason(task, serverID: conn.id)
     }
 
@@ -255,14 +255,14 @@ struct BuildDeployView: View {
                 TextField("Port", text: Binding(get: { ports.wrappedValue[portKey(task)] ?? task.port.map(String.init) ?? "" },
                                                 set: { ports.wrappedValue[portKey(task)] = String($0.filter(\.isNumber).prefix(5)) }))
                     .textFieldStyle(.plain).frame(width: 44).monospacedDigit().disabled(active)
-                    .help("Port, unter dem der Service erreichbar ist (PORT/SERVER_PORT).")
+                    .help("Port the service listens on (PORT/SERVER_PORT).")
             }
             .scaledFont(.caption)
             .padding(.horizontal, 6).padding(.vertical, 3)
             .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
             if active, let url = run?.browserURL {
                 Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "safari") }
-                    .buttonStyle(.borderless).help("\(url.absoluteString) im Browser öffnen")
+                    .buttonStyle(.borderless).help("Open \(url.absoluteString) in the browser")
             }
             runButton(task, project: project, run: run, blocked: blocked, prominent: true)
         }
@@ -295,7 +295,7 @@ struct BuildDeployView: View {
         } else if let run, case .lost = run.state {
             Pill(text: run.state.label, color: .red)
         } else {
-            Pill(text: "gestoppt", color: .secondary)
+            Pill(text: String(localized: "stopped"), color: .secondary)
         }
     }
 
@@ -312,21 +312,21 @@ struct BuildDeployView: View {
                 guard let client = model.runner(id: run.serverID) else { store.serverGone(run.serverID); return }
                 Task { await store.stop(run, client: client) }
             } label: {
-                Label(prominent ? "Stoppen" : "Abbrechen", systemImage: "stop.fill")
+                Label(prominent ? "Stop" : "Cancel", systemImage: "stop.fill")
                     .labelStyle(.iconOnly).frame(width: 14)
             }
             .buttonStyle(.bordered).tint(.red).controlSize(.small)
-            .help(task.kind == .service ? "Service stoppen" : "Abbrechen")
+            .help(task.kind == .service ? "Stop service" : "Cancel")
         } else {
             let button = Button {
                 guard let conn = connection else { return }
                 let profile = profiles.wrappedValue[project.id].flatMap { $0.isEmpty ? nil : $0 }
                 Task { await store.start(task, root: root, serverID: conn.id, client: conn.client, profile: profile, port: chosenPort(task)) }
             } label: {
-                Label("Starten", systemImage: "play.fill").labelStyle(.iconOnly).frame(width: 14)
+                Label("Start", systemImage: "play.fill").labelStyle(.iconOnly).frame(width: 14)
             }
             .controlSize(.small).disabled(blocked != nil)
-            .help(task.kind == .service ? "Service in der Sandbox starten" : "In der Sandbox ausführen")
+            .help(task.kind == .service ? "Start the service in the sandbox" : "Run in the sandbox")
             if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
         }
     }
@@ -343,11 +343,11 @@ struct BuildDeployView: View {
     }
 
     private func healthText(_ run: BuildRun) -> String {
-        guard run.port != nil else { return "läuft" }
+        guard run.port != nil else { return String(localized: "running") }
         switch run.health {
-        case .up(let code) where code < 500: return "erreichbar"
+        case .up(let code) where code < 500: return String(localized: "reachable")
         case .up(let code): return "HTTP \(code)"
-        case .down, .unknown: return "startet …"
+        case .down, .unknown: return String(localized: "starting…")
         }
     }
 
@@ -369,7 +369,7 @@ struct BuildDeployView: View {
                     Pill(text: run.state.label, color: run.state == .succeeded ? .green : (run.state.isActive ? .accentColor : .secondary))
                     Spacer()
                     if rootRuns.count > 1 {
-                        Picker("Lauf", selection: Binding(get: { run.id }, set: { store.selectedRunID = $0 })) {
+                        Picker("Run", selection: Binding(get: { run.id }, set: { store.selectedRunID = $0 })) {
                             ForEach(rootRuns.reversed()) { r in
                                 Text("\(r.task.title) · \(r.startedAt.formatted(date: .omitted, time: .shortened)) · \(r.state.label)").tag(r.id)
                             }
@@ -380,7 +380,7 @@ struct BuildDeployView: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(run.output, forType: .string)
                     } label: { Image(systemName: "doc.on.doc") }
-                        .buttonStyle(.borderless).help("Ausgabe kopieren")
+                        .buttonStyle(.borderless).help("Copy output")
                 }
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 Divider()
@@ -389,8 +389,8 @@ struct BuildDeployView: View {
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "terminal").font(.system(size: 26)).foregroundStyle(.tertiary)
-                Text("Noch keine Ausgabe").scaledFont(.callout).foregroundStyle(.secondary)
-                Text("Starte eine Aufgabe oder einen Service – das Log erscheint hier live.")
+                Text("No output yet").scaledFont(.callout).foregroundStyle(.secondary)
+                Text("Start a task or a service – its log appears here live.")
                     .scaledFont(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center)
             }
             .padding()
@@ -421,7 +421,7 @@ private struct Pill: View {
 private struct BuildLogView: View {
     let run: BuildRun
     var body: some View {
-        let text = run.output.isEmpty ? (run.state.isActive ? "Warte auf Ausgabe …" : "(keine Ausgabe)") : run.output
+        let text = run.output.isEmpty ? (run.state.isActive ? String(localized: "Waiting for output…") : String(localized: "(no output)")) : run.output
         CodeEditor(text: .constant(text), language: .shell, editable: false,
                    highlightLine: run.state.isActive ? max(1, text.split(separator: "\n", omittingEmptySubsequences: false).count) : nil)
             .id(run.id)

@@ -60,12 +60,12 @@ struct TerminalPaneView: View {
                 Image(systemName: "terminal").foregroundStyle(.secondary)
                 Text(title).scaledFont(.caption, bold: true).lineLimit(1).truncationMode(.middle)
                 Spacer()
-                Text("ohne Sandbox").scaledFont(.caption2).foregroundStyle(.orange)
-                    .help("Diese Shell läuft direkt auf dem Mac, nicht in der Sandbox. Dateien, die ein Agent geschrieben hat, sind nicht vertrauenswürdig.")
+                Text("no sandbox").scaledFont(.caption2).foregroundStyle(.orange)
+                    .help("This shell runs directly on the Mac, not in the sandbox. Files an agent wrote are not trustworthy.")
                 Button { generation.wrappedValue += 1 } label: { Image(systemName: "arrow.clockwise") }
-                    .help("Terminal neu starten")
+                    .help("Restart terminal")
                 Button { openExternally() } label: { Image(systemName: "arrow.up.forward.app") }
-                    .help("In \(TerminalLauncher.preferred.rawValue) öffnen")
+                    .help("Open in \(TerminalLauncher.preferred.rawValue)")
             }
             .buttonStyle(.borderless)
             .scaledFont(.caption)
@@ -77,8 +77,8 @@ struct TerminalPaneView: View {
                     .id("\(generation.wrappedValue)#\(command.joined(separator: " "))#\(root ?? "")#\(colorScheme == .dark)")
                 if let code = exited.wrappedValue {
                     HStack {
-                        Text("Prozess beendet (Code \(code))").font(.caption)
-                        Button("Neu starten") { generation.wrappedValue += 1 }.controlSize(.small)
+                        Text("Process ended (code \(code))").font(.caption)
+                        Button("Restart") { generation.wrappedValue += 1 }.controlSize(.small)
                     }
                     .padding(8).background(.regularMaterial, in: Capsule()).padding(10)
                 }

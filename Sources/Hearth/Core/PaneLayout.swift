@@ -120,6 +120,15 @@ enum LayoutPreset: String, CaseIterable, Identifiable {
     case standard = "Standard", focusChat = "Fokus Chat", review = "Review", monitoring = "Monitoring"
     var id: String { rawValue }
 
+    var title: String {
+        switch self {
+        case .standard: String(localized: "Standard")
+        case .focusChat: String(localized: "Focus on chat")
+        case .review: String(localized: "Review")
+        case .monitoring: String(localized: "Monitoring")
+        }
+    }
+
     var symbol: String {
         switch self {
         case .standard: "rectangle.split.3x1"

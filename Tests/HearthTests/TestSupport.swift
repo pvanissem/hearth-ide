@@ -58,7 +58,7 @@ final class FakeCommandRunner: SandboxCommandRunner, @unchecked Sendable {
     func start(_ request: SandboxCommandRequest) async throws -> String {
         try lock.withLock {
             _requests.append(request)
-            if failStart { throw SandboxCommandError("Sandbox nicht verfügbar") }
+            if failStart { throw SandboxCommandError("Sandbox not available") }
             counter += 1
             return "sh_\(counter)"
         }

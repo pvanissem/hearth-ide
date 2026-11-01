@@ -49,7 +49,7 @@ extension WorkspaceLayoutView {
                     .fill(Color.accentColor.opacity(0.18))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor, lineWidth: 2))
                     .overlay {
-                        Label(zone == .windowBottom || zone == .windowTop ? "Über die ganze Breite" : "Über die ganze Höhe",
+                        Label(zone == .windowBottom || zone == .windowTop ? "Full width" : "Full height",
                               systemImage: "rectangle.bottomthird.inset.filled")
                             .font(.callout.bold()).foregroundStyle(Color.accentColor)
                     }
@@ -113,7 +113,7 @@ struct PaneView: View {
         let maximized = model.layout.maximizedPane == pane.id
         return HStack(spacing: 8) {
             Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
-                .help("Ziehen, um den Bereich zu verschieben")
+                .help("Drag to move the area")
             Menu {
                 ForEach(InspectorTab.allCases) { tab in
                     Button { model.layout.setTab(tab, for: pane.id) } label: { Label(tab.title, systemImage: tab.symbol) }
@@ -124,34 +124,34 @@ struct PaneView: View {
             .menuStyle(.borderlessButton).fixedSize()
             Spacer()
             Menu {
-                Button { model.textZoom.zoom(zoomArea, by: 1.1) } label: { Label("Größer", systemImage: "plus.magnifyingglass") }
-                Button { model.textZoom.zoom(zoomArea, by: 1 / 1.1) } label: { Label("Kleiner", systemImage: "minus.magnifyingglass") }
+                Button { model.textZoom.zoom(zoomArea, by: 1.1) } label: { Label("Larger", systemImage: "plus.magnifyingglass") }
+                Button { model.textZoom.zoom(zoomArea, by: 1 / 1.1) } label: { Label("Smaller", systemImage: "minus.magnifyingglass") }
                 Divider()
-                Button("Zurücksetzen (\(Int((model.textZoom.scale(zoomArea.base) * 100).rounded())) %)") { model.textZoom.reset(zoomArea) }
+                Button("Reset (\(Int((model.textZoom.scale(zoomArea.base) * 100).rounded())) %)") { model.textZoom.reset(zoomArea) }
             } label: {
                 let percent = Int((model.textZoom.scale(zoomArea) * 100).rounded())
                 if percent == 100 { Image(systemName: "textformat.size") } else { Text("\(percent) %").font(.caption2.monospacedDigit()) }
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .foregroundStyle(.secondary)
-            .help("Schriftgröße dieses Bereichs (auch ⌘-Scrollen oder Zwei-Finger-Zoom über dem Bereich)")
+            .help("Text size of this area (also ⌘-scroll or pinch over the area)")
             // Layout actions only make sense for panes in the main window's tree.
             if model.layout.paneTree.pane(pane.id) != nil {
                 Button { model.layout.split(pane.id, axis: .horizontal) } label: { Image(systemName: "rectangle.split.2x1") }
-                    .help("Rechts teilen")
+                    .help("Split right")
                 Button { model.layout.split(pane.id, axis: .vertical) } label: { Image(systemName: "rectangle.split.1x2") }
-                    .help("Unten teilen")
+                    .help("Split down")
                 Button { model.layout.toggleMaximize(pane.id) } label: {
                     Image(systemName: maximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
-                .help(maximized ? "Wiederherstellen (Doppelklick auf die Kopfzeile)" : "Maximieren (Doppelklick auf die Kopfzeile)")
+                .help(maximized ? "Restore (double-click the header)" : "Maximize (double-click the header)")
                 Button {
                     if let tab = model.layout.detach(pane.id) { openWindow(value: tab) }
                 } label: { Image(systemName: "macwindow.on.rectangle") }
-                    .help("In eigenem Fenster öffnen")
+                    .help("Open in its own window")
                 if model.layout.paneTree.panes.count > 1 {
                     Button { model.layout.closePane(pane.id) } label: { Image(systemName: "xmark") }
-                        .help("Bereich schließen")
+                        .help("Close area")
                 }
             }
         }
@@ -185,7 +185,7 @@ struct PaneView: View {
                     .offset(x: r.minX, y: r.minY)
                     .overlay {
                         if zone == .center {
-                            Label("Tauschen", systemImage: "arrow.left.arrow.right").font(.callout.bold())
+                            Label("Swap", systemImage: "arrow.left.arrow.right").font(.callout.bold())
                                 .foregroundStyle(Color.accentColor)
                         }
                     }
@@ -219,8 +219,8 @@ struct PaneView: View {
             if let root = model.workspaceRoot {
                 workspaceContent(root)
             } else {
-                ContentUnavailableView("Kein Workspace", systemImage: "folder",
-                                       description: Text("Wähle eine Session oder Sandbox."))
+                ContentUnavailableView("No workspace", systemImage: "folder",
+                                       description: Text("Select an agent session."))
             }
         }
     }
@@ -349,28 +349,28 @@ struct DirectoryView: View {
                 Text(URL(fileURLWithPath: root).lastPathComponent).scaledFont(.caption, bold: true).lineLimit(1)
                 Spacer()
                 Button { model.revealEditorFile(in: root) } label: { Image(systemName: "scope") }
-                    .buttonStyle(.borderless).help("Aktive Editor-Datei im Directory zeigen und markieren")
+                    .buttonStyle(.borderless).help("Reveal the active editor file in the directory")
                     .disabled(model.editor.file == nil)
                 Menu {
                     DirectoryCreateMenu(directory: URL(fileURLWithPath: root), root: root)
                 } label: { Image(systemName: "plus") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                    .help("Datei oder Ordner im Workspace anlegen")
+                    .help("Create a file or folder in the workspace")
                 Button { model.workspace.revision += 1 } label: { Image(systemName: "arrow.clockwise") }
-                    .buttonStyle(.borderless).help("Verzeichnis aktualisieren")
+                    .buttonStyle(.borderless).help("Refresh directory")
             }
             .padding(.horizontal, 8).padding(.top, 6)
             .modifier(WorkspaceFileDrop(directory: URL(fileURLWithPath: root), root: root, model: model))
-            SearchField(text: query.projectedValue, prompt: "Dateien suchen …")
+            SearchField(text: query.projectedValue, prompt: String(localized: "Search files…"))
             Divider()
             if query.wrappedValue.count >= 2 {
                 tree(matches: results.wrappedValue)
                 .overlay(alignment: .topLeading) {
                     if results.wrappedValue.isEmpty && !searching.wrappedValue {
-                        Text("Keine Treffer").foregroundStyle(.secondary).padding(8).allowsHitTesting(false)
+                        Text("No matches").foregroundStyle(.secondary).padding(8).allowsHitTesting(false)
                     }
                 }
-                .busyOverlay(searching.wrappedValue && results.wrappedValue.isEmpty, label: "Suche …")
+                .busyOverlay(searching.wrappedValue && results.wrappedValue.isEmpty, label: String(localized: "Searching…"))
                 .task(id: "\(root)#\(query.wrappedValue)#\(model.workspace.revision)") {
                     try? await Task.sleep(for: .milliseconds(150))
                     if Task.isCancelled { return }
@@ -516,47 +516,47 @@ struct GitView: View {
 
     var body: some View {
         if !snapshot.isRepo {
-            ContentUnavailableView("Kein Git-Repository", systemImage: "arrow.triangle.branch")
+            ContentUnavailableView("No Git repository", systemImage: "arrow.triangle.branch")
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     headerCard
-                    section("Änderungen", count: snapshot.changes.count) { changesList }
+                    section(String(localized: "Changes"), count: snapshot.changes.count) { changesList }
                     section("Branches", count: visibleBranches.count) { branchList }
-                    section("Letzte Commits", count: snapshot.recentCommits.count) { commitList }
+                    section(String(localized: "Recent commits"), count: snapshot.recentCommits.count) { commitList }
                 }
                 .padding(8)
             }
             .busyOverlay(busy.wrappedValue != nil, label: busy.wrappedValue)
             .task(id: "\(root)#\(model.workspace.revision)") { await reloadBranches() }
             .confirmationDialog(checkoutTitle, isPresented: isPresent(pendingCheckout), presenting: pendingCheckout.wrappedValue) { b in
-                Button("Wechseln") { Task { await run("Wechsle zu \(b.localName) …") { await Git.checkout(b, in: root) } } }
+                Button("Switch") { Task { await run(String(localized: "Switching to \(b.localName)…")) { await Git.checkout(b, in: root) } } }
             } message: { _ in
                 Text(snapshot.changes.isEmpty
-                     ? "Der Agent arbeitet danach auf diesem Branch."
-                     : "Es gibt \(snapshot.changes.count) nicht committete Änderungen. Git übernimmt sie, sofern keine Konflikte entstehen – sonst bricht der Wechsel ab.")
+                     ? "The agent then works on this branch."
+                     : "There are \(snapshot.changes.count) uncommitted changes. Git carries them over unless they conflict – otherwise the switch is cancelled.")
             }
-            .confirmationDialog("Branch „\(pendingDelete.wrappedValue?.name ?? "")“ löschen?",
+            .confirmationDialog(String(localized: "Delete branch “\(pendingDelete.wrappedValue?.name ?? "")”?"),
                                 isPresented: isPresent(pendingDelete), presenting: pendingDelete.wrappedValue) { b in
-                Button("Löschen", role: .destructive) {
-                    Task { await run("Lösche \(b.name) …") { await Git.mutate(["branch", "-d", b.name], in: root) } }
+                Button("Delete", role: .destructive) {
+                    Task { await run(String(localized: "Deleting \(b.name)…")) { await Git.mutate(["branch", "-d", b.name], in: root) } }
                 }
-            } message: { _ in Text("Nur möglich, wenn der Branch gemergt ist (git branch -d).") }
-            .confirmationDialog("Änderungen an „\(pendingDiscard.wrappedValue?.path ?? "")“ verwerfen?",
+            } message: { _ in Text("Only possible once the branch is merged (git branch -d).") }
+            .confirmationDialog(String(localized: "Discard the changes to “\(pendingDiscard.wrappedValue?.path ?? "")”?"),
                                 isPresented: isPresent(pendingDiscard), presenting: pendingDiscard.wrappedValue) { c in
-                Button("Verwerfen", role: .destructive) { Task { await discard(c) } }
-            } message: { _ in Text("Das lässt sich nicht rückgängig machen.") }
-            .alert("Neuer Branch", isPresented: Binding(get: { newBranchBase.wrappedValue != nil },
+                Button("Discard", role: .destructive) { Task { await discard(c) } }
+            } message: { _ in Text("This cannot be undone.") }
+            .alert("New branch", isPresented: Binding(get: { newBranchBase.wrappedValue != nil },
                                                         set: { if !$0 { newBranchBase.wrappedValue = nil } })) {
                 TextField("feature/…", text: newBranchName.projectedValue)
-                Button("Anlegen & wechseln") {
+                Button("Create & switch") {
                     let base = newBranchBase.wrappedValue ?? "HEAD"
                     let name = newBranchName.wrappedValue.trimmingCharacters(in: .whitespaces)
                     Task { await run("Lege \(name) an …") { await Git.mutate(["switch", "-c", name, base], in: root) } }
                 }
-                Button("Abbrechen", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Basis: \(newBranchBase.wrappedValue ?? "")")
+                Text("Base: \(newBranchBase.wrappedValue ?? "")")
             }
         }
     }
@@ -570,7 +570,7 @@ struct GitView: View {
                 Text(snapshot.branch).scaledFont(.body, bold: true, mono: true).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 Button { startNewBranch(from: snapshot.branch) } label: { Image(systemName: "plus") }
-                    .help("Neuer Branch vom aktuellen Stand")
+                    .help("New branch from the current state")
             }
             if let up = snapshot.upstream {
                 HStack(spacing: 8) {
@@ -580,7 +580,7 @@ struct GitView: View {
                 }
                 .scaledFont(.caption)
             } else {
-                Text("Kein Upstream").scaledFont(.caption).foregroundStyle(.secondary)
+                Text("No upstream").scaledFont(.caption).foregroundStyle(.secondary)
             }
             HStack {
                 Button { Task { await run("Fetch in Sandbox …") { await model.networkGit(.fetch, in: root) } } } label: {
@@ -624,7 +624,7 @@ struct GitView: View {
     @ViewBuilder
     private var changesList: some View {
         if snapshot.changes.isEmpty {
-            Label("Working tree sauber", systemImage: "checkmark.circle").scaledFont(.callout).foregroundStyle(.secondary)
+            Label("Working tree clean", systemImage: "checkmark.circle").scaledFont(.callout).foregroundStyle(.secondary)
                 .padding(.leading, 6)
         }
         ForEach(snapshot.changes) { change in
@@ -646,12 +646,12 @@ struct GitView: View {
             .interactiveRow(selected: model.editor.file == url && model.editor.mode == .diff) {
                 model.editor.open(url, mode: .diff)
             }
-            .help("Klicken für Diff")
+            .help("Click for diff")
             .contextMenu {
                 FileContextMenu(url: url, changed: true)
                 Divider()
                 Button(role: .destructive) { pendingDiscard.wrappedValue = change } label: {
-                    Label("Änderungen verwerfen …", systemImage: "arrow.uturn.backward")
+                    Label("Discard changes…", systemImage: "arrow.uturn.backward")
                 }
             }
         }
@@ -668,7 +668,7 @@ struct GitView: View {
     private var branchList: some View {
         HStack(spacing: 4) {
             Picker("", selection: showRemote.projectedValue) {
-                Text("Lokal").tag(false)
+                Text("Local").tag(false)
                 Text("Remote").tag(true)
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
@@ -692,20 +692,20 @@ struct GitView: View {
             .interactiveRow(selected: b.isCurrent) {
                 if !b.isCurrent { pendingCheckout.wrappedValue = b }
             }
-            .help(b.isCurrent ? "Aktueller Branch" : "Klicken zum Auschecken")
+            .help(b.isCurrent ? "Current branch" : "Click to check out")
             .contextMenu {
                 if !b.isCurrent {
-                    Button { pendingCheckout.wrappedValue = b } label: { Label("Auschecken", systemImage: "arrow.right.circle") }
+                    Button { pendingCheckout.wrappedValue = b } label: { Label("Check out", systemImage: "arrow.right.circle") }
                 }
-                Button { startNewBranch(from: b.name) } label: { Label("Neuer Branch von hier …", systemImage: "plus") }
+                Button { startNewBranch(from: b.name) } label: { Label("New branch from here…", systemImage: "plus") }
                 Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(b.name, forType: .string)
-                    model.toast("Branch-Name kopiert")
-                } label: { Label("Name kopieren", systemImage: "doc.on.doc") }
+                    model.toast(String(localized: "Branch name copied"))
+                } label: { Label("Copy name", systemImage: "doc.on.doc") }
                 if !b.isRemote && !b.isCurrent {
                     Divider()
-                    Button(role: .destructive) { pendingDelete.wrappedValue = b } label: { Label("Löschen …", systemImage: "trash") }
+                    Button(role: .destructive) { pendingDelete.wrappedValue = b } label: { Label("Delete…", systemImage: "trash") }
                 }
             }
         }
@@ -731,7 +731,7 @@ struct GitView: View {
     // MARK: Actions
 
     private var checkoutTitle: String {
-        "Zu „\(pendingCheckout.wrappedValue?.localName ?? "")“ wechseln?"
+        String(localized: "Switch to “\(pendingCheckout.wrappedValue?.localName ?? "")”?")
     }
 
     private func isPresent<T>(_ state: State<T?>) -> Binding<Bool> {
@@ -752,7 +752,7 @@ struct GitView: View {
         let result = await op()
         busy.wrappedValue = nil
         if result.ok {
-            model.toast(result.output.lastNonEmptyLines(1).isEmpty ? "Erledigt" : result.output.lastNonEmptyLines(1))
+            model.toast(result.output.lastNonEmptyLines(1).isEmpty ? String(localized: "Done") : result.output.lastNonEmptyLines(1))
         } else {
             model.banner = "Git: " + result.output.lastNonEmptyLines(4)
         }
@@ -761,7 +761,7 @@ struct GitView: View {
     }
 
     private func discard(_ change: GitFileChange) async {
-        await run("Verwerfe \(change.path) …") {
+        await run(String(localized: "Discarding \(change.path)…")) {
             if change.code == "??" { return await Git.mutate(["clean", "-f", "--", change.path], in: root) }
             return await Git.mutate(["restore", "--staged", "--worktree", "--source=HEAD", "--", change.path], in: root)
         }
@@ -800,8 +800,8 @@ struct DetachedPaneView: View {
                     Button {
                         model.layout.dock(tab)
                         dismissWindow(value: tab)
-                    } label: { Label("Wieder andocken", systemImage: "rectangle.portrait.and.arrow.forward") }
-                        .help("Zurück ins Hauptfenster")
+                    } label: { Label("Dock again", systemImage: "rectangle.portrait.and.arrow.forward") }
+                        .help("Back to the main window")
                 }
             }
             .background(WindowAutosave(name: "HearthPane-\(tab.rawValue)"))

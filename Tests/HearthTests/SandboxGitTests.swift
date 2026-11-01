@@ -25,7 +25,7 @@ struct SandboxGitTests {
         api.reset([])
         api.failStart = true
         let refused = await runner.run(.fetch)
-        try require(!refused.ok && refused.output.contains("Keine Ausführung auf dem Host"), "Start failure fell back somewhere")
+        try require(!refused.ok && refused.output.contains("Nothing was run on the host"), "Start failure fell back somewhere")
         try require(api.requests.count == 1, "Failed start retried")
 
         // Timeout stops the command in the sandbox.

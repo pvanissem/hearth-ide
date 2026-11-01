@@ -85,6 +85,6 @@ private struct SplitDivider: View {
                 .onEnded { _ in last.wrappedValue = 0 }
         )
         .onTapGesture(count: 2, perform: onReset)
-        .help("Ziehen zum Anpassen · Doppelklick: gleichmäßig verteilen")
+        .help("Drag to resize · double-click: distribute evenly")
     }
 }

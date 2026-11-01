@@ -138,7 +138,7 @@ final class LayoutStore {
     func addPane(_ tab: InspectorTab) {
         maximizedPane = nil
         if paneTree.contains(tab: tab) {
-            notify?("„\(tab.title)“ ist bereits offen")
+            notify?(String(localized: "“\(tab.title)” is already open"))
             return
         }
         let new = InspectorPane(tab: tab)

@@ -30,7 +30,7 @@
     ]
   },
   "meta" : {
-    "description" : "Hearth IDE: Git (Netzwerk) (generated, do not edit)",
+    "description" : "Hearth IDE: Git (network) (generated, do not edit)",
     "name" : "hearth-git-network"
   },
   "network" : {

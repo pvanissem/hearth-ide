@@ -12,6 +12,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Hearth"
 cp Resources/mermaid.min.js Resources/AppIcon.icns "$APP/Contents/Resources/"
+# Translations: English is the development language, German in de.lproj.
+cp -R Resources/en.lproj Resources/de.lproj "$APP/Contents/Resources/"
 # The sandbox runtime: pinned, checksum-verified nono release (see scripts/fetch-nono.sh).
 NONO="$(scripts/fetch-nono.sh | tail -n1)"
 mkdir -p "$APP/Contents/Helpers"
@@ -35,6 +37,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>Hearth</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>de</string></array>
   <key>UTExportedTypeDeclarations</key>
   <array><dict>
     <key>UTTypeIdentifier</key><string>io.github.pvanissem.hearth.workspace-file</string>
@@ -46,7 +50,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>HearthBuildChannel</key><string>${BUILD_CHANNEL}</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSAppleEventsUsageDescription</key><string>Hearth IDE öffnet Sessions auf Wunsch im Terminal.</string>
+  <key>NSAppleEventsUsageDescription</key><string>Hearth IDE opens a folder in your terminal app when you ask it to.</string>
   <key>NSAppTransportSecurity</key>
   <dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict>

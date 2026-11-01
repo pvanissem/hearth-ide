@@ -14,7 +14,7 @@ enum AgentKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .copilot: "GitHub Copilot CLI"
         case .opencode: "OpenCode"
         case .gemini: "Gemini CLI"
-        case .shell: "Sandbox-Shell"
+        case .shell: String(localized: "Sandbox shell")
         }
     }
 
@@ -86,11 +86,11 @@ enum AgentKind: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var loginHint: String {
         switch self {
-        case .claude: "Startet „claude auth login“ in der Sandbox. Alternativ in einer Sitzung /login eingeben."
-        case .codex: "Startet „codex login“ in der Sandbox."
-        case .copilot: "In einer Sitzung /login eingeben."
-        case .opencode: "Startet „opencode auth login“ und fragt nach dem Anbieter."
-        case .gemini: "Beim ersten Start fragt Gemini nach der Anmeldung."
+        case .claude: String(localized: "Runs “claude auth login” in the sandbox. Or type /login in a session.")
+        case .codex: String(localized: "Runs “codex login” in the sandbox.")
+        case .copilot: String(localized: "Type /login in a session.")
+        case .opencode: String(localized: "Runs “opencode auth login” and asks for the provider.")
+        case .gemini: String(localized: "Gemini asks you to sign in on first start.")
         case .shell: ""
         }
     }

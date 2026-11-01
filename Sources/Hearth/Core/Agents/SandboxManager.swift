@@ -14,11 +14,11 @@ enum SandboxManager {
         var errorDescription: String? {
             switch self {
             case .nonoMissing:
-                "nono wurde nicht gefunden. Im App-Bundle liegt es unter Contents/Helpers; für die Entwicklung scripts/fetch-nono.sh ausführen."
+                String(localized: "nono was not found. The app bundle has it in Contents/Helpers; for development run scripts/fetch-nono.sh.")
             case .agentMissing(let kind):
-                "\(kind.displayName) ist nicht installiert (\(kind.executable) nicht im PATH)." + (kind.installHint.isEmpty ? "" : " Installation: \(kind.installHint)")
+                String(localized: "\(kind.displayName) is not installed (\(kind.executable) is not on the PATH).") + (kind.installHint.isEmpty ? "" : " Installation: \(kind.installHint)")
             case .outsideHome(let dir):
-                "Der Ordner muss unterhalb deines Home-Verzeichnisses liegen: \(dir)"
+                String(localized: "The folder must be inside your home folder: \(dir)")
             case .protectedFolder(let reason):
                 reason
             }
@@ -151,8 +151,8 @@ enum SandboxManager {
     trap 'exit 130' INT TERM HUP
     i=0
     until grep -q "server listening" "$log" 2>/dev/null; do
-      if ! kill -0 "$srv" 2>/dev/null; then echo "OpenCode-Server konnte nicht starten:" >&2; cat "$log" >&2; exit 1; fi
-      i=$((i + 1)); if [ "$i" -gt 300 ]; then echo "OpenCode-Server startet nicht (30 s)" >&2; exit 1; fi
+      if ! kill -0 "$srv" 2>/dev/null; then echo "The OpenCode server could not start:" >&2; cat "$log" >&2; exit 1; fi
+      i=$((i + 1)); if [ "$i" -gt 300 ]; then echo "The OpenCode server does not start (30 s)" >&2; exit 1; fi
       sleep 0.1
     done
     exec 3<&0

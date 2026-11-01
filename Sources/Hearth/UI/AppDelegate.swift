@@ -7,9 +7,9 @@ enum QuitPreferences {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .ask: "Fragen"
-            case .quit: "App beenden"
-            case .keepRunning: "Im Hintergrund weiterlaufen"
+            case .ask: "Ask"
+            case .quit: String(localized: "Quit app")
+            case .keepRunning: "Keep running in the background"
             }
         }
     }
@@ -54,12 +54,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .ask: break
         }
         let alert = NSAlert()
-        alert.messageText = "Hearth IDE beenden?"
-        alert.informativeText = "Das Fenster ist geschlossen. Im Hintergrund meldet Hearth IDE weiterhin, wenn ein Agent auf dich wartet. Über das Dock-Symbol holst du das Fenster zurück."
-        alert.addButton(withTitle: "Beenden")
-        alert.addButton(withTitle: "Im Hintergrund weiterlaufen")
+        alert.messageText = String(localized: "Quit Hearth IDE?")
+        alert.informativeText = String(localized: "The window is closed. In the background Hearth IDE still tells you when an agent is waiting for you. Click the Dock icon to bring the window back.")
+        alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: "Keep running in the background")
         alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "Nicht mehr fragen"
+        alert.suppressionButton?.title = String(localized: "Don’t ask again")
         let quit = alert.runModal() == .alertFirstButtonReturn
         if alert.suppressionButton?.state == .on {
             QuitPreferences.onLastWindow = quit ? .quit : .keepRunning
@@ -71,17 +71,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let model = Self.model, !model.editor.unsavedDocuments.isEmpty, Snapshotter.directory == nil {
             let docs = model.editor.unsavedDocuments
             let alert = NSAlert()
-            alert.messageText = docs.count == 1 ? "„\(docs[0].url.lastPathComponent)“ hat ungesicherte Änderungen"
-                                                : "\(docs.count) Dateien haben ungesicherte Änderungen"
+            alert.messageText = docs.count == 1 ? String(localized: "“\(docs[0].url.lastPathComponent)” has unsaved changes")
+                                                : String(localized: "\(docs.count) files have unsaved changes")
             alert.informativeText = docs.map(\.url.lastPathComponent).sorted().joined(separator: ", ")
-            alert.addButton(withTitle: "Sichern")
-            alert.addButton(withTitle: "Nicht sichern")
-            alert.addButton(withTitle: "Abbrechen")
+            alert.addButton(withTitle: String(localized: "Save"))
+            alert.addButton(withTitle: String(localized: "Don’t save"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             switch alert.runModal() {
             case .alertFirstButtonReturn:
                 let failed = docs.filter { if case .saved = $0.save(force: false) { return false } else { return true } }
                 if !failed.isEmpty {
-                    model.banner = "Nicht gesichert (extern geändert?): " + failed.map(\.url.lastPathComponent).joined(separator: ", ")
+                    model.banner = String(localized: "Not saved (changed elsewhere?): ") + failed.map(\.url.lastPathComponent).joined(separator: ", ")
                     return .terminateCancel
                 }
             case .alertSecondButtonReturn: break
@@ -91,10 +91,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let model = Self.model, model.agents.runningCount > 0, Snapshotter.directory == nil {
             let count = model.agents.runningCount
             let alert = NSAlert()
-            alert.messageText = count == 1 ? "Eine Agent-Sitzung läuft noch" : "\(count) Agent-Sitzungen laufen noch"
-            alert.informativeText = "Beim Beenden werden sie gestoppt. Claude-Code- und Codex-Gespräche lassen sich später mit „Fortsetzen“ weiterführen."
-            alert.addButton(withTitle: "Beenden")
-            alert.addButton(withTitle: "Abbrechen")
+            alert.messageText = count == 1 ? String(localized: "An agent session is still running") : String(localized: "\(count) agent sessions are still running")
+            alert.informativeText = String(localized: "Quitting stops them. Claude Code and Codex conversations can be continued later with “Resume”.")
+            alert.addButton(withTitle: String(localized: "Quit"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             if alert.runModal() != .alertFirstButtonReturn { return .terminateCancel }
         }
         return .terminateNow

@@ -1,5 +1,10 @@
 # Hearth IDE – Änderungen
 
+## Unveröffentlicht
+
+- Die App ist jetzt standardmäßig auf Englisch. Deutsch lässt sich unter Settings › General › Language wählen (Neustart per Knopf).
+- Landingpage auf Englisch mit deutscher Fassung unter /de/, README auf Englisch.
+
 ## 0.3.1 · 2026-11-01
 
 - CI/CD: GitHub Actions funktioniert auch für umbenannte oder verschobene Repositories, deren lokaler Remote noch den alten Namen trägt (vorher „GitHub-Fehler 301“).

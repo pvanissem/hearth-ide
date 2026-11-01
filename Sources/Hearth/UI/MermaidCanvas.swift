@@ -89,23 +89,23 @@ struct MermaidCanvas: View {
 
     private func controls(_ c: MermaidController) -> some View {
         HStack(spacing: 2) {
-            Button { c.zoomOut() } label: { Image(systemName: "minus.magnifyingglass") }.help("Verkleinern (−)")
+            Button { c.zoomOut() } label: { Image(systemName: "minus.magnifyingglass") }.help("Zoom out (−)")
             Button { c.actualSize() } label: {
                 Text("\(Int((c.zoom * 100).rounded())) %").font(.caption.monospacedDigit()).frame(minWidth: 42)
             }
-            .help("Originalgröße (1)")
-            Button { c.zoomIn() } label: { Image(systemName: "plus.magnifyingglass") }.help("Vergrößern (+)")
+            .help("Actual size (1)")
+            Button { c.zoomIn() } label: { Image(systemName: "plus.magnifyingglass") }.help("Zoom in (+)")
             Divider().frame(height: 16)
             Button { c.fit() } label: { Image(systemName: "arrow.up.left.and.down.right.magnifyingglass") }
-                .help("Einpassen (0)")
+                .help("Fit (0)")
             Menu {
-                Button("SVG kopieren") { Task { await c.copySVG() } }
-                Button("Als SVG speichern …") { Task { await c.exportSVG(suggestedName: title) } }
-                Button("Als PNG speichern …") { Task { await c.exportPNG(suggestedName: title) } }
+                Button("Copy SVG") { Task { await c.copySVG() } }
+                Button("Save as SVG…") { Task { await c.exportSVG(suggestedName: title) } }
+                Button("Save as PNG…") { Task { await c.exportPNG(suggestedName: title) } }
             } label: { Image(systemName: "square.and.arrow.up") }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Exportieren")
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Export")
             if let onOpenWindow {
-                Button(action: onOpenWindow) { Image(systemName: "macwindow.on.rectangle") }.help("In eigenem Fenster öffnen")
+                Button(action: onOpenWindow) { Image(systemName: "macwindow.on.rectangle") }.help("Open in its own window")
             }
         }
         .buttonStyle(.borderless)
@@ -136,7 +136,7 @@ struct MermaidWebView: NSViewRepresentable {
             encodedContentRuleList: #"[{"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}},{"trigger":{"url-filter":"^wss?://"},"action":{"type":"block"}},{"trigger":{"url-filter":"^ftp://"},"action":{"type":"block"}}]"#) { [weak view, weak coordinator] rules, error in
                 guard let view, let coordinator else { return }
                 guard let rules else {
-                    coordinator.controller.error = "Offline-Schutz konnte nicht geladen werden: \(error?.localizedDescription ?? "unbekannt")"
+                    coordinator.controller.error = String(localized: "The offline protection could not be loaded: \(error?.localizedDescription ?? "unknown")")
                     return
                 }
                 config.userContentController.add(rules)
@@ -186,7 +186,7 @@ struct MermaidWebView: NSViewRepresentable {
                     if case .failure(let error) = result { self?.controller.error = error.localizedDescription }
                 }
             } else if page == nil {
-                guard MermaidAsset.url != nil else { controller.error = "mermaid.min.js nicht gefunden"; return }
+                guard MermaidAsset.url != nil else { controller.error = String(localized: "mermaid.min.js not found"); return }
                 // No file:// grants or repository-readable temporary HTML files.
                 page = MermaidResourceHandler.pageURL
                 view.load(URLRequest(url: MermaidResourceHandler.pageURL))

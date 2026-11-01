@@ -19,7 +19,7 @@
     ]
   },
   "meta" : {
-    "description" : "Hearth IDE: Sandbox-Shell (generated, do not edit)",
+    "description" : "Hearth IDE: Sandbox shell (generated, do not edit)",
     "name" : "hearth-shell"
   },
   "network" : {

@@ -40,7 +40,7 @@ final class AgentRun: Identifiable {
         self.kind = kind
         self.directory = directory
         self.purpose = purpose
-        self.title = title ?? (purpose == .login ? "\(kind.displayName) – Anmeldung" : kind.displayName)
+        self.title = title ?? (purpose == .login ? String(localized: "\(kind.displayName) – Sign-in") : kind.displayName)
         self.sessionID = sessionID
         self.created = created
         self.updated = updated
@@ -204,7 +204,7 @@ final class AgentHost {
             run.terminal = view
         } else {
             // Restart in the same view: start below the previous output.
-            view.feed(text: "\r\n\u{1b}[2m── neu gestartet ──\u{1b}[0m\r\n")
+            view.feed(text: String(localized: "\r\n\u{1b}[2m── restarted ──\u{1b}[0m\r\n"))
         }
         TerminalTheme.apply(to: view, dark: dark, scale: 1)
         run.themedDark = dark
@@ -231,7 +231,7 @@ final class AgentHost {
         }
         if let code, code != 0, run.updated.timeIntervalSinceNow > -3 {
             // Failed right at startup: show nono's/the agent's reason from the log.
-            run.error = Self.lastLogLines(run) ?? "Beendet mit Code \(code)."
+            run.error = Self.lastLogLines(run) ?? String(localized: "Exited with code \(code).")
             run.status = .blocked
         }
         run.updated = Date()
@@ -254,7 +254,7 @@ final class AgentHost {
 
     private func bell(_ run: AgentRun) {
         guard run.isRunning, run.kind.statusSource == .terminal else { return }
-        set(run, .needsInput, detail: "Der Agent hat sich gemeldet.")
+        set(run, .needsInput, detail: String(localized: "The agent needs your attention."))
     }
 
     private func pollEvents() {
@@ -298,7 +298,7 @@ final class AgentHost {
             filesChanged(run)
         case "PermissionRequest":
             let tool = event["tool_name"] as? String
-            set(run, .needsInput, detail: tool.map { "Möchte \($0) verwenden." } ?? "Wartet auf eine Freigabe.")
+            set(run, .needsInput, detail: tool.map { String(localized: "Wants to use \($0).") } ?? String(localized: "Waiting for approval."))
         case "Notification":
             let type = event["notification_type"] as? String
             let message = event["message"] as? String

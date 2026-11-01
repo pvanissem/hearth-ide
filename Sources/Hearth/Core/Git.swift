@@ -10,7 +10,20 @@ enum InspectorTab: String, CaseIterable, Identifiable, Codable, Sendable {
     var needsWorkspace: Bool { self != .sessions && self != .chat && self != .terminal }
     var id: String { rawValue }
     /// Keep persisted raw values/IDs compatible with existing layouts and detached windows.
-    var title: String { self == .preview ? "Editor" : rawValue }
+    var title: String {
+        switch self {
+        case .sessions: String(localized: "Sessions")
+        case .chat: String(localized: "Chat")
+        case .directory: String(localized: "Directory")
+        case .git: String(localized: "Git")
+        case .pipelines: String(localized: "CI/CD")
+        case .tests: String(localized: "Tests")
+        case .preview: String(localized: "Editor")
+        case .architecture: String(localized: "Architecture")
+        case .terminal: String(localized: "Terminal")
+        case .build: String(localized: "Build & Deployment")
+        }
+    }
     var symbol: String {
         switch self {
         case .sessions: "tray.full"
@@ -73,7 +86,7 @@ struct GitSnapshot: Sendable {
 /// Hardened host queries/local mutations. Network commands must run in a sandbox,
 /// not with repository-controlled transport helpers on the host.
 enum Git {
-    static let sandboxRequired = "Dieser Befehl darf nicht über den Host-Git-Pfad ausgeführt werden. Fetch, Pull und Clone verwenden den separaten Sandbox-Git-Pfad der App."
+    static let sandboxRequired = String(localized: "This command must not run through the host Git path. Fetch, pull and clone use the app’s separate sandbox Git path.")
     static let hostOptions = ["--no-pager", "--no-optional-locks",
         "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
         "-c", "core.untrackedCache=false", "-c", "core.attributesFile=/dev/null",
@@ -307,9 +320,9 @@ enum Git {
             guard let command = args.first, ["add", "apply", "branch", "switch", "clean", "restore"].contains(command) else {
                 return OpResult(ok: false, output: sandboxRequired)
             }
-            guard let filters = filterOverrides(in: dir) else { return OpResult(ok: false, output: "Git-Konfiguration konnte nicht sicher gelesen werden.") }
+            guard let filters = filterOverrides(in: dir) else { return OpResult(ok: false, output: String(localized: "The Git configuration could not be read safely.")) }
             // Silently bypassing an LFS/encryption clean/smudge filter could corrupt files.
-            guard filters.isEmpty else { return OpResult(ok: false, output: "Repository verwendet Filter. " + sandboxRequired) }
+            guard filters.isEmpty else { return OpResult(ok: false, output: String(localized: "The repository uses filters. ") + sandboxRequired) }
             let p = hostProcess(hostOptions + ["-C", dir] + args)
             let out = Pipe()
             p.standardOutput = out

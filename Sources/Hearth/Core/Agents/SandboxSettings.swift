@@ -103,7 +103,7 @@ struct SandboxSettings: Codable, Equatable {
     static func validFolder(_ path: String, home: String = NSHomeDirectory(),
                             support: String = SandboxManager.supportDirectory.path) -> String? {
         let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
-        guard resolved.hasPrefix(home + "/") else { return "Nur Ordner unterhalb deines Home-Verzeichnisses." }
+        guard resolved.hasPrefix(home + "/") else { return String(localized: "Only folders inside your home folder.") }
         return protectedReason(resolved, home: home, support: support)
     }
 
@@ -118,9 +118,9 @@ struct SandboxSettings: Codable, Equatable {
         func overlaps(_ protected: String) -> Bool {
             resolved == protected || resolved.hasPrefix(protected + "/") || protected.hasPrefix(resolved + "/")
         }
-        if credentials.contains(where: overlaps) { return "Dieser Ordner enthält Zugangsdaten und bleibt gesperrt." }
+        if credentials.contains(where: overlaps) { return String(localized: "This folder contains credentials and stays blocked.") }
         if configuration.contains(where: overlaps) {
-            return "Dieser Ordner enthält Einstellungen von Hearth, macOS oder einem Agenten und bleibt gesperrt."
+            return String(localized: "This folder contains settings of Hearth, macOS or an agent and stays blocked.")
         }
         return nil
     }

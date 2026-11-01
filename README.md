@@ -1,56 +1,59 @@
 # Hearth IDE
 
-Native macOS-App (SwiftUI) für KI-Coding-Agenten, die in einer Sandbox laufen.
-Hearth bündelt alle laufenden Agenten in einer Inbox, zeigt jeden Agenten als
-Terminal im Chat-Bereich und bietet einen Inspector mit Directory, Git, Editor,
-Tests, Architecture (Mermaid), Build & Deployment und CI/CD (GitLab-Pipelines
-und GitHub Actions).
+A native macOS app (SwiftUI) for AI coding agents that run in a sandbox.
+Hearth gathers every running agent in one inbox, shows each agent as a terminal
+in the chat area and adds an inspector with directory, Git, editor, tests,
+architecture (Mermaid), Build & Deployment and CI/CD (GitLab pipelines and
+GitHub Actions).
 
-## Agenten in der Sandbox
+Website: <https://pvanissem.github.io/hearth-ide/> · Deutsch: <https://pvanissem.github.io/hearth-ide/de/>
 
-Über **＋ Agent starten** wählst du einen Ordner und einen Agenten:
-Claude Code, Codex, GitHub Copilot CLI, OpenCode, Gemini CLI oder eine
-Sandbox-Shell. Hearth startet ihn in einer mitgelieferten
-[nono](https://nono.sh)-Sandbox (Seatbelt):
+## Agents in the sandbox
 
-- Schreiben nur im gewählten Ordner und in Hearths eigenem Konfigurationsordner
-  des Agenten (`~/Library/Application Support/Hearth/agents/<agent>`). Deine
-  `CLAUDE.md`, Skills, Agents und Commands werden nur lesend eingebunden, deine
-  Einstellungen einmalig kopiert. So kann ein Agent nichts in deine echte
-  `~/.claude` & Co. schreiben, was außerhalb von Hearth ausgeführt würde.
-- `.git/hooks` im Projekt ist schreibgeschützt
-- gesperrt: SSH-Schlüssel, Shell-Konfiguration, Browserdaten, übriges Home
-- Netzwerk nur zu LLM-APIs, Paket-Registries, GitHub/GitLab, Doku und den
-  API-Hosts des Agenten
-- Claude Code, Codex und Copilot dürfen an den Schlüsselbund (ihr Login liegt dort)
+With **+ Start agent** you pick a folder and an agent: Claude Code, Codex,
+GitHub Copilot CLI, OpenCode, Gemini CLI or a sandbox shell. Hearth starts it in
+a bundled [nono](https://nono.sh) sandbox (macOS Seatbelt):
 
-Jeder Agent nutzt seinen eigenen Login (Claude-Abo, ChatGPT, GitHub …).
-„Anmelden …“ (Einstellungen › Agenten) startet den Login-Befehl des Agenten in der
-Sandbox. Weil Claude Code, Codex und OpenCode in Hearth einen eigenen
-Konfigurationsordner haben, meldest du dich dort einmal separat an.
+- Writing only in the chosen folder and in Hearth’s own settings folder for the
+  agent (`~/Library/Application Support/Hearth/agents/<agent>`). Your
+  `CLAUDE.md`, skills, agents and commands are linked read-only, your settings
+  are copied once. An agent therefore can’t write anything into your real
+  `~/.claude` & co. that would run outside Hearth.
+- `.git/hooks` in the project is write-protected
+- Blocked: SSH keys, shell configuration, browser data, the rest of your home folder
+- Network only to LLM APIs, package registries, GitHub/GitLab, documentation and
+  the agent’s own API hosts
+- Claude Code, Codex and Copilot may use the keychain (their login lives there)
 
-Der Chat-Bereich zeigt den Agenten als Terminal. Die Inbox kennt den Status:
-Claude Code meldet ihn über Hooks (läuft, wartet auf Freigabe, fertig), Codex
-über `notify`, andere Agenten über Eingabe und Terminal-Klingel. Sitzungen
-bleiben beim Wechsel aktiv; beendete Claude-/Codex-/OpenCode-Sitzungen lassen
-sich fortsetzen. Profil, Protokoll und Status-Ereignisse jeder Sitzung liegen
-unter `~/Library/Application Support/Hearth/runs/<id>/`.
+Every agent uses its own login (Claude plan, ChatGPT, GitHub …). “Sign in…”
+(Settings › Agents) runs the agent’s login command in the sandbox. Because
+Claude Code, Codex and OpenCode get their own settings folder in Hearth, you sign
+in there once separately.
 
-**Einstellungen** (⌘,): Agenten (installiert?, Anmelden, Schlüsselbund),
-Sandbox (zusätzliche Domains, Ports, Ordner, SSH für den Git-Bereich, Profil-Vorschau),
-Projekte (weitere Ordner für Sitzungen in einem Projektordner) und Credentials
-(API-Keys/Tokens im Schlüsselbund – per nono-Proxy, sodass die Sandbox nur einen
-Platzhalter sieht, oder als Umgebungsvariable). Gespeichert unter
-`~/Library/Application Support/Hearth/settings.json`, nie im Repository; gilt für
-Agenten, Build & Deployment und Git.
+The chat area shows the agent as a terminal. The inbox knows its status: Claude
+Code reports it through hooks (running, waiting for approval, done), Codex
+through `notify`, other agents through input and the terminal bell. Sessions
+keep running when you switch; finished Claude/Codex/OpenCode sessions can be
+resumed. Each session’s profile, log and status events live in
+`~/Library/Application Support/Hearth/runs/<id>/`.
 
-> **Status:** Nächster Schritt ist ein nativer Chat über ACP (Agent Client
-> Protocol). Details: [PLAN.md](PLAN.md), Aufbau: [Architektur](docs/architecture.md).
+**Settings** (⌘,): General (language, appearance, terminal), Agents (installed?,
+sign in, keychain), Sandbox (extra domains, ports, folders, SSH for the Git area,
+profile preview), Projects (more folders for sessions in one project folder) and
+Credentials (API keys/tokens in the keychain – through the nono proxy, so the
+sandbox only sees a placeholder, or as an environment variable). Stored in
+`~/Library/Application Support/Hearth/settings.json`, never in a repository;
+applies to agents, Build & Deployment and Git.
 
-## Voraussetzungen
+**Language:** English by default; German under Settings › General › Language.
 
-- macOS 14+ auf Apple Silicon
-- mindestens eine Agent-CLI im PATH deiner Login-Shell
+> **Status:** next up is a native chat over ACP (Agent Client Protocol).
+> Details: [PLAN.md](PLAN.md), structure: [architecture](docs/architecture.md).
+
+## Requirements
+
+- macOS 14+ on Apple Silicon
+- at least one agent CLI on the PATH of your login shell
 
 ## Installation
 
@@ -58,77 +61,86 @@ Agenten, Build & Deployment und Git.
 curl -fsSL https://github.com/pvanissem/hearth-ide/releases/latest/download/install.sh | bash
 ```
 
-Lädt die aktuelle Version aus den GitHub Releases, prüft die SHA-256-Prüfsumme,
-installiert `Hearth IDE.app` nach `/Applications` (ohne Schreibrecht nach
-`~/Applications`) und startet die App. Zum Aktualisieren erneut ausführen oder
-in der App unter Einstellungen → Updates.
+Downloads the latest version from GitHub Releases, verifies its SHA-256
+checksum, installs `Hearth IDE.app` into `/Applications` (or `~/Applications`
+without write access) and starts it. Run it again to update, or update from
+inside the app under Settings › Updates.
 
-Die App ist ad-hoc signiert und nicht von Apple notarisiert.
+The app is ad-hoc signed and not notarized by Apple.
 
-## Build & Start
+## Build & run
 
 ```bash
-swift run                       # Entwicklung
-scripts/bundle.sh               # erzeugt "build/Hearth IDE.app"
+swift run                       # development
+scripts/bundle.sh               # builds "build/Hearth IDE.app"
 open "build/Hearth IDE.app"
-scripts/test.sh                 # alle Tests (swift test), auch ohne Xcode
+scripts/test.sh                 # all tests (swift test), also without Xcode
+scripts/check-localization.sh   # texts without a German translation
 ```
 
-Ohne Xcode (nur Command Line Tools) gilt:
-- `@State` wird als explizite `State(...)`-Property geschrieben, da das
-  SwiftUI-Makro-Plugin nur mit Xcode ausgeliefert wird.
-- `scripts/test.sh` ruft `swift test` mit dem Testing-Framework der Command Line
-  Tools auf; mit Xcode genügt `swift test`.
-- Die Live-Sandbox-Tests brauchen nono in `Vendor/` (`scripts/fetch-nono.sh`).
+With only the Command Line Tools (no Xcode):
+- `@State` is written as an explicit `State(...)` property, because the SwiftUI
+  macro plugin only ships with Xcode.
+- `scripts/test.sh` runs `swift test` with the Command Line Tools’ testing
+  framework; with Xcode, plain `swift test` works.
+- The live sandbox tests need nono in `Vendor/` (`scripts/fetch-nono.sh`).
 
-Jeder Push und jeder Pull Request läuft durch GitHub Actions
-(`.github/workflows/ci.yml`): Build, alle Tests inklusive echter nono-Sandbox,
-App-Bundle als Download-Artefakt. Ein Versions-Tag veröffentlicht das Release.
+Every push and pull request runs through GitHub Actions
+(`.github/workflows/ci.yml`): build, all tests including a real nono sandbox,
+the German translation check and the app bundle as a download artifact. A
+version tag publishes the release.
 
-`scripts/bundle.sh` lädt nono (gepinnte Version, SHA-256 geprüft) über
-`scripts/fetch-nono.sh` nach `Vendor/` und legt es nach `Contents/Helpers/nono`.
-`swift run` findet es dort ebenfalls; abweichend per `HEARTH_NONO_BIN`.
+**Translations:** texts in the code are English. German lives in
+`Resources/de.lproj/Localizable.strings`; its keys are the English texts as the
+Swift compiler sees them (`%@`, `%lld` for interpolations).
+`scripts/check-localization.sh` lists every text without a German entry.
 
-Entwicklerhilfen (Umgebungsvariablen beim Start):
+`scripts/bundle.sh` downloads nono (pinned version, SHA-256 verified) via
+`scripts/fetch-nono.sh` into `Vendor/` and puts it into `Contents/Helpers/nono`.
+`swift run` finds it there as well; override with `HEARTH_NONO_BIN`.
 
-| Variable | Wirkung |
+Developer aids (environment variables at launch):
+
+| Variable | Effect |
 |---|---|
-| `HEARTH_AUTOSTART_AGENT=claude` + `HEARTH_AUTOSTART_DIR=<ordner>` | startet direkt einen Agenten |
-| `HEARTH_AUTOSTART_PROMPT=<text>` | bestätigt die Ordner-Abfrage und tippt den Prompt ein |
-| `HEARTH_SHOW_START_SHEET=1` | öffnet den Startdialog |
-| `HEARTH_WINDOW_SNAPSHOT=<datei.png>` | schreibt alle 3 s ein Bild des Fensters (ohne Bildschirmaufnahme-Recht) |
+| `HEARTH_AUTOSTART_AGENT=claude` + `HEARTH_AUTOSTART_DIR=<folder>` | starts an agent right away |
+| `HEARTH_AUTOSTART_PROMPT=<text>` | confirms the folder question and types the prompt |
+| `HEARTH_SHOW_START_SHEET=1` | opens the start dialog |
+| `HEARTH_WINDOW_SNAPSHOT=<file.png>` | writes an image of the window every 3 s (no screen-recording permission needed) |
+| `HEARTH_SUPPORT_DIR=<folder>` | separate data folder for a development instance |
 
 ```bash
 open -n --env HEARTH_AUTOSTART_AGENT=shell --env HEARTH_AUTOSTART_DIR=$HOME/IdeaProjects/demo "build/Hearth IDE.app"
 ```
 
-App-Icon: Motiv in `Resources/AppIcon-source.png` (randlos, 1024 × 1024);
-`scripts/make-icon.swift` schneidet es auf die macOS-Form zu und erzeugt `AppIcon.icns`.
+App icon: artwork in `Resources/AppIcon-source.png` (full bleed, 1024 × 1024);
+`scripts/make-icon.swift` crops it to the macOS shape and builds `AppIcon.icns`.
 
-## Release erstellen
+## Cutting a release
 
-Auf einem Apple-Silicon-Mac, auf aktuellem `main`, mit eingeloggter GitHub CLI:
+On an Apple Silicon Mac, on an up-to-date `main`, with the GitHub CLI signed in:
 
 ```bash
-scripts/release.sh v0.3.0
+scripts/release.sh v0.4.0
 ```
 
-Prüft den Stand, führt die Tests aus, macht aus dem Abschnitt „Unveröffentlicht“
-in [`CHANGELOG.md`](CHANGELOG.md) den Eintrag der neuen Version (Commit auf
-`main`) und pusht ihn mit dem Tag. GitHub Actions baut daraufhin das Bundle,
-testet erneut und legt das GitHub-Release mit Zip, Prüfsumme,
-`latest-version.txt`, `CHANGELOG.md` und `install.sh` an. Neue Änderungen kommen unter einen frischen
-Abschnitt `## Unveröffentlicht`; fehlt er, stammen die Notizen aus den Commits. App-Updater und `install.sh` lesen von
+Checks the working tree, runs the tests, turns the “Unveröffentlicht”
+(unreleased) section of [`CHANGELOG.md`](CHANGELOG.md) into the new version’s
+entry (committed to `main`) and pushes it together with the tag. GitHub Actions
+then builds the bundle, tests again and creates the GitHub release with the zip,
+its checksum, `latest-version.txt`, `CHANGELOG.md` and `install.sh`. New changes
+go under a fresh `## Unveröffentlicht` heading; without one, the notes come from
+the commits. The app updater and `install.sh` read from
 `releases/latest/download/…`.
 
-## Weitere Dokumentation
+## More documentation (German)
 
-- [Sicherheit](docs/security-hardening.md): GitLab-Freigaben, Terminal-/Mermaid-Schutz, Git-Policy, Regressionstests
+- [Security](docs/security-hardening.md): CI token approval, terminal/Mermaid protection, Git policy, tests
 - [Build & Deployment](docs/build-and-deployment.md)
-- [App-Updates](docs/app-updates.md)
-- [Architektur](docs/architecture.md)
-- [Security- und Architektur-Review](docs/review-security-architecture.md)
+- [App updates](docs/app-updates.md)
+- [Architecture](docs/architecture.md)
+- [Security and architecture review](docs/review-security-architecture.md)
 
-## Lizenz
+## License
 
 [MIT](LICENSE)

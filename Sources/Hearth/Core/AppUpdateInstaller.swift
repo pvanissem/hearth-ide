@@ -20,17 +20,17 @@ enum AppUpdateInstaller {
     pid="$1"; log="$2"; status="$3"; app="$4"; url="$5"
     waited=0; limit="${HEARTH_UPDATE_WAIT:-300}"
     while kill -0 "$pid" 2>/dev/null; do
-      if [ "$waited" -ge "$limit" ]; then echo "aborted" > "$status"; echo "App wurde nicht beendet – Update abgebrochen." >> "$log"; exit 0; fi
+      if [ "$waited" -ge "$limit" ]; then echo "aborted" > "$status"; echo "The app did not quit – update cancelled." >> "$log"; exit 0; fi
       sleep 1; waited=$((waited + 1))
     done
     tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-    echo "== $(date) Update startet" >> "$log"
+    echo "== $(date) Update starting" >> "$log"
     if curl -fsSL --proto '=https' --max-time 60 -H "Cache-Control: no-cache" -o "$tmp/install.sh" "$url?t=$(date +%s)" >> "$log" 2>&1 \
        && bash "$tmp/install.sh" >> "$log" 2>&1; then
       echo "succeeded" > "$status"
     else
       echo "failed" > "$status"
-      echo "== Update fehlgeschlagen; bisherige App wird wieder geöffnet" >> "$log"
+      echo "== Update failed; reopening the previous app" >> "$log"
       [ -d "$app" ] && open "$app"
     fi
     """#

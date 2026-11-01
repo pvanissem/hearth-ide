@@ -10,11 +10,11 @@ final class BuildRun: Identifiable {
         var isActive: Bool { self == .starting || self == .running }
         var label: String {
             switch self {
-            case .starting: "startet …"
-            case .running: "läuft"
-            case .succeeded: "erfolgreich"
+            case .starting: String(localized: "starting…")
+            case .running: String(localized: "running")
+            case .succeeded: String(localized: "succeeded")
             case .failed(let reason): reason
-            case .stopped: "gestoppt"
+            case .stopped: String(localized: "stopped")
             case .lost(let reason): reason
             }
         }
@@ -102,7 +102,7 @@ final class BuildDeployStore {
     /// Why a task cannot run in this sandbox (nil = runnable or unknown yet).
     func unavailableReason(_ task: BuildTask, serverID: String) -> String? {
         guard let tool = task.requiredTool, let tools = availableTools[serverID], !tools.contains(tool) else { return nil }
-        return "„\(tool)“ ist in dieser Sandbox nicht verfügbar. Es gibt keinen Host-Fallback."
+        return String(localized: "“\(tool)” is not available in this sandbox. There is no host fallback.")
     }
 
     // MARK: Tools
@@ -144,15 +144,15 @@ final class BuildDeployStore {
         trimHistory()
         selectedRunID = run.id
         if let reason = unavailableReason(task, serverID: serverID) {
-            finish(run, .failed("nicht verfügbar"), note: reason)
+            finish(run, .failed(String(localized: "not available")), note: reason)
             return run
         }
         if let port, await probe.status(port: port) != nil {
-            finish(run, .failed("Port belegt"), note: "Port \(port) ist auf diesem Mac bereits belegt. Bitte den anderen Prozess beenden oder einen anderen Port wählen.")
+            finish(run, .failed(String(localized: "port in use")), note: String(localized: "Port \(port) is already in use on this Mac. Stop the other process or choose another port."))
             return run
         }
         guard let cwd = Self.workingDirectory(root: root, project: task.project) else {
-            finish(run, .failed("ungültiges Verzeichnis"), note: "Projektverzeichnis liegt außerhalb des Workspace.")
+            finish(run, .failed(String(localized: "invalid folder")), note: String(localized: "The project folder is outside the workspace."))
             return run
         }
         var metadata: [String: String] = ["source": Self.source, "kind": Self.kind, "task": task.id, "root": root,
@@ -162,7 +162,7 @@ final class BuildDeployStore {
         if let health = task.healthPath { metadata["health"] = health }
         do {
             let id = try await client.start(SandboxCommandRequest(command: command, cwd: cwd, port: port, metadata: metadata))
-            guard Self.validShellID(id) else { throw SandboxCommandError("Sandbox lieferte keine gültige Vorgangs-ID.") }
+            guard Self.validShellID(id) else { throw SandboxCommandError(String(localized: "The sandbox returned no valid command ID.")) }
             run.shellID = id
             adopted.insert(id)
             if run.stopRequested { await stop(run, client: client); return run }
@@ -170,7 +170,7 @@ final class BuildDeployStore {
             append(run, "$ \(task.display)\n")
             poll(run, client: client)
         } catch {
-            finish(run, .failed("Start fehlgeschlagen"), note: error.localizedDescription + "\nKeine Ausführung auf dem Host.")
+            finish(run, .failed("start failed"), note: error.localizedDescription + String(localized: "\nNothing was run on the host."))
         }
         return run
     }
@@ -190,7 +190,7 @@ final class BuildDeployStore {
     /// Server went away (sandbox stopped / reconnect): processes in it are gone.
     func serverGone(_ serverID: String) {
         for run in runs where run.serverID == serverID && run.state.isActive {
-            finish(run, .lost("Sandbox beendet"), note: "Die Verbindung zur Sandbox ist weg; ihre Prozesse wurden mit ihr beendet.")
+            finish(run, .lost("sandbox ended"), note: String(localized: "The connection to the sandbox is gone; its processes ended with it."))
         }
         availableTools[serverID] = nil
     }
@@ -255,8 +255,8 @@ final class BuildDeployStore {
                         guard run.state.isActive else { return }
                         switch state {
                         case _ where run.stopRequested, .killed: self.finish(run, .stopped)
-                        case .exited(0): self.finish(run, run.task.kind == .service ? .failed("beendet") : .succeeded)
-                        case .timedOut: self.finish(run, .failed("Zeitlimit"))
+                        case .exited(0): self.finish(run, run.task.kind == .service ? .failed(String(localized: "ended")) : .succeeded)
+                        case .timedOut: self.finish(run, .failed(String(localized: "timed out")))
                         default: self.finish(run, .failed(SandboxGitRunner.describe(state)), note: Self.networkHint(run.output))
                         }
                         await client.remove(id)
@@ -266,7 +266,7 @@ final class BuildDeployStore {
                 catch {
                     failures += 1
                     if failures >= 5 {
-                        self.finish(run, .lost("Verbindung verloren"), note: error.localizedDescription)
+                        self.finish(run, .lost(String(localized: "connection lost")), note: error.localizedDescription)
                         return
                     }
                 }
@@ -287,8 +287,8 @@ final class BuildDeployStore {
                 || tail.contains("proxyconnect") || tail.contains("Proxy Authentication Required") else { return nil }
         let host = tail.range(of: #"https?://[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, options: .regularExpression)
             .map { String(tail[$0]).replacingOccurrences(of: #"^https?://"#, with: "", options: .regularExpression) }
-        return "Netzwerkzugriff in der Sandbox verweigert" + (host.map { " (vermutlich \($0))" } ?? "")
-            + ". Nicht freigegebene Hosts gibst du in den Einstellungen unter „Sandbox“ frei und startest die Aufgabe dann neu."
+        return String(localized: "Network access denied in the sandbox") + (host.map { String(localized: " (probably \($0))") } ?? "")
+            + String(localized: ". Allow the host in Settings › Sandbox, then run the task again.")
     }
 
     private static let maxOutput = 400_000
@@ -296,7 +296,7 @@ final class BuildDeployStore {
     private func append(_ run: BuildRun, _ text: String) {
         run.output += Self.clean(text)
         if run.output.count > Self.maxOutput {
-            run.output = "… (ältere Ausgabe gekürzt)\n" + run.output.suffix(Self.maxOutput * 9 / 10)
+            run.output = String(localized: "… (older output trimmed)\n") + run.output.suffix(Self.maxOutput * 9 / 10)
         }
     }
 

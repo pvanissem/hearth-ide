@@ -14,17 +14,17 @@ struct GitHubAPI: CIClient {
         case unauthorizedOrigin, readOnly, notGitHub, badLogLocation
         var errorDescription: String? {
             switch self {
-            case .unauthorizedOrigin: "Dieser HTTPS-Origin ist für diesen Token nicht freigegeben."
-            case .readOnly: "Für Schreibaktionen bitte einen separaten Token mit „Actions: Read and write“ für diesen Server freigeben."
-            case .notGitHub: "Das Repository ist kein GitHub-Repository der Form owner/repo."
-            case .badLogLocation: "GitHub lieferte keine gültige Adresse für das Job-Log."
-            case .http(401, _): "GitHub lehnt den Token ab (401). Token abgelaufen?"
-            case .http(403, _): "Keine Berechtigung (403). Der Token braucht für dieses Repository „Actions: Read“ (Lesen) bzw. „Actions: Read and write“ (Starten, Wiederholen, Abbrechen); auch das API-Limit kann erreicht sein."
-            case .http(404, _): "Repository oder Lauf nicht gefunden – oder dem Token fehlt der Zugriff auf dieses Repository (404)."
+            case .unauthorizedOrigin: String(localized: "This HTTPS origin is not approved for this token.")
+            case .readOnly: String(localized: "For write actions, approve a separate token with “Actions: Read and write” for this server.")
+            case .notGitHub: String(localized: "The repository is not a GitHub repository of the form owner/repo.")
+            case .badLogLocation: String(localized: "GitHub returned no valid address for the job log.")
+            case .http(401, _): String(localized: "GitHub rejects the token (401). Has it expired?")
+            case .http(403, _): String(localized: "No permission (403). The token needs “Actions: Read” (reading) or “Actions: Read and write” (start, retry, cancel) for this repository; the API rate limit may also be reached.")
+            case .http(404, _): String(localized: "Repository or run not found – or the token has no access to this repository (404).")
             case .http(422, let body): body.contains("workflow_dispatch")
-                ? "Dieser Workflow lässt sich nicht von Hand starten (kein „workflow_dispatch“-Trigger)."
-                : "GitHub lehnt die Aktion ab (422): \(body.prefix(160))"
-            case .http(let c, let b): "GitHub-Fehler \(c): \(b.prefix(160))"
+                ? String(localized: "This workflow cannot be started by hand (no “workflow_dispatch” trigger).")
+                : String(localized: "GitHub rejects the action (422): \(body.prefix(160))")
+            case .http(let c, let b): String(localized: "GitHub error \(c): \(b.prefix(160))")
             }
         }
     }
@@ -73,7 +73,7 @@ struct GitHubAPI: CIClient {
                   let next = Self.movedRepositoryURL(location, apiBase: remote.apiBase) else { return (data, resp) }
             current.url = next
         }
-        throw APIError.http(310, "Zu viele Weiterleitungen")
+        throw APIError.http(310, String(localized: "Too many redirects"))
     }
 
     /// The redirect target if it is GitHub's address for a moved repository on the same API origin.
@@ -117,7 +117,7 @@ struct GitHubAPI: CIClient {
             signed.timeoutInterval = 30
             let (logData, logResp) = try await logSession.data(for: signed)
             let logCode = (logResp as? HTTPURLResponse)?.statusCode ?? 0
-            guard (200..<300).contains(logCode) else { throw APIError.http(logCode, "Log nicht abrufbar") }
+            guard (200..<300).contains(logCode) else { throw APIError.http(logCode, String(localized: "Log not available")) }
             raw = logData
         } else {
             throw APIError.http(code, String(decoding: data, as: UTF8.self))
@@ -139,10 +139,10 @@ struct GitHubAPI: CIClient {
     func retry(pipeline: Int) async throws { _ = try await request("POST", "/repos/\(repo)/actions/runs/\(pipeline)/rerun-failed-jobs") }
     func cancel(pipeline: Int) async throws { _ = try await request("POST", "/repos/\(repo)/actions/runs/\(pipeline)/cancel") }
     func retry(job: Int) async throws { _ = try await request("POST", "/repos/\(repo)/actions/jobs/\(job)/rerun") }
-    func play(job: Int) async throws { throw APIError.http(422, "GitHub Actions kennt keine manuellen Jobs.") }
+    func play(job: Int) async throws { throw APIError.http(422, String(localized: "GitHub Actions has no manual jobs.")) }
 
     func run(ref: String, workflow: CIWorkflow?) async throws {
-        guard let workflow else { throw APIError.http(422, "Bitte einen Workflow wählen.") }
+        guard let workflow else { throw APIError.http(422, String(localized: "Please choose a workflow.")) }
         _ = try await request("POST", "/repos/\(repo)/actions/workflows/\(workflow.id)/dispatches", body: ["ref": ref])
     }
 

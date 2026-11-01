@@ -8,49 +8,49 @@ struct UpdateSettings: View {
     var body: some View {
         Form {
             Section("Hearth IDE") {
-                LabeledContent("Installierte Version") {
+                LabeledContent("Installed version") {
                     Text(checker.installed.label).textSelection(.enabled).lineLimit(2)
                 }
                 if checker.installed.release == nil {
-                    Text("Lokaler Entwicklungsbuild. Ein Release kann älter als dieser Build sein; es wird kein automatischer Update-Vorschlag erzeugt.")
+                    Text("Local development build. A release may be older than this build; no update is suggested automatically.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let version = checker.result?.latest {
-                    LabeledContent("Veröffentlichtes Release") { Text(version.description).textSelection(.enabled) }
+                    LabeledContent("Published release") { Text(version.description).textSelection(.enabled) }
                 }
             }
-            Section("Update-Prüfung") {
-                Toggle("Beim App-Start nach Updates suchen", isOn: Binding(get: { checker.automaticChecks }, set: { checker.automaticChecks = $0 }))
+            Section("Update check") {
+                Toggle("Check for updates when the app starts", isOn: Binding(get: { checker.automaticChecks }, set: { checker.automaticChecks = $0 }))
                 HStack {
-                    Button("Jetzt nach Updates suchen") { Task { await checker.check() } }
+                    Button("Check for updates now") { Task { await checker.check() } }
                         .disabled(checker.checking)
                     if checker.checking { ProgressView().controlSize(.small) }
                 }
                 status
                 if let date = checker.lastCheckedAt {
-                    LabeledContent("Letzte Prüfung") { Text(date.formatted(date: .abbreviated, time: .shortened)) }
+                    LabeledContent("Last check") { Text(date.formatted(date: .abbreviated, time: .shortened)) }
                 }
-                Text("Die App liest nur die Versionsdatei von GitLab Pages – ohne GitLab-Token. Bei fehlendem VPN/Netzwerk bleiben Arbeiten und Sandboxes unbeeinträchtigt.")
+                Text("The app only reads the version file of the latest GitHub release – no account, no token. Without a network connection your work and sandboxes are unaffected.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Installation") {
                 if let message = checker.installMessage {
                     Label(message, systemImage: "info.circle").fixedSize(horizontal: false, vertical: true)
                 }
-                Button("Was ist neu in dieser Version?") { UpdateInstallFlow.showInstalledNotes(checker) }
+                Button("What’s new in this version?") { UpdateInstallFlow.showInstalledNotes(checker) }
                     .disabled(checker.installed.release == nil)
                 HStack {
                     Button {
                         UpdateInstallFlow.confirmAndQuit(checker)
-                    } label: { Label(checker.result.map { "Auf \($0.latest.description) aktualisieren" } ?? "Jetzt aktualisieren", systemImage: "arrow.triangle.2.circlepath") }
+                    } label: { Label(checker.result.map { "Update to \($0.latest.description)" } ?? "Update now", systemImage: "arrow.triangle.2.circlepath") }
                         .buttonStyle(.borderedProminent)
                         .disabled(!checker.canInstall)
-                    Link("Nur ZIP herunterladen", destination: UpdateService.downloadURL(for: checker.result?.latest))
+                    Link("Download ZIP only", destination: UpdateService.downloadURL(for: checker.result?.latest))
                         .font(.caption)
                 }
-                Text("„Aktualisieren“ beendet Hearth IDE regulär (ungesicherte Dateien und laufende Sandboxes werden wie beim normalen Beenden abgefragt), führt danach den Installer mit SHA-256-Prüfung aus und startet die neue Version. Schlägt das Update fehl, öffnet sich die bisherige Version wieder. Log: ~/Library/Logs/Hearth IDE/update.log")
+                Text("“Update” quits Hearth IDE normally (unsaved files and running sessions are asked about as usual), then runs the installer with SHA-256 verification and starts the new version. If the update fails, the previous version opens again. Log: ~/Library/Logs/Hearth IDE/update.log")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Text("Alternativ manuell im Terminal:").font(.caption).foregroundStyle(.secondary)
+                Text("Or by hand in the Terminal:").font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Text(UpdateService.installerCommand).font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
@@ -59,7 +59,7 @@ struct UpdateSettings: View {
                         NSPasteboard.general.setString(UpdateService.installerCommand, forType: .string)
                         copied.wrappedValue = true
                     } label: { Image(systemName: copied.wrappedValue ? "checkmark" : "doc.on.doc") }
-                        .buttonStyle(.borderless).help("Installationsbefehl kopieren")
+                        .buttonStyle(.borderless).help("Copy install command")
                 }
             }
         }
@@ -68,24 +68,24 @@ struct UpdateSettings: View {
 
     @ViewBuilder private var status: some View {
         if checker.checking {
-            Text("Release-Version wird geprüft …").foregroundStyle(.secondary)
+            Text("Checking the release version…").foregroundStyle(.secondary)
         } else if let error = checker.error {
             Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)
         } else if let result = checker.result {
             switch result.relation {
             case .updateAvailable:
-                Label("Version \(result.latest.description) ist verfügbar.", systemImage: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
+                Label("Version \(result.latest.description) is available.", systemImage: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
             case .current:
-                Label("Du verwendest das aktuelle Release.", systemImage: "checkmark.circle").foregroundStyle(.green)
+                Label("You are using the latest release.", systemImage: "checkmark.circle").foregroundStyle(.green)
             case .ahead:
-                Label("Die installierte Version ist neuer als das veröffentlichte Release.", systemImage: "info.circle")
+                Label("The installed version is newer than the published release.", systemImage: "info.circle")
             case .development:
-                Text("Release \(result.latest.description) ist veröffentlicht. Ein sicherer Versionsvergleich mit diesem Entwicklungsbuild ist nicht möglich.")
+                Text("Release \(result.latest.description) is published. This development build cannot be compared with it reliably.")
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         } else {
-            Text("Noch kein Prüfergebnis für diesen App-Start.").foregroundStyle(.secondary)
+            Text("No check result since the app started.").foregroundStyle(.secondary)
         }
     }
 }
@@ -105,10 +105,10 @@ struct UpdateNoticeBar: View {
                     Text(message).font(.callout).lineLimit(2)
                     Spacer(minLength: 4)
                     if message.hasPrefix("Hearth IDE wurde") {
-                        Button("Was ist neu?") { UpdateInstallFlow.showInstalledNotes(checker) }.controlSize(.small)
+                        Button("What’s new?") { UpdateInstallFlow.showInstalledNotes(checker) }.controlSize(.small)
                     }
                     Button { checker.installMessage = nil } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless).accessibilityLabel("Hinweis ausblenden")
+                        .buttonStyle(.borderless).accessibilityLabel("Hide notice")
                 }
                 .padding(10).background(Color.secondary.opacity(0.08))
                 Divider()
@@ -118,16 +118,16 @@ struct UpdateNoticeBar: View {
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
-                    Text("Hearth IDE \(version.description) ist verfügbar.").font(.callout)
+                    Text("Hearth IDE \(version.description) is available.").font(.callout)
                     Spacer(minLength: 4)
-                    Button("Jetzt aktualisieren") { UpdateInstallFlow.confirmAndQuit(checker) }
+                    Button("Update now") { UpdateInstallFlow.confirmAndQuit(checker) }
                         .buttonStyle(.borderedProminent).controlSize(.small)
                     if !compact {
-                        Link("Nur herunterladen", destination: UpdateService.downloadURL(for: version)).font(.caption)
+                        Link("Download only", destination: UpdateService.downloadURL(for: version)).font(.caption)
                     }
                     Button { checker.dismissNotice() } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless).help("Hinweis für diese Version ausblenden")
-                        .accessibilityLabel("Update-Hinweis ausblenden")
+                        .buttonStyle(.borderless).help("Hide this notice for this version")
+                        .accessibilityLabel("Hide update notice")
                 }
                 .padding(10).background(Color.accentColor.opacity(0.07))
                 Divider()
@@ -149,13 +149,13 @@ enum UpdateInstallFlow {
             let markdown = await checker.service.changelog()
             let sections = markdown.map { ReleaseNotes.between(ReleaseNotes.parse($0), installed: checker.installed.release, latest: version) } ?? []
             let alert = NSAlert()
-            alert.messageText = "Hearth IDE auf \(version.description) aktualisieren?"
-            alert.informativeText = "Die App wird beendet, das Update installiert (SHA-256-geprüft) und die neue Version automatisch gestartet. Laufende Sandboxes kannst du beim Beenden weiterlaufen lassen; Chats und Sessions bleiben erhalten."
+            alert.messageText = String(localized: "Update Hearth IDE to \(version.description)?")
+            alert.informativeText = String(localized: "The app quits, the update is installed (SHA-256 verified) and the new version starts automatically. Sessions are kept and can be resumed.")
             alert.accessoryView = notesView(sections, emptyText: markdown == nil
-                ? "Änderungsnotizen konnten nicht geladen werden."
-                : "Für diese Version sind keine Änderungsnotizen hinterlegt.")
-            alert.addButton(withTitle: "Beenden und aktualisieren")
-            alert.addButton(withTitle: "Abbrechen")
+                ? String(localized: "The release notes could not be loaded.")
+                : String(localized: "There are no release notes for this version."))
+            alert.addButton(withTitle: String(localized: "Quit and update"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
             checker.installOnQuit = true
             prepareForQuit?()
@@ -169,16 +169,16 @@ enum UpdateInstallFlow {
         }
     }
 
-    /// "Was ist neu?" for the installed version (after an update).
+    /// String(localized: "What’s new?") for the installed version (after an update).
     static func showInstalledNotes(_ checker: UpdateChecker) {
         Task { @MainActor in
             let markdown = await checker.service.changelog()
             let all = markdown.map(ReleaseNotes.parse) ?? []
             let sections = checker.installed.release.map { v in all.filter { $0.version == v } } ?? Array(all.prefix(1))
             let alert = NSAlert()
-            alert.messageText = "Neu in Hearth IDE \(checker.installed.label)"
+            alert.messageText = String(localized: "New in Hearth IDE \(checker.installed.label)")
             alert.informativeText = ""
-            alert.accessoryView = notesView(sections, emptyText: markdown == nil ? "Änderungsnotizen konnten nicht geladen werden." : "Keine Änderungsnotizen für diese Version.")
+            alert.accessoryView = notesView(sections, emptyText: markdown == nil ? String(localized: "The release notes could not be loaded.") : String(localized: "No release notes for this version."))
             alert.addButton(withTitle: "OK")
             alert.runModal()
         }

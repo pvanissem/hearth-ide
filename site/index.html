@@ -1,361 +1,174 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hearth IDE – Dein Agent. Dein Abo. Unser Feuerring.</title>
-<meta name="description" content="Hearth IDE ist eine native macOS-App, die Claude Code, Codex, GitHub Copilot CLI, OpenCode und Gemini CLI in einer nono-Sandbox laufen lässt – mit einer Inbox für alle Sitzungen.">
+<title>Hearth IDE – Your agent. Your plan. Our ring of fire.</title>
+<meta name="description" content="Hearth IDE is a native macOS app that runs Claude Code, Codex, GitHub Copilot CLI, OpenCode and Gemini CLI inside a nono sandbox – with one inbox for all your sessions.">
 <meta property="og:title" content="Hearth IDE">
-<meta property="og:description" content="Dein Agent. Dein Abo. Unser Feuerring. Jede Agent-CLI in einer Sandbox auf deinem Mac.">
+<meta property="og:description" content="Your agent. Your plan. Our ring of fire. Every agent CLI in a sandbox on your Mac.">
 <meta property="og:image" content="https://pvanissem.github.io/hearth-ide/assets/hearth-app.webp">
+<meta property="og:locale" content="en_US">
 <meta name="theme-color" content="#0e0a12">
+<link rel="canonical" href="https://pvanissem.github.io/hearth-ide/">
+<link rel="alternate" hreflang="en" href="https://pvanissem.github.io/hearth-ide/">
+<link rel="alternate" hreflang="de" href="https://pvanissem.github.io/hearth-ide/de/">
+<link rel="alternate" hreflang="x-default" href="https://pvanissem.github.io/hearth-ide/">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/fonts.css">
-<style>
-:root {
-  --night: #0e0a12;
-  --night-2: #170f1c;
-  --plum: #2a1e2e;
-  --crimson: #c4161c;
-  --ember: #ff5a1f;
-  --flame: #ffa62b;
-  --core: #ffe3a1;
-  --ash: #e9dfe6;
-  --ash-2: #bfb0bb;
-  --ash-3: #9a8b97;
-  --cold: #8a8194;
-  --flicker: 1;
-  --display: "Bricolage Grotesque", "Avenir Next", sans-serif;
-  --body: "Hanken Grotesk", "Avenir Next", sans-serif;
-  --mono: "Azeret Mono", ui-monospace, "SF Mono", monospace;
-  --gutter: clamp(1rem, 4vw, 3.5rem);
-  --ease: cubic-bezier(.16, 1, .3, 1);
-}
-* { box-sizing: border-box; }
-html { background: var(--night); color: var(--ash); scrollbar-color: #3b3140 var(--night); overflow-x: clip; }
-body {
-  margin: 0;
-  font: 400 1.0625rem/1.6 var(--body);
-  background: linear-gradient(var(--night), var(--night-2) 40rem, var(--plum) 120rem, var(--night-2) 220rem, var(--night));
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  overflow-x: clip;
-}
-::selection { background: var(--ember); color: var(--night); }
-:focus-visible { outline: 2px solid var(--flame); outline-offset: 3px; border-radius: 4px; }
-a { color: var(--flame); text-decoration-thickness: 1px; text-underline-offset: .2em; }
-a:hover { color: var(--core); }
-code, kbd, .mono { font-family: var(--mono); font-variant-ligatures: none; }
-code { font-size: .92em; }
-img { max-width: 100%; display: block; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.wrap { position: relative; width: min(1240px, 100%); margin: 0 auto; padding: 0 var(--gutter); }
-
-/* firelight: the only light source; its glow flickers with the fire (--flicker is set by the canvas loop) */
-.firelight { position: absolute; pointer-events: none; z-index: 0; border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(196, 22, 28, .32), rgba(255, 90, 31, .1) 55%, transparent);
-  opacity: calc(.75 + .25 * var(--flicker)); }
-.firelight.hero-light { width: 70rem; height: 52rem; right: -14rem; top: -8rem; }
-.ember-light { position: absolute; pointer-events: none; z-index: 0; width: 42rem; height: 30rem; border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 90, 31, .12), transparent);
-  animation: smoulder 5.5s ease-in-out infinite alternate; }
-@keyframes smoulder { 0% { opacity: .55; } 40% { opacity: .9; } 55% { opacity: .7; } 100% { opacity: 1; } }
-
-/* ---------- Top ---------- */
-.top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding-top: 1.4rem; }
-.mark { display: flex; align-items: center; gap: .7rem; color: var(--ash); text-decoration: none; font: 700 1.15rem/1 var(--display); letter-spacing: -.01em; }
-.mark img { width: 36px; height: 36px; border-radius: 9px; box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .8); }
-.version { font: 500 .72rem/1 var(--mono); color: var(--flame); border: 1px solid rgba(255, 166, 43, .4); padding: .3rem .45rem; border-radius: 999px; }
-.top nav { display: flex; gap: 1.4rem; font-size: .95rem; }
-.top nav a { color: var(--ash-2); text-decoration: none; }
-.top nav a:hover { color: var(--ash); }
-
-/* ---------- Hero ---------- */
-.hero { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 1rem; min-height: min(92vh, 860px); padding-block: 1.5rem 2.5rem; }
-.pitch { position: relative; z-index: 2; }
-h1 { font: 800 clamp(2.7rem, 5.6vw, 5.4rem)/.93 var(--display); font-variation-settings: "opsz" 96; letter-spacing: -.035em; margin: 0 0 1.4rem; text-wrap: balance; }
-h1 .lit { color: var(--flame); }
-.lede { font-size: clamp(1.05rem, 1.4vw, 1.2rem); color: var(--ash-2); max-width: 34ch; margin: 0 0 2rem; }
-.lede strong { color: var(--ash); font-weight: 600; }
-
-.install { position: relative; display: flex; align-items: stretch; max-width: 36rem; border-radius: 12px; background: #120c15; border: 1px solid rgba(255, 90, 31, .35); box-shadow: 0 16px 30px -16px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 166, 43, .12); }
-.install code { flex: 1; min-width: 0; white-space: normal; overflow-wrap: break-word; padding: .95rem 1.1rem; color: var(--core); font-size: .84rem; line-height: 1.55; }
-.install code .prompt { color: var(--ember); user-select: none; margin-right: .6ch; }
-.copy { flex: none; display: inline-flex; align-items: center; gap: .45rem; cursor: pointer; border: 0; border-left: 1px solid rgba(255, 90, 31, .3); border-radius: 0 11px 11px 0; padding: 0 1.1rem; font: 600 .9rem var(--body); color: var(--night); background: var(--flame); transition: background .25s var(--ease); }
-.copy:hover { background: var(--core); }
-.copy svg { width: 1.05em; height: 1.05em; }
-.copy[data-state="done"] { background: #ffd27a; }
-.copy-status { position: absolute; left: 0; top: calc(100% + .55rem); font-size: .85rem; color: var(--ash-3); }
-.pitch-links { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2.6rem; font-size: .98rem; }
-
-.facts { display: flex; flex-wrap: wrap; column-gap: 1.6rem; margin: 2rem 0 0; padding: 0; list-style: none; border-top: 1px solid rgba(233, 223, 230, .14); border-bottom: 1px solid rgba(233, 223, 230, .14); max-width: 36rem; }
-.facts li { font: 400 .86rem/1 var(--body); color: var(--ash-3); padding: .75rem 0; white-space: nowrap; }
-.facts b { font: 500 .8rem/1 var(--mono); font-variant-ligatures: none; color: var(--ash); }
-
-/* ---------- The ring ---------- */
-.ring { position: relative; width: 100%; aspect-ratio: 1 / .86; }
-.ring canvas { position: absolute; inset: 0; width: 100%; height: 100%; -webkit-mask-image: linear-gradient(transparent 0, #000 22%); mask-image: linear-gradient(transparent 0, #000 22%); }
-.ring svg.stones { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.stone { cursor: help; }
-.stone .heat { opacity: calc(.35 + .4 * var(--flicker)); }
-.stone .hitglow { opacity: 0; transition: opacity .7s var(--ease); }
-.stone.hit .hitglow { opacity: 1; transition-duration: .08s; }
-[data-stone-holder]:focus-visible .rock { stroke: var(--flame); stroke-width: 3; }
-[data-stone-holder] { outline: none; }
-.cut { font-family: var(--mono); font-weight: 600; font-variant-ligatures: none; letter-spacing: .01em; pointer-events: none; }
-.cut .lip { fill: #f4e6dc; }
-.cut .recess { fill: #0c0708; opacity: .9; }
-.agent-name { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 600 clamp(1.05rem, 1.9vw, 1.45rem)/1 var(--mono); font-variant-ligatures: none; color: var(--core); pointer-events: none; white-space: nowrap; transition: opacity .4s var(--ease), filter .4s var(--ease); }
-.agent-name.swap { opacity: 0; filter: blur(6px); }
-.inside-label { position: absolute; left: 50%; top: 67%; transform: translateX(-50%); text-align: center; pointer-events: none; }
-.inside-label code { display: block; font-size: .82rem; color: var(--core); }
-.inside-label span { font-size: .78rem; color: var(--ash-3); }
-.rule-tip { position: absolute; z-index: 3; pointer-events: none; left: 50%; bottom: -1.6rem; transform: translateX(-50%); width: min(21rem, 92%); padding: .6rem .8rem; border-radius: 9px; font-size: .86rem; line-height: 1.4; color: var(--ash); background: #1d1420; border: 1px solid rgba(255, 90, 31, .45); box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .8); opacity: 0; transition: opacity .25s var(--ease); }
-.rule-tip.show { opacity: 1; }
-.rule-tip b { display: block; color: var(--flame); font: 600 .74rem/1.3 var(--mono); font-variant-ligatures: none; margin-bottom: .25rem; }
-
-/* ---------- Sections ---------- */
-section { position: relative; padding-block: clamp(4rem, 9vw, 8rem) 0; }
-section > * { position: relative; z-index: 1; }
-h2 { font: 800 clamp(2rem, 3.8vw, 3.4rem)/1 var(--display); letter-spacing: -.03em; margin: 0 0 1rem; text-wrap: balance; }
-.section-lede { color: var(--ash-2); max-width: 52ch; margin: 0 0 2.6rem; font-size: 1.1rem; }
-
-/* inside the ring vs. the stones that keep things out */
-.inside { display: flex; flex-wrap: wrap; gap: .6rem 2rem; margin: 0 0 3rem; padding: 0; list-style: none; }
-.inside li { font-size: 1rem; color: var(--ash-2); }
-.inside li code, .inside li strong { color: var(--core); font-weight: 600; }
-.outside-title { font: 700 1.25rem/1.2 var(--display); color: var(--cold); margin: 0 0 1.2rem; }
-.arc { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem 1.2rem; }
-.arc li { text-align: center; transform: translateY(calc(var(--lift, 0) * 1rem)); }
-.arc svg { width: 100%; height: auto; overflow: visible; }
-.arc p { margin: 0; font-size: .92rem; color: var(--ash-3); line-height: 1.35; }
-.side-note { margin-top: 2.4rem; color: var(--ash-3); font-size: .95rem; max-width: 70ch; }
-
-/* agents roster */
-.roster { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(233, 223, 230, .14); }
-.roster li { display: grid; grid-template-columns: minmax(10rem, 1.1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 1.4rem; align-items: baseline; padding: 1.25rem 0; border-bottom: 1px solid rgba(233, 223, 230, .1); }
-.roster .who { font: 700 clamp(1.3rem, 2.2vw, 1.8rem)/1.1 var(--display); letter-spacing: -.015em; transition: color .3s var(--ease); }
-.roster .login { color: var(--ash-2); }
-.roster .how { font-size: .9rem; color: var(--ash-3); }
-.roster li:hover .who { color: var(--flame); }
-
-/* three strokes: each number ignites in turn */
-.strokes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid rgba(233, 223, 230, .14); }
-.strokes li { position: relative; padding: 1.8rem 1.6rem 0 0; }
-.strokes li + li { padding-left: 1.6rem; border-left: 1px solid rgba(233, 223, 230, .1); }
-.strokes .n { display: block; font: 800 4.4rem/.8 var(--display); color: #8f7d95; margin-bottom: 1rem; }
-.strokes li.on .n { color: var(--ember); animation: ignite .9s steps(1, end); }
-@keyframes ignite { 0% { color: #8f7d95; } 12% { color: var(--flame); } 22% { color: #8f7d95; } 34% { color: var(--core); } 46% { color: var(--crimson); } 60% { color: var(--flame); } 100% { color: var(--ember); } }
-.strokes h3 { font: 700 1.35rem/1.2 var(--display); margin: 0 0 .5rem; letter-spacing: -.01em; }
-.strokes p { margin: 0; color: var(--ash-2); max-width: 34ch; }
-
-/* the app at work */
-.shot { margin: 0; }
-.shot-frame { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(233, 223, 230, .14); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .95); background: #19151c; }
-.shot-frame img { width: 100%; height: auto; }
-.pin { position: absolute; display: flex; align-items: center; gap: .5rem; font: 600 .82rem/1.2 var(--body); color: var(--night); background: var(--flame); padding: .4rem .65rem; border-radius: 999px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .8); white-space: nowrap; }
-.pin::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--crimson); }
-.pin.inbox { left: 3%; top: 31%; }
-.pin.chat { left: 30%; top: 13%; }
-.pin.inspector { left: 55%; top: 66%; }
-.shot figcaption { margin-top: 1rem; font-size: .9rem; color: var(--ash-3); max-width: 70ch; }
-
-/* honest status */
-.status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; }
-.status h3 { font: 700 1.15rem/1.2 var(--display); margin: 0 0 .9rem; }
-.status ul { margin: 0; padding-left: 1.1rem; color: var(--ash-2); }
-.status li { margin-bottom: .45rem; }
-.status li::marker { color: var(--ember); }
-
-/* close: the last fire */
-.close { text-align: center; padding-block: clamp(5rem, 10vw, 9rem) clamp(3rem, 6vw, 5rem); }
-.embers { position: relative; width: 132px; height: 132px; margin: 0 auto 1.6rem; }
-.embers::before { content: ""; position: absolute; inset: -40px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 90, 31, .45), rgba(196, 22, 28, .15) 60%, transparent); animation: smoulder 2.6s ease-in-out infinite alternate; }
-.embers.flare::before { animation: flare 1.2s var(--ease); }
-@keyframes flare { 0% { opacity: 1; transform: scale(1); } 25% { opacity: 1; transform: scale(1.45); } 100% { opacity: .8; transform: scale(1); } }
-.embers img { position: relative; width: 96px; height: 96px; margin: 18px; border-radius: 22px; box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .9); }
-.close h2 { margin-bottom: 1.6rem; }
-.close .install { margin: 0 auto; text-align: left; }
-.close .pitch-links { justify-content: center; }
-footer { border-top: 1px solid rgba(233, 223, 230, .1); padding-block: 2rem 3rem; font-size: .88rem; color: var(--ash-3); display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; justify-content: space-between; }
-footer a { color: var(--ash-2); }
-
-@media (max-width: 960px) {
-  .hero { grid-template-columns: minmax(0, 1fr); min-height: 0; padding-top: .5rem; }
-  .ring { order: -1; width: 100%; max-width: 560px; margin: 0 auto 4.5rem; }
-  .rule-tip { bottom: -4.2rem; }
-  .lede { max-width: 46ch; }
-  .arc { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .arc li { transform: none; }
-  .strokes { grid-template-columns: 1fr; }
-  .strokes li, .strokes li + li { padding: 1.6rem 0; border-left: 0; border-bottom: 1px solid rgba(233, 223, 230, .1); }
-  .status { grid-template-columns: 1fr; }
-  .roster li { grid-template-columns: 1fr; gap: .3rem; }
-}
-@media (max-width: 560px) {
-  .top nav a:not(.gh) { display: none; }
-  .copy .copy-text { display: none; }
-  .inside-label span { display: none; }
-  .arc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pin.inspector { display: none; }
-  .pin.inbox { left: 4%; top: 30%; }
-  .pin.chat { left: 50%; top: 9%; }
-  .pin .long { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
-}
-</style>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 <div class="wrap">
   <div class="firelight hero-light" aria-hidden="true"></div>
   <header class="top">
-    <a class="mark" href="./" aria-label="Hearth IDE – Startseite">
+    <a class="mark" href="./" aria-label="Hearth IDE – home">
       <img src="assets/hearth-icon.webp" alt="" width="36" height="36">
       Hearth IDE <span class="version">v0.3</span>
     </a>
-    <nav aria-label="Seitenbereiche">
-      <a href="#ring">Was gesperrt ist</a>
-      <a href="#agenten">Agenten</a>
-      <a href="#so-gehts">So geht’s</a>
+    <nav aria-label="Page sections">
+      <a href="#ring">What’s blocked</a>
+      <a href="#agents">Agents</a>
+      <a href="#how">How it works</a>
       <a class="gh" href="https://github.com/pvanissem/hearth-ide">GitHub</a>
+      <a class="lang" href="de/" hreflang="de" lang="de">Deutsch</a>
     </nav>
   </header>
 
   <main>
     <div class="hero">
       <div class="pitch">
-        <h1>Dein Agent. Dein Abo. <span class="lit">Unser Feuerring.</span></h1>
-        <p class="lede"><strong>Claude Code, Codex, Copilot &amp; Co.</strong> laufen auf deinem Mac wie gewohnt – nur in einer Sandbox, die deine Schlüssel, dein Home und fremde Hosts draußen lässt.</p>
+        <h1>Your agent. Your plan. <span class="lit">Our ring of fire.</span></h1>
+        <p class="lede"><strong>Claude Code, Codex, Copilot &amp; co.</strong> run on your Mac just like before – only inside a sandbox that keeps your keys, your home folder and unknown hosts out.</p>
 
         <div class="install" data-install>
           <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
-          <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+          <button class="copy" type="button" data-copy aria-label="Copy the install command">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
-            <span class="copy-text">Kopieren</span>
+            <span class="copy-text">Copy</span>
           </button>
           <span class="copy-status" role="status" aria-live="polite"></span>
         </div>
 
-        <ul class="facts" aria-label="Eckdaten">
-          <li><b>v0.3</b> frühe Version</li>
+        <ul class="facts" aria-label="Key facts">
+          <li><b>v0.3</b> early release</li>
           <li>macOS <b>14+</b></li>
           <li><b>Apple Silicon</b></li>
-          <li>Lizenz <b>MIT</b></li>
+          <li>License <b>MIT</b></li>
           <li>Sandbox <b>nono 0.80</b></li>
         </ul>
 
         <div class="pitch-links">
-          <a href="https://github.com/pvanissem/hearth-ide">Quellcode auf GitHub</a>
-          <a href="#ring">Was der Ring sperrt</a>
+          <a href="https://github.com/pvanissem/hearth-ide">Source on GitHub</a>
+          <a href="#ring">What the ring blocks</a>
         </div>
       </div>
 
-      <div class="ring" data-ring aria-label="Ein Steinring aus Sandbox-Regeln um das Feuer des Agenten. Jeder Stein ist eine Sperre.">
+      <div class="ring" data-ring aria-label="A ring of stones made of sandbox rules around the agent’s fire. Every stone is a block.">
         <canvas data-fire aria-hidden="true"></canvas>
         <svg class="stones" data-stones viewBox="0 0 1000 860" role="list"></svg>
         <div class="agent-name" data-agent aria-hidden="true">claude</div>
-        <div class="inside-label"><code>~/dein-projekt</code><span>lesen + schreiben</span></div>
+        <div class="inside-label"><code>~/your-project</code><span>read + write</span></div>
         <div class="rule-tip" data-tip aria-hidden="true"></div>
       </div>
     </div>
 
     <section id="ring" aria-labelledby="ring-h">
       <div class="ember-light" style="left:-18rem;top:2rem" aria-hidden="true"></div>
-      <h2 id="ring-h">Was im Ring bleibt.</h2>
-      <p class="section-lede">Hearth startet jeden Agenten in einer <a href="https://nono.sh">nono</a>-Sandbox (macOS Seatbelt). Innerhalb des Rings arbeitet er frei:</p>
+      <h2 id="ring-h">What stays inside the ring.</h2>
+      <p class="section-lede">Hearth starts every agent in a <a href="https://nono.sh">nono</a> sandbox (macOS Seatbelt). Inside the ring it works freely:</p>
       <ul class="inside">
-        <li><code>~/dein-projekt</code> lesen und schreiben</li>
-        <li>die eigenen Einstellungen, z. B. <code>~/.claude</code></li>
-        <li><strong>LLM-APIs</strong>, npm, PyPI, Maven</li>
-        <li><strong>GitHub, GitLab</strong> und Dokumentation</li>
+        <li>read and write <code>~/your-project</code></li>
+        <li>its own settings folder inside Hearth</li>
+        <li><strong>LLM APIs</strong>, npm, PyPI, Maven</li>
+        <li><strong>GitHub, GitLab</strong> and documentation</li>
       </ul>
-      <h3 class="outside-title">Draußen bleiben:</h3>
+      <h3 class="outside-title">Kept outside:</h3>
       <ul class="arc" data-arc>
-        <li style="--lift:1.4" data-stone="~/.ssh"><p>SSH-Schlüssel</p></li>
-        <li style="--lift:.5" data-stone="~/.zshrc"><p>Shell-Konfiguration</p></li>
-        <li style="--lift:0" data-stone="~/.aws"><p>Cloud-Zugangsdaten</p></li>
-        <li style="--lift:0" data-stone="Browserdaten"><p>Cookies, Passwörter, Sitzungen</p></li>
-        <li style="--lift:.5" data-stone="~/Documents"><p>der Rest deines Home</p></li>
-        <li style="--lift:1.4" data-stone="example.com"><p>jeder nicht freigegebene Host</p></li>
+        <li style="--lift:1.4" data-stone="~/.ssh"><p>SSH keys</p></li>
+        <li style="--lift:.5" data-stone="~/.zshrc"><p>shell configuration</p></li>
+        <li style="--lift:0" data-stone="~/.aws"><p>cloud credentials</p></li>
+        <li style="--lift:0" data-stone="Browser data"><p>cookies, passwords, sessions</p></li>
+        <li style="--lift:.5" data-stone="~/Documents"><p>the rest of your home folder</p></li>
+        <li style="--lift:1.4" data-stone="example.com"><p>every host you haven’t allowed</p></li>
       </ul>
-      <p class="side-note">Weitere Domains, Ports und Ordner gibst du in den Einstellungen frei. API-Keys reicht nono als Platzhalter durch: Der Agent sieht nie den echten Wert.</p>
+      <p class="side-note">Allow more domains, ports and folders in the settings. API keys pass through nono as a placeholder: the agent never sees the real value.</p>
     </section>
 
-    <section id="agenten" aria-labelledby="agenten-h">
-      <h2 id="agenten-h">Deine Agenten, deine Logins.</h2>
-      <p class="section-lede">Hearth bringt kein eigenes Modell mit. Es hält die Agenten in Schach, für die du schon bezahlst.</p>
+    <section id="agents" aria-labelledby="agents-h">
+      <h2 id="agents-h">Your agents, your logins.</h2>
+      <p class="section-lede">Hearth brings no model of its own. It keeps the agents you already pay for in check.</p>
       <ul class="roster">
-        <li><span class="who">Claude Code</span><span class="login">dein Claude-Abo, über die offizielle CLI</span><span class="how">Status per Hooks in der Inbox</span></li>
-        <li><span class="who">Codex</span><span class="login">ChatGPT-Login oder API-Key</span><span class="how">Status per notify</span></li>
-        <li><span class="who">GitHub Copilot CLI</span><span class="login">dein GitHub-Konto</span><span class="how">im Terminal-Chat</span></li>
-        <li><span class="who">OpenCode</span><span class="login">jeder Anbieter, den OpenCode kennt</span><span class="how">mit privatem Server in der Sandbox</span></li>
-        <li><span class="who">Gemini CLI</span><span class="login">dein Google-Konto</span><span class="how">im Terminal-Chat</span></li>
+        <li><span class="who">Claude Code</span><span class="login">your Claude plan, through the official CLI</span><span class="how">status in the inbox via hooks</span></li>
+        <li><span class="who">Codex</span><span class="login">ChatGPT login or API key</span><span class="how">status via notify</span></li>
+        <li><span class="who">GitHub Copilot CLI</span><span class="login">your GitHub account</span><span class="how">in the terminal chat</span></li>
+        <li><span class="who">OpenCode</span><span class="login">any provider OpenCode supports</span><span class="how">with a private server in the sandbox</span></li>
+        <li><span class="who">Gemini CLI</span><span class="login">your Google account</span><span class="how">in the terminal chat</span></li>
       </ul>
     </section>
 
-    <section id="so-gehts" aria-labelledby="so-gehts-h">
+    <section id="how" aria-labelledby="how-h">
       <div class="ember-light" style="right:-16rem;top:6rem" aria-hidden="true"></div>
-      <h2 id="so-gehts-h">In drei Zügen entfacht.</h2>
-      <p class="section-lede">Kein Konto, keine Konfiguration. Hearth bringt die Sandbox mit, deine Agenten bringst du selbst.</p>
+      <h2 id="how-h">Lit in three strokes.</h2>
+      <p class="section-lede">No account, no configuration. Hearth brings the sandbox, you bring your agents.</p>
       <ol class="strokes" data-strokes>
-        <li><span class="n" aria-hidden="true">1</span><h3>Installieren</h3><p>Der Befehl oben lädt die App, prüft die SHA-256-Prüfsumme und legt sie in den Programme-Ordner. Updates kommen aus der App.</p></li>
-        <li><span class="n" aria-hidden="true">2</span><h3>Ordner wählen</h3><p>Der Projektordner ist das Innere des Rings: Nur hier darf der Agent schreiben.</p></li>
-        <li><span class="n" aria-hidden="true">3</span><h3>Agent starten</h3><p>Claude Code, Codex, Copilot, OpenCode oder Gemini – mit deinem eigenen Login, im Terminal der Chat-Ansicht.</p></li>
+        <li><span class="n" aria-hidden="true">1</span><h3>Install</h3><p>The command above downloads the app, checks its SHA-256 checksum and puts it into Applications. Updates come from inside the app.</p></li>
+        <li><span class="n" aria-hidden="true">2</span><h3>Pick a folder</h3><p>Your project folder is the inside of the ring: it is the only place the agent may write.</p></li>
+        <li><span class="n" aria-hidden="true">3</span><h3>Start an agent</h3><p>Claude Code, Codex, Copilot, OpenCode or Gemini – with your own login, in the terminal of the chat area.</p></li>
       </ol>
     </section>
 
     <section aria-labelledby="app-h">
-      <h2 id="app-h">Alle Feuer in einem Fenster.</h2>
-      <p class="section-lede">Eine Inbox zeigt, welcher Agent arbeitet, wartet oder fertig ist. Daneben Ordner, Git, Editor, Tests und Builds – die auch in der Sandbox laufen.</p>
+      <h2 id="app-h">Every fire in one window.</h2>
+      <p class="section-lede">One inbox shows which agent is working, waiting or done. Next to it: folder, Git, editor, tests and builds – which run in the sandbox too.</p>
       <figure class="shot">
         <div class="shot-frame">
           <picture>
             <source media="(max-width: 560px)" srcset="assets/hearth-app-phone.webp" width="1000" height="1106">
             <img src="assets/hearth-app.webp" width="2400" height="1326" loading="lazy" decoding="async"
-                 alt="Hearth IDE: links die Inbox mit einer fertigen Claude-Code-Sitzung, daneben der Terminal-Chat mit Sandbox-Abzeichen, rechts Verzeichnis, Git mit zwei Änderungen und Build &amp; Deployment.">
+                 alt="Hearth IDE: on the left the inbox with a finished Claude Code session, next to it the terminal chat with its sandbox badge, on the right the directory, Git with two changes and Build &amp; Deployment.">
           </picture>
           <span class="pin inbox">Inbox</span>
-          <span class="pin chat">Terminal-Chat<span class="long"> in der Sandbox</span></span>
-          <span class="pin inspector">Git &amp; Builds folgen dem Agenten</span>
+          <span class="pin chat">Terminal chat<span class="long"> in the sandbox</span></span>
+          <span class="pin inspector">Git &amp; builds follow the agent</span>
         </div>
-        <figcaption>Echter Screenshot mit dem Demo-Projekt „lagerfeuer“: Claude Code ergänzt in der Sandbox eine Funktion samt Test.</figcaption>
+        <figcaption>A real screenshot with the demo project “lagerfeuer”: Claude Code adds a function and its test inside the sandbox.</figcaption>
       </figure>
     </section>
 
-    <section aria-labelledby="stand-h">
-      <h2 id="stand-h">Ehrlicher Stand: v0.3.</h2>
-      <p class="section-lede">Früh, aber benutzbar. Das hier stimmt heute:</p>
+    <section aria-labelledby="status-h">
+      <h2 id="status-h">Honest status: v0.3.</h2>
+      <p class="section-lede">Early, but usable. This is what works today:</p>
       <div class="status">
         <div>
-          <h3>Läuft</h3>
+          <h3>Works</h3>
           <ul>
-            <li>Agenten als Terminal in der Chat-Ansicht</li>
-            <li>Inbox mit Status und Benachrichtigungen</li>
-            <li>Build &amp; Deployment und Git in der Sandbox</li>
-            <li>Sitzungen fortsetzen</li>
-            <li>Editor-Tabs pro Sitzung</li>
-            <li>Eigener Konfigurationsordner je Agent</li>
-            <li>CI/CD für GitLab und GitHub Actions</li>
+            <li>Agents as a terminal in the chat area</li>
+            <li>Inbox with status and notifications</li>
+            <li>Build &amp; Deployment and Git in the sandbox</li>
+            <li>Resuming sessions</li>
+            <li>Editor tabs per session</li>
+            <li>A separate settings folder per agent</li>
+            <li>CI/CD for GitLab and GitHub Actions</li>
+            <li>English and German</li>
           </ul>
         </div>
         <div>
-          <h3>Kommt als Nächstes</h3>
+          <h3>Coming next</h3>
           <ul>
-            <li>Nativer Chat über das Agent Client Protocol</li>
-            <li>Login ohne Schlüsselbund-Freigabe</li>
-            <li>Signierte, notarisierte Builds</li>
+            <li>Native chat via the Agent Client Protocol</li>
+            <li>Sign-in without keychain access</li>
+            <li>Signed, notarized builds</li>
           </ul>
         </div>
         <div>
-          <h3>Voraussetzungen</h3>
+          <h3>Requirements</h3>
           <ul>
-            <li>macOS 14 oder neuer</li>
+            <li>macOS 14 or later</li>
             <li>Apple Silicon</li>
-            <li>mindestens eine Agent-CLI</li>
+            <li>at least one agent CLI</li>
           </ul>
         </div>
       </div>
@@ -363,449 +176,29 @@ footer a { color: var(--ash-2); }
 
     <section class="close" aria-labelledby="close-h">
       <div class="embers"><img src="assets/hearth-icon.webp" alt="" width="96" height="96" loading="lazy"></div>
-      <h2 id="close-h">Zünd ihn an.</h2>
+      <h2 id="close-h">Light it up.</h2>
       <div class="install" data-install>
         <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
-        <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+        <button class="copy" type="button" data-copy aria-label="Copy the install command">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
-          <span class="copy-text">Kopieren</span>
+          <span class="copy-text">Copy</span>
         </button>
         <span class="copy-status" role="status" aria-live="polite"></span>
       </div>
       <div class="pitch-links">
-        <a href="https://github.com/pvanissem/hearth-ide/releases/latest">Release-Notizen</a>
-        <a href="https://github.com/pvanissem/hearth-ide/blob/main/CHANGELOG.md">Änderungen</a>
-        <a href="https://github.com/pvanissem/hearth-ide">Quellcode</a>
+        <a href="https://github.com/pvanissem/hearth-ide/releases/latest">Release notes</a>
+        <a href="https://github.com/pvanissem/hearth-ide/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/pvanissem/hearth-ide">Source</a>
       </div>
     </section>
   </main>
 
   <footer>
-    <span>Hearth IDE · MIT-Lizenz · kein Konto, keine Telemetrie</span>
+    <span>Hearth IDE · MIT license · no account, no telemetry</span>
     <span>Sandbox: <a href="https://github.com/nolabs-ai/nono">nono</a> (Apache-2.0)</span>
   </footer>
 </div>
 
-<script>
-(() => {
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const NS = "http://www.w3.org/2000/svg";
-  const root = document.documentElement;
-
-  /* ---------- copy install command ---------- */
-  document.querySelectorAll("[data-install]").forEach((box) => {
-    const btn = box.querySelector("[data-copy]");
-    const cmd = box.querySelector("[data-cmd]");
-    const text = cmd.textContent;
-    const status = box.querySelector(".copy-status");
-    const label = btn.querySelector(".copy-text");
-    btn.addEventListener("click", async () => {
-      let ok = false;
-      try { await navigator.clipboard.writeText(text); ok = true; }
-      catch {
-        const range = document.createRange(); range.selectNodeContents(cmd);
-        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
-        try { ok = document.execCommand("copy"); } catch { ok = false; }
-      }
-      btn.dataset.state = ok ? "done" : "";
-      const embers = box.closest(".close")?.querySelector(".embers");
-      if (ok && embers && !reduce) { embers.classList.remove("flare"); void embers.offsetWidth; embers.classList.add("flare"); }
-      label.textContent = ok ? "Kopiert" : "Kopieren";
-      status.textContent = ok ? "Im Terminal einfügen und Enter drücken." : "Kopieren nicht möglich – der Befehl ist markiert, mit ⌘C kopieren.";
-      clearTimeout(btn._t);
-      btn._t = setTimeout(() => { btn.dataset.state = ""; label.textContent = "Kopieren"; status.textContent = ""; }, 3200);
-    });
-  });
-
-  /* ---------- field stones: a noise surface lit only by the fire ---------- */
-  let stoneId = 0;
-  const rand = (seed, i) => ((Math.sin(seed * 91.7 + i * 37.3) * 43758.5453) % 1 + 1) % 1;
-  function outline(w, h, seed) {
-    const n = 12, pts = [];
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2;
-      const j = 0.74 + 0.26 * rand(seed, i);
-      const flat = Math.sin(a) > 0.25 ? 0.7 : 1;            // flat resting underside
-      pts.push([Math.cos(a) * w / 2 * j, Math.sin(a) * h / 2 * j * flat]);
-    }
-    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < n; i++) {
-      const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
-      d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-    }
-    return d + "Z";
-  }
-  // (lx, ly): the fire's position relative to the stone's centre
-  function stone(parent, { w, h, seed, label, lx, ly, font }) {
-    const id = "st" + (stoneId++);
-    const d = outline(w, h, seed);
-    const len = Math.hypot(lx, ly) || 1, ux = lx / len, uy = ly / len;
-    const relief = (h * (.42 + rand(seed, 5) * .08)).toFixed(1);
-    const light = `<fePointLight x="${lx.toFixed(0)}" y="${ly.toFixed(0)}" z="${(h * 1.25).toFixed(0)}"/>`;
-    const g = document.createElementNS(NS, "g");
-    g.setAttribute("class", "stone");
-    g.innerHTML = `
-      <defs>
-        <filter id="${id}f" x="-15%" y="-25%" width="130%" height="150%" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-          <!-- height map: a rounded body (blurred outline) roughened by noise -->
-          <feGaussianBlur in="SourceAlpha" stdDeviation="${(h * .22).toFixed(1)}" result="body"/>
-          <feTurbulence type="fractalNoise" baseFrequency="${(0.028 + rand(seed, 3) * .014).toFixed(3)}" numOctaves="4" seed="${seed}" result="rough"/>
-          <feComposite in="body" in2="rough" operator="arithmetic" k2="1" k3=".09" k4="-.045" result="height"/>
-          <!-- colour: mottled stone with fine dark grains -->
-          <feTurbulence type="fractalNoise" baseFrequency="${(0.011 + rand(seed, 7) * .006).toFixed(3)}" numOctaves="3" seed="${seed + 40}" result="mott"/>
-          <feColorMatrix in="mott" type="matrix" values=".42 0 0 0 .26  .36 0 0 0 .22  .36 0 0 0 .24  0 0 0 0 1" result="tone"/>
-          <feTurbulence type="fractalNoise" baseFrequency=".42" numOctaves="1" seed="${seed + 90}" result="grain"/>
-          <feComponentTransfer in="grain" result="specks"><feFuncR type="discrete" tableValues=".5 1 1 1 1 1 1 .78"/><feFuncG type="discrete" tableValues=".5 1 1 1 1 1 1 .78"/><feFuncB type="discrete" tableValues=".5 1 1 1 1 1 1 .78"/><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer>
-          <feComposite in="tone" in2="specks" operator="arithmetic" k1="1" result="albedo"/>
-          <!-- firelight: diffuse plus a soft sheen on the side facing the flames -->
-          <feDiffuseLighting in="height" surfaceScale="${relief}" diffuseConstant="1" lighting-color="#ffd8b4" result="diff">${light}</feDiffuseLighting>
-          <feSpecularLighting in="height" surfaceScale="${relief}" specularConstant=".32" specularExponent="18" lighting-color="#ffae70" result="spec">${light}</feSpecularLighting>
-          <feComposite in="albedo" in2="diff" operator="arithmetic" k1="1.12" k2=".17" result="lit"/>
-          <feComposite in="spec" in2="lit" operator="arithmetic" k2=".38" k3="1" result="sheen"/>
-          <feComposite in="sheen" in2="SourceAlpha" operator="in"/>
-        </filter>
-        <linearGradient id="${id}shade" gradientUnits="userSpaceOnUse" x1="${(ux * w * .5).toFixed(0)}" y1="${(uy * h * .5).toFixed(0)}" x2="${(-ux * w * .5).toFixed(0)}" y2="${(-uy * h * .5).toFixed(0)}">
-          <stop offset="0" stop-color="#0e0a12" stop-opacity="0"/><stop offset=".6" stop-color="#0e0a12" stop-opacity=".15"/><stop offset="1" stop-color="#0e0a12" stop-opacity=".55"/>
-        </linearGradient>
-        <radialGradient id="${id}heat" gradientUnits="userSpaceOnUse" cx="${(ux * w * .45).toFixed(0)}" cy="${(uy * h * .45).toFixed(0)}" r="${(w * .55).toFixed(0)}">
-          <stop offset="0" stop-color="#ff7a2a" stop-opacity=".34"/><stop offset=".7" stop-color="#ff5a1f" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="${id}hit"><stop offset="0" stop-color="#ffa62b" stop-opacity=".9"/><stop offset=".6" stop-color="#ff5a1f" stop-opacity=".3"/><stop offset="1" stop-color="#c4161c" stop-opacity="0"/></radialGradient>
-        <filter id="${id}blur"><feGaussianBlur stdDeviation="${(h * .12).toFixed(1)}"/></filter>
-        <filter id="${id}soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="${(font * .45).toFixed(1)}"/></filter>
-        <clipPath id="${id}clip"><path d="${d}"/></clipPath>
-      </defs>
-      <ellipse class="hitglow" rx="${(w * .72).toFixed(0)}" ry="${(h * .9).toFixed(0)}" fill="url(#${id}hit)"/>
-      <ellipse cx="${(-ux * h * .35).toFixed(1)}" cy="${(h * .3).toFixed(1)}" rx="${(w * .52).toFixed(0)}" ry="${(h * .26).toFixed(0)}" fill="#050307" opacity=".85" filter="url(#${id}blur)"/>
-      <path class="rock" d="${d}" fill="#7a6470" filter="url(#${id}f)"/>
-      <g clip-path="url(#${id}clip)">
-        <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="url(#${id}shade)"/>
-        <rect class="heat" x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="url(#${id}heat)"/>
-      </g>
-      <ellipse clip-path="url(#${id}clip)" rx="${(label.length * font * .36 + font).toFixed(1)}" ry="${(font * .85).toFixed(1)}" fill="#3f3439" opacity=".78" filter="url(#${id}soft)"/>
-      <g class="cut" font-size="${font.toFixed(1)}" text-anchor="middle">
-        <text class="recess" y="${(font * .36 - 1.4).toFixed(1)}">${label}</text>
-        <text class="lip" y="${(font * .36).toFixed(1)}">${label}</text>
-      </g>`;
-    parent.appendChild(g);
-    return g;
-  }
-
-  /* ---------- the ring (real sandbox rules) ---------- */
-  const STONES = [
-    ["~/.ssh", "filesystem deny: ~/.ssh", "Deine SSH-Schlüssel bleiben draußen."],
-    ["~/.zshrc", "filesystem deny: Shell-Configs", "Deine Shell-Konfiguration bleibt draußen."],
-    ["Browserdaten", "filesystem deny: Browser-Profile", "Cookies, Passwörter und Sitzungen bleiben draußen."],
-    ["~/.aws", "filesystem deny: Credentials", "Deine Cloud-Zugangsdaten bleiben draußen."],
-    ["example.com", "network: nur Allowlist", "Nicht freigegebene Hosts bleiben unerreichbar."],
-    ["~/Documents", "kein Lese- oder Schreibrecht", "Der Rest deines Home bleibt draußen."],
-    ["~/.gnupg", "filesystem deny: Schlüssel", "Deine GPG-Schlüssel bleiben draußen."],
-    ["Port 22", "network: nur über den Proxy", "Direkte Verbindungen sind gesperrt."],
-  ];
-  const ring = document.querySelector("[data-ring]");
-  const svg = document.querySelector("[data-stones]");
-  const tip = document.querySelector("[data-tip]");
-  const cx = 500, cy = 450, rx = 375, ry = 255, fireX = 500, fireY = 450 + 860 * .05;
-  let pinned = null;
-
-  const ringStones = STONES.map(([label, rule, line], i) => {
-    const a = -Math.PI / 2 + (i + .5) / STONES.length * Math.PI * 2;
-    const x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
-    const depth = (Math.sin(a) + 1) / 2;
-    const s = (0.84 + depth * 0.3) * (0.92 + rand(i + 11, 1) * .16);
-    const w = Math.max(210, label.length * 18.5 + 104) * s, h = (100 + rand(i + 3, 2) * 18) * s;
-    const holder = document.createElementNS(NS, "g");
-    holder.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
-    holder.setAttribute("tabindex", "0");
-    holder.setAttribute("role", "listitem");
-    holder.setAttribute("aria-label", `${label}: ${line}`);
-    holder.setAttribute("data-stone-holder", "");
-    const g = stone(holder, { w, h, seed: i + 2, label, lx: fireX - x, ly: fireY - y, font: 25 * s });
-    const st = { holder, g, x, y, w, h, label, rule, line, depth };
-    // While a stone is hovered or focused it owns the tip; sparks leave the ring alone.
-    const hold = () => { pinned = st; g.classList.add("hit"); showTip(st, true); };
-    const release = () => { if (pinned === st) pinned = null; g.classList.remove("hit"); hideTip(); };
-    holder.addEventListener("mouseenter", hold);
-    holder.addEventListener("focus", hold);
-    holder.addEventListener("mouseleave", release);
-    holder.addEventListener("blur", release);
-    return st;
-  });
-  ringStones.slice().sort((a, b) => a.depth - b.depth).forEach((s) => svg.appendChild(s.holder));
-
-  let tipTimer;
-  function showTip(st, sticky) {
-    tip.innerHTML = `<b>${st.rule}</b>${st.line}`;
-    tip.classList.add("show");
-    clearTimeout(tipTimer);
-    if (!sticky) tipTimer = setTimeout(hideTip, 4000);
-  }
-  function hideTip() { tip.classList.remove("show"); }
-
-  /* ---------- the stones that stay outside (below the hero) ---------- */
-  document.querySelectorAll("[data-arc] li").forEach((li, i, all) => {
-    const label = li.dataset.stone;
-    const w = Math.min(312, Math.max(250, label.length * 19 + 92)), h = 118;
-    const v = document.createElementNS(NS, "svg");
-    v.setAttribute("viewBox", "-160 -66 320 138");
-    v.setAttribute("aria-hidden", "true");
-    // the fire sits above the middle of the arc: light falls in from that side
-    const mid = (all.length - 1) / 2, off = (i - mid) / mid;
-    stone(v, { w, h, seed: i + 21, label, lx: -off * 260, ly: -220, font: 30 });
-    li.prepend(v);
-    li.querySelector("p").insertAdjacentHTML("afterbegin", `<span class="sr-only">${label}: </span>`);
-  });
-
-  /* ---------- agent names in the fire ---------- */
-  const agentEl = document.querySelector("[data-agent]");
-  const AGENTS = ["claude", "codex", "copilot", "opencode", "gemini"];
-  let ai = 0;
-  if (!reduce) setInterval(() => {
-    agentEl.classList.add("swap");
-    setTimeout(() => { ai = (ai + 1) % AGENTS.length; agentEl.textContent = AGENTS[ai]; agentEl.classList.remove("swap"); }, 400);
-  }, 4200);
-
-  /* ---------- fire, smoke and sparks ---------- */
-  // The simulation runs in fixed 60 Hz steps, so it burns at the same pace on 60 and 120 Hz screens.
-  const canvas = document.querySelector("[data-fire]");
-  const ctx = canvas.getContext("2d");
-  const buf = document.createElement("canvas"), bctx = buf.getContext("2d");   // flames are summed here first
-  let W = 0, H = 0, visible = true, raf = 0;
-  function resize() {
-    const r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
-    W = r.width; H = r.height; canvas.width = W * dpr; canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    buf.width = Math.max(1, Math.round(W * dpr)); buf.height = Math.max(1, Math.round(H * dpr));
-    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (reduce) drawStatic();
-  }
-
-  const flames = [], sparks = [], smoke = [];
-  const fx = () => W * 0.5, fy = () => H * (fireY / 860);
-
-  // Logs and coals keep their shape; only their glow moves.
-  const R = (i) => rand(77, i);
-  const LOGS = [[-0.3, -1, .95], [0.28, 1, 1], [0.04, 0, .82]].map(([rot, side, len], k) => ({
-    rot, side, len,
-    cracks: Array.from({ length: 4 }, (_, i) => ({ at: -.36 + i * .2 + R(k * 9 + i) * .1, w: .05 + R(k * 9 + i + 4) * .05, ph: R(k * 9 + i + 7) * 6 })),
-  }));
-  const COALS = Array.from({ length: 18 }, (_, i) => ({ x: (R(i + 40) - .5) * .2, y: R(i + 60) * .028, r: .007 + R(i + 80) * .009, ph: R(i + 100) * 6 }));
-
-  function heatColor(h, a) {
-    // h: 1 = white-hot base, 0 = dark red tip
-    const stops = [[0, 120, 16, 24], [.3, 214, 52, 22], [.55, 255, 112, 26], [.8, 255, 170, 58], [1, 255, 222, 150]];
-    let i = 1; while (i < stops.length - 1 && h > stops[i][0]) i++;
-    const [p0, r0, g0, b0] = stops[i - 1], [p1, r1, g1, b1] = stops[i], t = Math.min(1, Math.max(0, (h - p0) / (p1 - p0)));
-    return `rgba(${(r0 + (r1 - r0) * t) | 0},${(g0 + (g1 - g0) * t) | 0},${(b0 + (b1 - b0) * t) | 0},${a.toFixed(3)})`;
-  }
-
-  function drawBed(time) {
-    const x = fx(), y = fy() + H * .025;
-    ctx.globalCompositeOperation = "lighter";
-    COALS.forEach((c) => {
-      const glow = .45 + .35 * Math.sin(time * .0021 + c.ph) * flick;
-      const r = c.r * W;
-      const g = ctx.createRadialGradient(x + c.x * W, y + c.y * W, 0, x + c.x * W, y + c.y * W, r * 2.2);
-      g.addColorStop(0, heatColor(.55 + glow * .3, .9 * glow)); g.addColorStop(.45, heatColor(.3, .45 * glow)); g.addColorStop(1, "rgba(120,16,24,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + c.x * W, y + c.y * W, r * 2.2, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.globalCompositeOperation = "source-over";
-  }
-
-  function drawLogs(time) {
-    const x = fx(), y = fy() + H * .02, T = W * .024;
-    LOGS.forEach((log) => {
-      const L = W * .18 * log.len;
-      ctx.save(); ctx.translate(x + log.side * W * .016, y); ctx.rotate(log.rot);
-      // bark: lit from the flames above, charred underneath
-      const g = ctx.createLinearGradient(0, -T / 2, 0, T / 2);
-      g.addColorStop(0, "#6a3524"); g.addColorStop(.25, "#3b1c15"); g.addColorStop(.7, "#1a0d0d"); g.addColorStop(1, "#0b0608");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(-L / 2, -T / 2, L, T, T * .42); ctx.fill();
-      // bark grain
-      ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = Math.max(.6, T * .06);
-      for (let i = 0; i < 3; i++) {
-        const yy = -T * .25 + i * T * .22;
-        ctx.beginPath(); ctx.moveTo(-L * .46, yy); ctx.bezierCurveTo(-L * .15, yy - T * .08, L * .15, yy + T * .08, L * .46, yy); ctx.stroke();
-      }
-      // sawn ends with rings
-      [-1, 1].forEach((e) => {
-        ctx.fillStyle = "#4a2a1e"; ctx.beginPath(); ctx.ellipse(e * L / 2, 0, T * .2, T * .48, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(20,8,8,.6)"; ctx.lineWidth = .7; ctx.beginPath(); ctx.ellipse(e * L / 2, 0, T * .1, T * .26, 0, 0, Math.PI * 2); ctx.stroke();
-      });
-      // glowing cracks in the charcoal
-      ctx.globalCompositeOperation = "lighter";
-      log.cracks.forEach((c) => {
-        const a = (.35 + .4 * Math.sin(time * .0017 + c.ph)) * flick;
-        const cx0 = c.at * L, cw = c.w * L;
-        const cg = ctx.createLinearGradient(cx0 - cw, 0, cx0 + cw, 0);
-        cg.addColorStop(0, "rgba(255,90,31,0)"); cg.addColorStop(.5, heatColor(.62, Math.max(0, a))); cg.addColorStop(1, "rgba(255,90,31,0)");
-        ctx.strokeStyle = cg; ctx.lineWidth = Math.max(1, T * .12);
-        ctx.beginPath(); ctx.moveTo(cx0 - cw, -T * .3); ctx.lineTo(cx0 - cw * .3, -T * .12); ctx.lineTo(cx0 + cw * .2, -T * .28); ctx.lineTo(cx0 + cw, -T * .1); ctx.stroke();
-      });
-      ctx.globalCompositeOperation = "source-over";
-      ctx.restore();
-    });
-  }
-
-  function spawnFlame() {
-    // tongues: particles born on a few wandering columns; hotter in the middle
-    const column = (Math.random() * 7 | 0) - 3;
-    const centre = 1 - Math.abs(column) / 4;
-    flames.push({ x: fx() + column * W * .012 + (Math.random() - .5) * W * .014, y: fy() - H * .005,
-      vx: -column * .05 + (Math.random() - .5) * .2, vy: -(1.3 + Math.random() * 1.6) * (.8 + centre * .4), life: 0,
-      max: 30 + Math.random() * 36 * (.6 + centre * .6), r: W * (0.009 + Math.random() * 0.014) * (.8 + centre * .4),
-      heat: .62 + centre * .3 + Math.random() * .08, col: column, wob: Math.random() * 6 });
-  }
-  function spawnSpark(target) {
-    const s = { x: fx() + (Math.random() - .5) * W * .05, y: fy() - H * .08, life: 0, max: 140 + Math.random() * 80, target: null };
-    if (target) {
-      s.target = target;
-      const k = W / 1000, dx = target.x * k - s.x, dy = target.y * k - s.y, t = 60 + Math.random() * 30;
-      s.vx = dx / t; s.vy = dy / t - 1.2; s.g = 2.4 / t;
-    } else { s.vx = (Math.random() - .5) * 1.2; s.vy = -(1.5 + Math.random() * 1.8); s.g = 0; }
-    sparks.push(s);
-  }
-
-  let step = 0, flick = 1, nextHit = 1500, simTime = 0;
-  // one 60 Hz simulation step
-  function simulate() {
-    step++; simTime += 1000 / 60;
-    flick += ((0.75 + Math.random() * .5) - flick) * .14;
-    for (let i = 0; i < 10; i++) spawnFlame();
-    if (step % 4 === 0) smoke.push({ x: fx() + (Math.random() - .5) * W * .04, y: fy() - H * .22, vx: (Math.random() - .5) * .3, vy: -(.45 + Math.random() * .45), life: 0, max: 170, r: W * .03 });
-    if (step % 10 === 0) spawnSpark(null);
-    if (simTime > nextHit) {
-      nextHit = simTime + 5000 + Math.random() * 2000;
-      if (!pinned) spawnSpark(ringStones[(Math.random() * ringStones.length) | 0]);
-    }
-    const t0 = simTime * .004;
-    for (let i = flames.length - 1; i >= 0; i--) {
-      const p = flames[i];
-      p.life++;
-      // a shared draught bends whole tongues, not single particles
-      const age = p.life / p.max;
-      const draught = (Math.sin(p.y * .03 + t0 + p.col * 1.9) * .5 + Math.sin(t0 * .7 + p.wob) * .15) * (1 + age * 1.6);
-      p.x += p.vx + draught; p.y += p.vy; p.vy *= 1.008;
-      p.vx += (fx() - p.x) * .0018;
-      if (p.life >= p.max) flames.splice(i, 1);
-    }
-    for (let i = smoke.length - 1; i >= 0; i--) {
-      const p = smoke[i]; p.life++; p.x += p.vx + Math.sin(p.life * .03) * .25; p.y += p.vy; p.r += .25;
-      if (p.life >= p.max) smoke.splice(i, 1);
-    }
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i];
-      s.life++; s.vy += s.g; s.x += s.vx + (s.target ? 0 : Math.sin(s.life * .08) * .4); s.y += s.vy;
-      let dead = s.life > s.max;
-      if (s.target) {
-        const k = W / 1000, dx = s.target.x * k - s.x, dy = s.target.y * k - s.y;
-        if (dx * dx + dy * dy < (22 * k) ** 2 || s.life > 120) {
-          dead = true;
-          const tg = s.target.g;
-          tg.classList.add("hit"); setTimeout(() => { if (pinned?.g !== tg) tg.classList.remove("hit"); }, 700);
-          if (!pinned) showTip(s.target, false);
-          for (let j = 0; j < 7; j++) sparks.push({ x: s.x, y: s.y, vx: (Math.random() - .5) * 2.4, vy: -Math.random() * 1.6, g: .06, life: 0, max: 22 + Math.random() * 12, target: null, ember: true });
-        }
-      }
-      if (dead) sparks.splice(i, 1);
-    }
-  }
-
-  function render() {
-    ctx.clearRect(0, 0, W, H);
-    root.style.setProperty("--flicker", flick.toFixed(2));
-    const floor = ctx.createRadialGradient(fx(), fy() + H * .02, 0, fx(), fy() + H * .02, W * .38);
-    floor.addColorStop(0, `rgba(255,90,31,${(.24 * flick).toFixed(3)})`); floor.addColorStop(.5, `rgba(196,22,28,${(.08 * flick).toFixed(3)})`); floor.addColorStop(1, "rgba(196,22,28,0)");
-    ctx.fillStyle = floor; ctx.beginPath(); ctx.ellipse(fx(), fy() + H * .02, W * .38, H * .22, 0, 0, Math.PI * 2); ctx.fill();
-
-    // smoke drifts up and fades into the night
-    smoke.forEach((p) => {
-      const t = p.life / p.max;
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-      const fade = Math.min(1, Math.max(0, (p.y - H * .12) / (H * .25)));
-      g.addColorStop(0, `rgba(96,68,72,${(.11 * Math.sin(t * Math.PI) * fade).toFixed(3)})`); g.addColorStop(1, "rgba(96,68,72,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-    });
-
-    drawBed(simTime);
-    drawLogs(simTime);
-
-    // flames: stretched tongues summed into a buffer, then laid on twice:
-    // blurred for the glow, sharp for the licks
-    bctx.clearRect(0, 0, W, H);
-    bctx.globalCompositeOperation = "lighter";
-    flames.forEach((p) => {
-      const t = p.life / p.max;
-      const rad = p.r * (1 - t * .75);
-      const stretch = 1.9 + t * 2.6;
-      const heat = Math.max(0, p.heat * (1 - t * 1.05));
-      const a = Math.sin(Math.min(1, t * 6) * Math.PI / 2) * (1 - t) * .15;
-      bctx.save(); bctx.translate(p.x, p.y); bctx.scale(1, stretch);
-      const g = bctx.createRadialGradient(0, 0, 0, 0, 0, rad);
-      g.addColorStop(0, heatColor(heat, a)); g.addColorStop(.6, heatColor(heat * .8, a * .45)); g.addColorStop(1, heatColor(heat * .6, 0));
-      bctx.fillStyle = g; bctx.beginPath(); bctx.arc(0, 0, rad, 0, Math.PI * 2); bctx.fill();
-      bctx.restore();
-    });
-    // white-hot heart at the base
-    const core = bctx.createRadialGradient(fx(), fy() - H * .03, 0, fx(), fy() - H * .03, W * .05);
-    core.addColorStop(0, `rgba(255,226,170,${(.13 * flick).toFixed(3)})`); core.addColorStop(1, "rgba(255,170,60,0)");
-    bctx.fillStyle = core; bctx.beginPath(); bctx.ellipse(fx(), fy() - H * .03, W * .05, W * .07, 0, 0, Math.PI * 2); bctx.fill();
-    bctx.globalCompositeOperation = "source-over";
-
-    ctx.globalCompositeOperation = "lighter";
-    ctx.save();
-    ctx.filter = `blur(${Math.max(4, W * .014).toFixed(1)}px)`;
-    ctx.globalAlpha = .7; ctx.drawImage(buf, 0, 0, W, H);
-    ctx.filter = "none"; ctx.globalAlpha = 1; ctx.drawImage(buf, 0, 0, W, H);
-    ctx.restore();
-
-    sparks.forEach((s) => {
-      const t = s.life / s.max;
-      const a = s.target ? .95 : (1 - t) * .9;
-      ctx.strokeStyle = `rgba(255,${s.ember ? 120 : 196},${s.ember ? 40 : 96},${a.toFixed(3)})`;
-      ctx.lineWidth = s.target ? 2.2 : 1.3; ctx.lineCap = "round";
-      // a short tail along the flight path: a glowing spark, not a dot
-      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .9, s.y - s.vy * .9); ctx.stroke();
-    });
-    ctx.globalCompositeOperation = "source-over";
-  }
-
-  function drawStatic() {
-    flames.length = sparks.length = smoke.length = 0; step = 0; simTime = 0;
-    for (let i = 0; i < 120; i++) simulate();
-    sparks.length = 0;
-    render();
-  }
-
-  let last = 0, acc = 0;
-  function tick(now) {
-    raf = 0;
-    if (!visible) { last = 0; return; }
-    acc += last ? Math.min(now - last, 100) : 1000 / 60; last = now;
-    let n = 0;
-    while (acc >= 1000 / 60 && n < 4) { simulate(); acc -= 1000 / 60; n++; }
-    if (n === 4) acc = 0;
-    render();
-    raf = requestAnimationFrame(tick);
-  }
-
-  resize();
-  addEventListener("resize", resize);
-  if (!reduce) {
-    new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(tick); }).observe(ring);
-    document.addEventListener("visibilitychange", () => { visible = !document.hidden; if (visible && !raf) raf = requestAnimationFrame(tick); });
-    raf = requestAnimationFrame(tick);
-  }
-
-  /* ---------- three strokes ignite in order ---------- */
-  const strokes = [...document.querySelectorAll("[data-strokes] li")];
-  if (reduce) strokes.forEach((li) => li.classList.add("on"));
-  else new IntersectionObserver((entries, obs) => {
-    if (!entries.some((e) => e.isIntersecting)) return;
-    strokes.forEach((li, i) => setTimeout(() => li.classList.add("on"), 250 + i * 750));
-    obs.disconnect();
-  }, { threshold: .4 }).observe(document.querySelector("[data-strokes]"));
-})();
-</script>
+<script src="assets/site.js"></script>
 </body>
 </html>

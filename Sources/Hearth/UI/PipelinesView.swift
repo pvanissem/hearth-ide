@@ -46,8 +46,8 @@ struct PipelinesView: View {
             if !remoteChecked.wrappedValue {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if remote.wrappedValue == nil {
-                ContentUnavailableView("Kein CI-Projekt", systemImage: "network.slash",
-                                       description: Text("Das Repository hat keinen GitLab- oder GitHub-Remote „origin“."))
+                ContentUnavailableView("No CI project", systemImage: "network.slash",
+                                       description: Text("The repository has no GitLab or GitHub remote “origin”."))
             } else if api == nil || configureToken.wrappedValue {
                 tokenSetup
             } else {
@@ -86,20 +86,20 @@ struct PipelinesView: View {
 
     fileprivate func dialogs(_ content: some View) -> some View {
         sheets(content)
-            .confirmationDialog("Manuellen Job „\(confirmPlay.wrappedValue?.name ?? "")“ starten?",
+            .confirmationDialog(String(localized: "Start the manual job “\(confirmPlay.wrappedValue?.name ?? "")”?"),
                                 isPresented: Binding(get: { confirmPlay.wrappedValue != nil }, set: { if !$0 { confirmPlay.wrappedValue = nil } }),
                                 presenting: confirmPlay.wrappedValue) { job in
-                Button("Starten") { act("Job „\(job.name)“ gestartet") { try await $0.play(job: job.id) } }
+                Button("Start") { act(String(localized: "Job “\(job.name)” started")) { try await $0.play(job: job.id) } }
             } message: { job in
-                Text("Stage „\(job.stage)“. Manuelle Jobs sind oft Deployments oder andere Aktionen mit Wirkung außerhalb des Repos.")
+                Text("Stage “\(job.stage)”. Manual jobs are often deployments or other actions with effects outside the repository.")
             }
-            .confirmationDialog("Neue Pipeline für „\(model.workspace.gitSnapshot.branch)“ starten?", isPresented: confirmRun.projectedValue) {
-                Button("Pipeline starten") {
+            .confirmationDialog("Start a new pipeline for “\(model.workspace.gitSnapshot.branch)”?", isPresented: confirmRun.projectedValue) {
+                Button("Start pipeline") {
                     let ref = model.workspace.gitSnapshot.branch
-                    act("Pipeline für \(ref) gestartet") { try await $0.run(ref: ref, workflow: nil) }
+                    act(String(localized: "Pipeline for \(ref) started")) { try await $0.run(ref: ref, workflow: nil) }
                 }
             } message: {
-                Text("Gestartet wird der Stand auf GitLab (origin/\(model.workspace.gitSnapshot.branch)), nicht deine lokalen, ungepushten Änderungen.")
+                Text("This runs what is on GitLab (origin/\(model.workspace.gitSnapshot.branch)), not your local, unpushed changes.")
             }
             .modifier(WorkflowDialog(view: self))
     }
@@ -110,15 +110,15 @@ struct PipelinesView: View {
     }
 
     fileprivate func workflowDialog(_ content: some View) -> some View {
-        content.confirmationDialog("Workflow „\(confirmWorkflow.wrappedValue?.name ?? "")“ für „\(model.workspace.gitSnapshot.branch)“ starten?",
+        content.confirmationDialog(String(localized: "Start the workflow “\(confirmWorkflow.wrappedValue?.name ?? "")” for “\(model.workspace.gitSnapshot.branch)”?"),
                                    isPresented: Binding(get: { confirmWorkflow.wrappedValue != nil }, set: { if !$0 { confirmWorkflow.wrappedValue = nil } }),
                                    presenting: confirmWorkflow.wrappedValue) { workflow in
-            Button("Workflow starten") {
+            Button("Start workflow") {
                 let ref = model.workspace.gitSnapshot.branch
-                act("Workflow „\(workflow.name)“ für \(ref) gestartet") { try await $0.run(ref: ref, workflow: workflow) }
+                act(String(localized: "Workflow “\(workflow.name)” started for \(ref)")) { try await $0.run(ref: ref, workflow: workflow) }
             }
         } message: { workflow in
-            Text("\(workflow.path)\n\nGestartet wird der Stand auf GitHub (origin/\(model.workspace.gitSnapshot.branch)), nicht deine lokalen, ungepushten Änderungen. Der Workflow braucht einen „workflow_dispatch“-Trigger.")
+            Text("\(workflow.path)\n\nThis runs what is on GitHub (origin/\(model.workspace.gitSnapshot.branch)), not your local, unpushed changes. The workflow needs a “workflow_dispatch” trigger.")
         }
     }
 
@@ -132,8 +132,8 @@ struct PipelinesView: View {
 
     private var tokenSetup: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("\(provider.name)-Zugang einrichten", systemImage: "key.fill").scaledFont(.headline)
-            Text("Tokens werden nur an den unten ausdrücklich freigegebenen HTTPS-Origin gesendet und getrennt nach Server und Zugriff im Schlüsselbund gespeichert. Der alte globale Token wird nicht übernommen. Bitte zuerst die Serveradresse prüfen.")
+            Label("Set up \(provider.name) access", systemImage: "key.fill").scaledFont(.headline)
+            Text("Tokens are only sent to the HTTPS origin you approve below and are stored in the keychain per server and access level. Please check the server address first.")
                 .scaledFont(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let r = remote.wrappedValue {
@@ -141,30 +141,30 @@ struct PipelinesView: View {
                 if r.provider == .gitHub {
                     Text("API: \(r.apiBase.host ?? r.host)").scaledFont(.caption, mono: true).foregroundStyle(.secondary)
                 }
-                Toggle(r.provider == .gitLab ? "Separaten Schreibzugriff einrichten (api)" : "Separaten Schreibzugriff einrichten (Actions: Read and write)",
+                Toggle(r.provider == .gitLab ? "Set up separate write access (api)" : "Set up separate write access (Actions: Read and write)",
                        isOn: writingToken.projectedValue)
                 Text(writingToken.wrappedValue
-                     ? "Nur für ausdrücklich ausgelöste Schreibaktionen; zusätzlich ist ein Lesetoken nötig."
-                     : r.provider == .gitLab ? "Für automatisches Laden reicht der Scope read_api."
-                     : "Fine-grained Token, nur dieses Repository, Berechtigung „Actions: Read-only“ (dazu automatisch „Metadata: Read-only“).")
+                     ? "Only for write actions you trigger yourself; a read token is needed as well."
+                     : r.provider == .gitLab ? "For automatic loading the read_api scope is enough."
+                     : "Fine-grained token, only this repository, permission “Actions: Read-only” (plus “Metadata: Read-only”, added automatically).")
                     .scaledFont(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Link(destination: r.tokenPage(writing: writingToken.wrappedValue)) {
-                    Label("Token in \(r.provider.name) erstellen", systemImage: "arrow.up.forward.square")
+                    Label("Create a token in \(r.provider.name)", systemImage: "arrow.up.forward.square")
                 }
             }
             HStack {
-                SecureField("Token einfügen", text: tokenInput.projectedValue)
+                SecureField("Paste token", text: tokenInput.projectedValue)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(saveToken)
-                Button("Server freigeben & speichern", action: saveToken)
+                Button("Approve server & save", action: saveToken)
                     .buttonStyle(.borderedProminent)
                     .disabled(tokenInput.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if api != nil {
-                Button("Zurück zu Pipelines") { configureToken.wrappedValue = false }
+                Button("Back to pipelines") { configureToken.wrappedValue = false }
                 if let r = remote.wrappedValue {
-                    Button("Serverfreigabe widerrufen", role: .destructive) {
+                    Button("Revoke server approval", role: .destructive) {
                         model.ci.revoke(r.origin)
                         pipelines.wrappedValue = []
                         jobs.wrappedValue = [:]
@@ -182,20 +182,20 @@ struct PipelinesView: View {
         let t = tokenInput.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, let r = remote.wrappedValue else { return }
         let alert = NSAlert()
-        alert.messageText = "Diesen \(r.provider.name)-Server freigeben?"
-        let access = r.provider == .gitLab ? (writingToken.wrappedValue ? "Schreiben (api)" : "Lesen (read_api)")
-                                           : (writingToken.wrappedValue ? "Schreiben (Actions)" : "Lesen (Actions)")
+        alert.messageText = String(localized: "Approve this \(r.provider.name) server?")
+        let access = r.provider == .gitLab ? (writingToken.wrappedValue ? String(localized: "Write (api)") : String(localized: "Read (read_api)"))
+                                           : (writingToken.wrappedValue ? String(localized: "Write (Actions)") : String(localized: "Read (Actions)"))
         let apiNote = r.provider == .gitHub ? " (API: \(r.apiBase.host ?? r.host))" : ""
-        alert.informativeText = "\(r.origin.value)\(apiNote)\n\nNur dieser HTTPS-Origin erhält den Token. Zugriff: \(access). Keine Freigabe für andere Hosts oder Ports."
-        alert.addButton(withTitle: "Freigeben")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.informativeText = String(localized: "\(r.origin.value)\(apiNote)\n\nOnly this HTTPS origin receives the token. Access: \(access). Nothing is approved for other hosts or ports.")
+        alert.addButton(withTitle: String(localized: "Approve"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         if model.ci.save(t, for: r.origin, writing: writingToken.wrappedValue) {
             tokenInput.wrappedValue = ""
             configureToken.wrappedValue = false
-            model.toast("\(r.provider.name)-Token gespeichert")
+            model.toast(String(localized: "\(r.provider.name) token saved"))
         } else {
-            error.wrappedValue = "Token konnte nicht im Schlüsselbund gespeichert werden."
+            error.wrappedValue = String(localized: "The token could not be saved in the keychain.")
         }
     }
 
@@ -211,10 +211,10 @@ struct PipelinesView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if pipelines.wrappedValue.isEmpty && !loading.wrappedValue && error.wrappedValue == nil {
-                ContentUnavailableView("Keine Pipelines", systemImage: "checklist",
+                ContentUnavailableView("No pipelines", systemImage: "checklist",
                                        description: Text(onlyCurrentBranch.wrappedValue
-                                                         ? "Für „\(model.workspace.gitSnapshot.branch)“ gibt es noch keine Pipeline."
-                                                         : "Für dieses Projekt gibt es noch keine Pipeline."))
+                                                         ? "There is no pipeline for “\(model.workspace.gitSnapshot.branch)” yet."
+                                                         : "This project has no pipeline yet."))
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 4) {
@@ -224,7 +224,7 @@ struct PipelinesView: View {
                 }
             }
         }
-        .busyOverlay(loading.wrappedValue && pipelines.wrappedValue.isEmpty, label: "Lade Pipelines …")
+        .busyOverlay(loading.wrappedValue && pipelines.wrappedValue.isEmpty, label: String(localized: "Loading pipelines…"))
     }
 
     private var header: some View {
@@ -234,21 +234,21 @@ struct PipelinesView: View {
             Text(remote.wrappedValue?.path ?? "").scaledFont(.callout, bold: true).lineLimit(1).truncationMode(.head)
             Spacer()
             Button { configureToken.wrappedValue = true } label: { Image(systemName: "key") }
-                .buttonStyle(.borderless).help("Zugriff für diesen \(provider.name)-Server einrichten")
+                .buttonStyle(.borderless).help("Set up access for this \(provider.name) server")
             Picker("", selection: onlyCurrentBranch.projectedValue) {
                 Text(model.workspace.gitSnapshot.branch.isEmpty ? "Branch" : model.workspace.gitSnapshot.branch).tag(true)
-                Text("Alle").tag(false)
+                Text("All").tag(false)
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
             if provider == .gitLab {
                 Button { confirmRun.wrappedValue = true } label: { Image(systemName: "play.fill") }
                     .buttonStyle(.borderless)
                     .disabled(model.workspace.gitSnapshot.branch.isEmpty)
-                    .help("Neue Pipeline für den aktuellen Branch starten")
+                    .help("Start a new pipeline for the current branch")
             } else {
                 Menu {
                     if workflows.wrappedValue.isEmpty {
-                        Text("Keine aktiven Workflows gefunden").disabled(true)
+                        Text("No active workflows found").disabled(true)
                     }
                     ForEach(workflows.wrappedValue) { w in
                         Button(w.name) { confirmWorkflow.wrappedValue = w }
@@ -256,7 +256,7 @@ struct PipelinesView: View {
                 } label: { Image(systemName: "play.fill") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .disabled(model.workspace.gitSnapshot.branch.isEmpty)
-                    .help("Workflow für den aktuellen Branch starten")
+                    .help("Start a workflow for the current branch")
                     .task(id: "\(root)#\(api != nil)") {
                         guard let api else { return }
                         workflows.wrappedValue = (try? await api.workflows()) ?? []
@@ -264,12 +264,12 @@ struct PipelinesView: View {
             }
             Button { Task { await refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.borderless)
-                .help(lastRefresh.wrappedValue.map { "Aktualisiert \($0.formatted(.relative(presentation: .named)))" } ?? "Aktualisieren")
+                .help(lastRefresh.wrappedValue.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "Refresh")
             if let r = remote.wrappedValue {
                 Button { NSWorkspace.shared.open(r.pipelinesPage) } label: {
                     Image(systemName: "arrow.up.forward.square")
                 }
-                .buttonStyle(.borderless).help(r.provider == .gitLab ? "Pipelines in GitLab öffnen" : "Actions in GitHub öffnen")
+                .buttonStyle(.borderless).help(r.provider == .gitLab ? "Open pipelines in GitLab" : "Open Actions in GitHub")
             }
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
@@ -318,23 +318,23 @@ struct PipelinesView: View {
             }
             .contextMenu {
                 if let url = p.webURL {
-                    Button { NSWorkspace.shared.open(url) } label: { Label("In \(provider.name) öffnen", systemImage: "arrow.up.forward.square") }
+                    Button { NSWorkspace.shared.open(url) } label: { Label("Open in \(provider.name)", systemImage: "arrow.up.forward.square") }
                 }
                 if p.status == "failed" || p.status == "canceled" {
-                    Button { act("\(provider.runName) #\(p.iid) wird wiederholt") { try await $0.retry(pipeline: p.id) } } label: {
-                        Label("Fehlgeschlagene Jobs wiederholen", systemImage: "arrow.clockwise")
+                    Button { act(String(localized: "Retrying \(provider.runName) #\(p.iid)")) { try await $0.retry(pipeline: p.id) } } label: {
+                        Label("Retry failed jobs", systemImage: "arrow.clockwise")
                     }
                 }
                 if CIStatus.isActive(p.status) {
-                    Button(role: .destructive) { act("\(provider.runName) #\(p.iid) wird abgebrochen") { try await $0.cancel(pipeline: p.id) } } label: {
-                        Label("Abbrechen", systemImage: "stop.circle")
+                    Button(role: .destructive) { act(String(localized: "Cancelling \(provider.runName) #\(p.iid)")) { try await $0.cancel(pipeline: p.id) } } label: {
+                        Label("Cancel", systemImage: "stop.circle")
                     }
                 }
                 Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(p.sha, forType: .string)
-                    model.toast("Commit-SHA kopiert")
-                } label: { Label("Commit-SHA kopieren", systemImage: "doc.on.doc") }
+                    model.toast(String(localized: "Commit SHA copied"))
+                } label: { Label("Copy commit SHA", systemImage: "doc.on.doc") }
             }
             if open { stages(p).padding(.leading, 24) }
         }
@@ -349,14 +349,14 @@ struct PipelinesView: View {
                     Picker("", selection: Binding(get: { asList }, set: { list in
                         if list { showList.wrappedValue.insert(p.id) } else { showList.wrappedValue.remove(p.id) }
                     })) {
-                        Label("Diagramm", systemImage: "point.3.filled.connected.trianglepath.dotted").tag(false)
-                        Label("Liste", systemImage: "list.bullet").tag(true)
+                        Label("Diagram", systemImage: "point.3.filled.connected.trianglepath.dotted").tag(false)
+                        Label("List", systemImage: "list.bullet").tag(true)
                     }
                     .pickerStyle(.segmented).labelsHidden().fixedSize()
                     Spacer()
                     if !asList {
                         Button { bigGraph.wrappedValue = p } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
-                            .buttonStyle(.borderless).help("Diagramm groß anzeigen")
+                            .buttonStyle(.borderless).help("Show the diagram large")
                     }
                 }
                 if asList {
@@ -374,7 +374,7 @@ struct PipelinesView: View {
                 }
             }
         } else {
-            HStack { ProgressView().controlSize(.small); Text("Lade Jobs …").scaledFont(.caption) }
+            HStack { ProgressView().controlSize(.small); Text("Loading jobs…").scaledFont(.caption) }
         }
     }
 
@@ -383,7 +383,7 @@ struct PipelinesView: View {
             Image(systemName: CIStatus.symbol(j.status)).foregroundStyle(color(j.status))
             Text(j.name).scaledFont(.callout).lineLimit(1)
             if j.allowFailure && j.status == "failed" {
-                Text("erlaubt").scaledFont(.caption2).foregroundStyle(.orange)
+                Text("allowed").scaledFont(.caption2).foregroundStyle(.orange)
             }
             Spacer()
             if let d = j.duration {
@@ -391,23 +391,23 @@ struct PipelinesView: View {
                     .scaledFont(.caption2, digits: true).foregroundStyle(.secondary)
             }
             if j.status == "manual" {
-                CircleAction(symbol: "play.fill", tint: .purple, help: "Manuellen Job starten") { confirmPlay.wrappedValue = j }
+                CircleAction(symbol: "play.fill", tint: .purple, help: String(localized: "Start manual job")) { confirmPlay.wrappedValue = j }
             } else if j.status == "failed" || j.status == "canceled" {
-                CircleAction(symbol: "arrow.clockwise", tint: .orange, help: "Job wiederholen") { retryJob(j) }
+                CircleAction(symbol: "arrow.clockwise", tint: .orange, help: String(localized: "Retry job")) { retryJob(j) }
             }
         }
         .interactiveRow { openLog(j) }
-        .help("Klicken für das Job-Log")
+        .help("Click for the job log")
         .contextMenu {
-            Button { openLog(j) } label: { Label("Log anzeigen", systemImage: "doc.text") }
+            Button { openLog(j) } label: { Label("Show log", systemImage: "doc.text") }
             if let url = j.webURL {
-                Button { NSWorkspace.shared.open(url) } label: { Label("In \(provider.name) öffnen", systemImage: "arrow.up.forward.square") }
+                Button { NSWorkspace.shared.open(url) } label: { Label("Open in \(provider.name)", systemImage: "arrow.up.forward.square") }
             }
             if j.status == "manual" {
-                Button { confirmPlay.wrappedValue = j } label: { Label("Manuell starten …", systemImage: "play.fill") }
+                Button { confirmPlay.wrappedValue = j } label: { Label("Start manually…", systemImage: "play.fill") }
             }
             if PipelineGraph.retryable(j) {
-                Button { retryJob(j) } label: { Label("Job wiederholen", systemImage: "arrow.clockwise") }
+                Button { retryJob(j) } label: { Label("Retry job", systemImage: "arrow.clockwise") }
             }
         }
     }
@@ -418,7 +418,7 @@ struct PipelinesView: View {
     }
 
     private func retryJob(_ j: CIJob) {
-        act("Job „\(j.name)“ wird wiederholt") { try await $0.retry(job: j.id) }
+        act(String(localized: "Retrying job “\(j.name)”")) { try await $0.retry(job: j.id) }
     }
 
     private func bigGraphSheet(_ p: CIPipeline) -> some View {
@@ -429,8 +429,8 @@ struct PipelinesView: View {
                 Text(p.ref).font(.callout.monospaced()).foregroundStyle(.secondary)
                 Text(CIStatus.label(p.status)).foregroundStyle(PipelineGraph.color(p.status))
                 Spacer()
-                if let url = p.webURL { Button("In \(provider.name) öffnen") { NSWorkspace.shared.open(url) } }
-                Button("Schließen") { bigGraph.wrappedValue = nil }.keyboardShortcut(.cancelAction)
+                if let url = p.webURL { Button("Open in \(provider.name)") { NSWorkspace.shared.open(url) } }
+                Button("Close") { bigGraph.wrappedValue = nil }.keyboardShortcut(.cancelAction)
             }
             .padding(10)
             Divider()
@@ -455,9 +455,9 @@ struct PipelinesView: View {
                 Text(l.job.stage).font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 if let url = l.job.webURL {
-                    Button("In \(provider.name) öffnen") { NSWorkspace.shared.open(url) }
+                    Button("Open in \(provider.name)") { NSWorkspace.shared.open(url) }
                 }
-                Button("Schließen") { log.wrappedValue = nil }.keyboardShortcut(.cancelAction)
+                Button("Close") { log.wrappedValue = nil }.keyboardShortcut(.cancelAction)
             }
             .padding(10)
             Divider()
@@ -479,10 +479,10 @@ struct PipelinesView: View {
                 // Provider-specific markers are removed by the client; keep the tail of huge logs.
                 let clean = try await api.log(job: job.id)
                 let lines = clean.split(separator: "\n", omittingEmptySubsequences: false)
-                let text = lines.count > 3000 ? "… (\(lines.count - 3000) Zeilen gekürzt)\n" + lines.suffix(3000).joined(separator: "\n") : clean
-                log.wrappedValue?.text = text.isEmpty ? "(leeres Log)" : text
+                let text = lines.count > 3000 ? String(localized: "… (\(lines.count - 3000) lines trimmed)\n") + lines.suffix(3000).joined(separator: "\n") : clean
+                log.wrappedValue?.text = text.isEmpty ? String(localized: "(empty log)") : text
             } catch {
-                log.wrappedValue?.text = "Log konnte nicht geladen werden: \(error.localizedDescription)"
+                log.wrappedValue?.text = String(localized: "The log could not be loaded: \(error.localizedDescription)")
             }
         }
     }
@@ -519,7 +519,7 @@ struct PipelinesView: View {
         guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue, let api = model.ci.api(for: r, writing: true) else {
             writingToken.wrappedValue = true
             configureToken.wrappedValue = true
-            model.banner = "Bitte separaten Schreibzugriff für diesen \(provider.name)-Server freigeben."
+            model.banner = String(localized: "Please approve separate write access for this \(provider.name) server.")
             return
         }
         Task {

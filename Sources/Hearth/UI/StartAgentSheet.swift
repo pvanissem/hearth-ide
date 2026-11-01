@@ -16,28 +16,28 @@ struct StartAgentSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Agent starten").font(.title2.bold())
-                Text("Der Agent arbeitet in einer nono-Sandbox: Er darf nur in diesem Ordner schreiben und nur bekannte Entwickler-Hosts erreichen.")
+                Text("Start agent").font(.title2.bold())
+                Text("The agent works in a nono sandbox: it may only write in this folder and only reach known developer hosts.")
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Ordner").font(.headline)
+                Text("Folder").font(.headline)
                 HStack {
                     Image(systemName: "folder").foregroundStyle(.secondary)
-                    Text(directory.wrappedValue.isEmpty ? "Kein Ordner gewählt"
+                    Text(directory.wrappedValue.isEmpty ? String(localized: "No folder selected")
                          : directory.wrappedValue.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                         .lineLimit(1).truncationMode(.head)
                         .foregroundStyle(directory.wrappedValue.isEmpty ? .secondary : .primary)
                     Spacer()
-                    Button("Wählen …") { chooseFolder() }
+                    Button("Choose…") { chooseFolder() }
                 }
                 .padding(8)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
                 if let problem = folderProblem {
                     Text(problem).font(.caption).foregroundStyle(.red)
                 } else if let project = model.sandboxSettings.project(for: directory.wrappedValue), !project.folders.isEmpty {
-                    Label("Projekt-Freigaben: " + project.folders.map { URL(fileURLWithPath: $0.path).lastPathComponent + ($0.write ? " (schreiben)" : " (lesen)") }
+                    Label(String(localized: "Project folders: ") + project.folders.map { URL(fileURLWithPath: $0.path).lastPathComponent + ($0.write ? String(localized: " (write)") : String(localized: " (read)")) }
                             .joined(separator: ", "), systemImage: "folder.badge.gearshape")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -56,13 +56,13 @@ struct StartAgentSheet: View {
 
             HStack {
                 if kind.wrappedValue != .shell {
-                    Button("Anmelden …") { start(.login) }
+                    Button("Sign in…") { start(.login) }
                         .disabled(!canStart || (kind.wrappedValue.loginArguments == nil))
                         .help(kind.wrappedValue.loginHint)
                 }
                 Spacer()
-                Button("Abbrechen") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Starten") { start(.session) }
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Start") { start(.session) }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .disabled(!canStart)
@@ -99,12 +99,12 @@ struct StartAgentSheet: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(k.displayName)
                 if available == false {
-                    Text("Nicht installiert – \(k.installHint)").font(.caption).foregroundStyle(.secondary)
+                    Text("Not installed – \(k.installHint)").font(.caption).foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 } else if k == .claude {
-                    Text("Läuft als Terminal in der Chat-Ansicht (nutzt dein Claude-Abo)").font(.caption).foregroundStyle(.secondary)
+                    Text("Runs as a terminal in the chat area (uses your Claude subscription)").font(.caption).foregroundStyle(.secondary)
                 } else if k == .shell {
-                    Text("zsh in derselben Sandbox, zum Ausprobieren der Regeln").font(.caption).foregroundStyle(.secondary)
+                    Text("zsh in the same sandbox, to try out the rules").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
@@ -121,8 +121,8 @@ struct StartAgentSheet: View {
         let dir = directory.wrappedValue
         guard !dir.isEmpty else { return nil }
         let resolved = URL(fileURLWithPath: dir).resolvingSymlinksInPath().path
-        if !resolved.hasPrefix(NSHomeDirectory() + "/") { return "Der Ordner muss unterhalb deines Home-Verzeichnisses liegen." }
-        if !FileManager.default.fileExists(atPath: resolved) { return "Der Ordner existiert nicht." }
+        if !resolved.hasPrefix(NSHomeDirectory() + "/") { return String(localized: "The folder must be inside your home folder.") }
+        if !FileManager.default.fileExists(atPath: resolved) { return String(localized: "The folder does not exist.") }
         return nil
     }
 
@@ -135,7 +135,7 @@ struct StartAgentSheet: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Wählen"
+        panel.prompt = String(localized: "Choose")
         if !directory.wrappedValue.isEmpty { panel.directoryURL = URL(fileURLWithPath: directory.wrappedValue) }
         if panel.runModal() == .OK, let url = panel.url { directory.wrappedValue = url.path }
     }

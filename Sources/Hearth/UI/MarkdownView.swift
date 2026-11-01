@@ -211,7 +211,7 @@ struct CodeBlockView: View {
                     copied.wrappedValue = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied.wrappedValue = false }
                 } label: { Image(systemName: copied.wrappedValue ? "checkmark" : "doc.on.doc") }
-                    .buttonStyle(.borderless).help("Kopieren")
+                    .buttonStyle(.borderless).help("Copy")
             }
             .padding(6)
         }

@@ -141,13 +141,13 @@ private struct EditorDocumentView: View {
                     changesBar(doc)
                 }
                 if relativePath == nil {
-                    Label("Geöffnete Datei aus einem anderen Workspace – Git-Review ist hier deaktiviert.", systemImage: "folder.badge.questionmark")
+                    Label("File from another workspace – Git review is off here.", systemImage: "folder.badge.questionmark")
                         .scaledFont(.caption).foregroundStyle(.secondary).padding(6)
                 }
                 if let symbol = model.editor.searchingDefinition {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
-                        Text("Suche Definition von „\(symbol)“ …").font(.caption)
+                        Text("Looking for the definition of “\(symbol)”…").font(.caption)
                         Spacer()
                     }
                     .padding(6).background(Color.accentColor.opacity(0.08))
@@ -163,23 +163,23 @@ private struct EditorDocumentView: View {
                         }
                     }
             }
-            .confirmationDialog("Änderungen an „\(pendingClose.wrappedValue?.lastPathComponent ?? "")“ sichern?",
+            .confirmationDialog(String(localized: "Save the changes to “\(pendingClose.wrappedValue?.lastPathComponent ?? "")”?"),
                                 isPresented: Binding(get: { pendingClose.wrappedValue != nil }, set: { if !$0 { pendingClose.wrappedValue = nil } }),
                                 presenting: pendingClose.wrappedValue) { u in
-                Button("Sichern") {
+                Button("Save") {
                     if case .saved = model.editor.document(for: u).save(force: false) { model.editor.closeTab(u, in: group); model.workspace.revision += 1 }
-                    else { model.banner = "\(u.lastPathComponent) konnte nicht gesichert werden (extern geändert?)." }
+                    else { model.banner = String(localized: "\(u.lastPathComponent) could not be saved (changed elsewhere?).") }
                 }
-                Button("Nicht sichern", role: .destructive) { model.editor.closeTab(u, in: group) }
-                Button("Abbrechen", role: .cancel) {}
-            } message: { _ in Text("Ungesicherte Änderungen gehen sonst verloren.") }
-            .alert("Gehe zu Zeile", isPresented: goToLineShown.projectedValue) {
-                TextField("Zeile", text: goToLineInput.projectedValue)
-                Button("Springen") {
+                Button("Don’t save", role: .destructive) { model.editor.closeTab(u, in: group) }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in Text("Unsaved changes will be lost otherwise.") }
+            .alert("Go to line", isPresented: goToLineShown.projectedValue) {
+                TextField("Line", text: goToLineInput.projectedValue)
+                Button("Go") {
                     if let n = Int(goToLineInput.wrappedValue.trimmingCharacters(in: .whitespaces)), n > 0 { group.line = n }
                     goToLineInput.wrappedValue = ""
                 }
-                Button("Abbrechen", role: .cancel) { goToLineInput.wrappedValue = "" }
+                Button("Cancel", role: .cancel) { goToLineInput.wrappedValue = "" }
             }
             .task(id: loadKey) {
                 document?.checkDisk()
@@ -190,23 +190,23 @@ private struct EditorDocumentView: View {
                 gate.invalidate()
                 requests.wrappedValue = gate
             }
-            .confirmationDialog("Alle \(currentDiff.hunks.count) Änderungen in \(url.lastPathComponent) verwerfen?",
+            .confirmationDialog("Discard all \(currentDiff.hunks.count) changes in \(url.lastPathComponent)?",
                                 isPresented: confirmRevertAll.projectedValue) {
-                Button("Alle verwerfen", role: .destructive) { revertAll() }
+                Button("Discard all", role: .destructive) { revertAll() }
             } message: {
                 Text(currentDiff.untracked
-                     ? "Die Datei ist neu und nicht versioniert – sie wird geleert. Löschen kannst du sie im Git-Tab."
-                     : "Die Datei wird auf den Stand im Git-Index (zuletzt angenommen bzw. committet) zurückgesetzt.")
+                     ? "The file is new and untracked – it will be emptied. You can delete it in the Git area."
+                     : "The file is reset to its state in the Git index (last accepted or committed).")
             }
-            .confirmationDialog("Datei wurde zwischenzeitlich geändert", isPresented: confirmOverwrite.projectedValue) {
-                Button("Trotzdem überschreiben", role: .destructive) { save(force: true) }
-                Button("Abbrechen", role: .cancel) {}
+            .confirmationDialog("The file was changed in the meantime", isPresented: confirmOverwrite.projectedValue) {
+                Button("Overwrite anyway", role: .destructive) { save(force: true) }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Der Agent (oder ein anderes Programm) hat die Datei seit dem Öffnen verändert. Deine Version ersetzt diese Änderungen.")
+                Text("The agent (or another program) changed the file since you opened it. Your version replaces those changes.")
             }
         } else {
-            ContentUnavailableView("Keine Datei gewählt", systemImage: "doc.text.magnifyingglass",
-                                   description: Text("Datei im Directory- oder Git-Tab anklicken."))
+            ContentUnavailableView("No file selected", systemImage: "doc.text.magnifyingglass",
+                                   description: Text("Click a file in the Directory or Git area."))
         }
     }
 
@@ -231,7 +231,7 @@ private struct EditorDocumentView: View {
                 Button { model.editor.splitEditor(paneID) } label: { Image(systemName: "square.split.2x1") }
                     .buttonStyle(.borderless).padding(.horizontal, 6)
                     .background(Color(nsColor: .windowBackgroundColor).opacity(0.9))
-                    .help("Editor teilen: aktuelle Datei rechts daneben öffnen")
+                    .help("Split editor: open the current file on the right")
             }
             .onChange(of: group.file) { _, u in if let u { proxy.scrollTo(u) } }
         }
@@ -273,12 +273,12 @@ private struct EditorDocumentView: View {
         .onDrop(of: [.plainText], delegate: TabDropDelegate(model: model, pane: paneID, slot: .before(url), hover: tabDropTarget))
         .help(url.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
         .contextMenu {
-            Button("Schließen") { requestClose(url) }
-            Button("Nach rechts teilen") { model.editor.splitEditor(paneID, axis: .horizontal, url: url) }
-            Button("Nach unten teilen") { model.editor.splitEditor(paneID, axis: .vertical, url: url) }
+            Button("Close") { requestClose(url) }
+            Button("Split to the right") { model.editor.splitEditor(paneID, axis: .horizontal, url: url) }
+            Button("Split downwards") { model.editor.splitEditor(paneID, axis: .vertical, url: url) }
             let others = model.layout.paneTree.panes.filter { $0.tab == .preview && $0.id != paneID }
             if !others.isEmpty {
-                Menu("In anderen Editor verschieben") {
+                Menu("Move to the other editor") {
                     ForEach(Array(others.enumerated()), id: \.element.id) { i, p in
                         Button(model.editor.group(p.id).file?.lastPathComponent ?? "Editor \(i + 2)") {
                             model.editor.moveTab(url, from: paneID, to: p.id)
@@ -287,9 +287,9 @@ private struct EditorDocumentView: View {
                 }
             }
             Divider()
-            Button("Andere schließen") { model.editor.closeOtherTabs(in: group, keeping: url) }
+            Button("Close others") { model.editor.closeOtherTabs(in: group, keeping: url) }
             Divider()
-            Button("Im Finder zeigen") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         }
     }
 
@@ -306,17 +306,17 @@ private struct EditorDocumentView: View {
                 Button { activate(); model.editor.navigateBack() } label: { Image(systemName: "chevron.left") }
                     .disabled(group.back.isEmpty)
                     .keyboardShortcut(isActive ? KeyboardShortcut("[", modifiers: .command) : nil)
-                    .help("Zurück (⌘[)")
+                    .help("Back (⌘[)")
                 Button { activate(); model.editor.navigateForward() } label: { Image(systemName: "chevron.right") }
                     .disabled(group.forward.isEmpty)
                     .keyboardShortcut(isActive ? KeyboardShortcut("]", modifiers: .command) : nil)
-                    .help("Vor (⌘])")
+                    .help("Forward (⌘])")
             }
             .buttonStyle(.borderless)
             Image(systemName: FileIcon.symbol(for: url)).foregroundStyle(.secondary)
             Text(url.lastPathComponent).font(.callout.bold()).lineLimit(1)
             if doc?.isDirty == true {
-                Circle().fill(Color.orange).frame(width: 7, height: 7).help("Ungespeicherte Änderungen")
+                Circle().fill(Color.orange).frame(width: 7, height: 7).help("Unsaved changes")
             }
             if let lang = doc?.language, lang != .plain {
                 Text(lang.rawValue).font(.caption2).foregroundStyle(.secondary)
@@ -327,41 +327,41 @@ private struct EditorDocumentView: View {
                 activate()
                 model.revealEditorFile(group.file, in: root)
             } label: { Image(systemName: "scope") }
-                .buttonStyle(.borderless).help("Diese Datei im Directory zeigen und markieren")
+                .buttonStyle(.borderless).help("Reveal this file in the directory")
             if displayMode == .file, let doc, doc.isEditableKind {
                 if doc.kind == .markdown {
                     Picker("", selection: showRendered.projectedValue) {
                         Image(systemName: "doc.richtext").tag(true)
                         Image(systemName: "chevron.left.forwardslash.chevron.right").tag(false)
                     }
-                    .pickerStyle(.segmented).labelsHidden().fixedSize().help("Gerendert / Quelltext")
+                    .pickerStyle(.segmented).labelsHidden().fixedSize().help("Rendered / source")
                 }
                 if doc.isDirty {
-                    Button("Verwerfen") { doc.revert() }.controlSize(.small)
-                    Button("Sichern") { save(force: false) }
+                    Button("Discard") { doc.revert() }.controlSize(.small)
+                    Button("Save") { save(force: false) }
                         .keyboardShortcut(isActive ? KeyboardShortcut("s", modifiers: .command) : nil)
                         .buttonStyle(.borderedProminent).controlSize(.small)
                 }
             }
             Picker("", selection: Binding(get: { displayMode }, set: { group.mode = $0 })) {
                 ForEach(PreviewMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).disabled(mode == .diff && relativePath == nil)
+                    Text(mode.title).disabled(mode == .diff && relativePath == nil)
                 }
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
             Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.forward.app") }
-                .buttonStyle(.borderless).help("Im Standardprogramm öffnen")
+                .buttonStyle(.borderless).help("Open with default app")
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
     }
 
     private func conflictBar(_ doc: PreviewDocument) -> some View {
         HStack {
-            Label("Die Datei wurde auf der Platte geändert, während du sie bearbeitest.", systemImage: "exclamationmark.triangle.fill")
+            Label("The file was changed on disk while you were editing it.", systemImage: "exclamationmark.triangle.fill")
                 .font(.caption).foregroundStyle(.orange)
             Spacer()
-            Button("Neu laden (meine Änderungen verwerfen)") { doc.load() }.controlSize(.small)
-            Button("Meine behalten") { doc.changedOnDisk = false }.controlSize(.small)
+            Button("Reload (discard my changes)") { doc.load() }.controlSize(.small)
+            Button("Keep mine") { doc.changedOnDisk = false }.controlSize(.small)
         }
         .padding(6)
         .background(Color.orange.opacity(0.12))
@@ -373,15 +373,15 @@ private struct EditorDocumentView: View {
     private var content: some View {
         if displayMode == .diff {
             if let d = currentDiffText {
-                CodeText(text: d.isEmpty ? "Keine Änderungen gegenüber HEAD." : d, diff: true)
+                CodeText(text: d.isEmpty ? String(localized: "No changes compared to HEAD.") : d, diff: true)
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else if let doc = document {
             switch doc.kind {
-            case .missing: ContentUnavailableView("Datei gelöscht", systemImage: "doc")
-            case .binary: ContentUnavailableView("Binärdatei", systemImage: "doc")
-            case .tooLarge: ContentUnavailableView("Datei zu groß für die Vorschau", systemImage: "doc")
+            case .missing: ContentUnavailableView("File deleted", systemImage: "doc")
+            case .binary: ContentUnavailableView("Binary file", systemImage: "doc")
+            case .tooLarge: ContentUnavailableView("File too large to show", systemImage: "doc")
             case .image:
                 ScrollView([.horizontal, .vertical]) { if let img = doc.image { Image(nsImage: img) } }
             case .markdown where showRendered.wrappedValue:
@@ -407,7 +407,7 @@ private struct EditorDocumentView: View {
                             onFocus: { activate() },
                             stateKey: doc.url.path,
                             takesFocusFromPreviousEditor: isActive)
-                .help("⌘-Klick auf einen Namen springt zur Definition · ⌘[ zurück")
+                .help("⌘-click a name to jump to its definition · ⌘[ to go back")
                 .id(doc.url)
             }
         } else {
@@ -421,12 +421,12 @@ private struct EditorDocumentView: View {
         guard let doc = document else { return }
         switch doc.save(force: force) {
         case .saved:
-            model.toast("Gespeichert: \(doc.url.lastPathComponent)")
+            model.toast(String(localized: "Saved: \(doc.url.lastPathComponent)"))
             model.workspace.revision += 1
         case .conflict:
             confirmOverwrite.wrappedValue = true
         case .failed(let msg):
-            model.banner = "Speichern fehlgeschlagen: \(msg)"
+            model.banner = String(localized: "Saving failed: \(msg)")
         }
     }
 
@@ -438,20 +438,20 @@ private struct EditorDocumentView: View {
         let removed = hunks.reduce(0) { $0 + $1.oldCount }
         return HStack(spacing: 8) {
             Image(systemName: "sparkles").foregroundStyle(.purple)
-            Text(currentDiff.untracked ? "Neue Datei" : "\(hunks.count) Änderung\(hunks.count == 1 ? "" : "en")")
+            Text(currentDiff.untracked ? String(localized: "New file") : hunks.count == 1 ? String(localized: "1 change") : String(localized: "\(hunks.count) changes"))
                 .scaledFont(.callout, bold: true)
             Text("+\(added)").foregroundStyle(.green).scaledFont(.caption, digits: true)
             Text("−\(removed)").foregroundStyle(.red).scaledFont(.caption, digits: true)
             Spacer()
             if doc.isDirty {
-                Text("Erst sichern, dann reviewen").scaledFont(.caption).foregroundStyle(.secondary)
+                Text("Save first, then review").scaledFont(.caption).foregroundStyle(.secondary)
             } else {
-                Button { step(-1) } label: { Image(systemName: "chevron.up") }.help("Vorige Änderung (⌥⌘↑)")
+                Button { step(-1) } label: { Image(systemName: "chevron.up") }.help("Previous change (⌥⌘↑)")
                     .keyboardShortcut(isActive ? KeyboardShortcut(.upArrow, modifiers: [.option, .command]) : nil)
-                Button { step(1) } label: { Image(systemName: "chevron.down") }.help("Nächste Änderung (⌥⌘↓)")
+                Button { step(1) } label: { Image(systemName: "chevron.down") }.help("Next change (⌥⌘↓)")
                     .keyboardShortcut(isActive ? KeyboardShortcut(.downArrow, modifiers: [.option, .command]) : nil)
-                Button("Alle annehmen") { acceptAll() }.help("Alle Änderungen dieser Datei stagen (git add)")
-                Button("Alle verwerfen", role: .destructive) { confirmRevertAll.wrappedValue = true }
+                Button("Accept all") { acceptAll() }.help("Stage all changes in this file (git add)")
+                Button("Discard all", role: .destructive) { confirmRevertAll.wrappedValue = true }
             }
         }
         .buttonStyle(.borderless)
@@ -465,19 +465,19 @@ private struct EditorDocumentView: View {
         let index = (hunks.firstIndex { $0.id == h.id } ?? 0) + 1
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("Änderung \(index)/\(hunks.count)").scaledFont(.caption, bold: true)
-                Text(h.kind == .added ? "hinzugefügt" : h.kind == .deleted ? "gelöscht" : "geändert")
+                Text("Change \(index)/\(hunks.count)").scaledFont(.caption, bold: true)
+                Text(h.kind == .added ? "added" : h.kind == .deleted ? "deleted" : "changed")
                     .scaledFont(.caption).foregroundStyle(.secondary)
-                Text(h.newRange.map { "Zeile \($0.lowerBound)–\($0.upperBound)" } ?? "nach Zeile \(h.newStart)")
+                Text(h.newRange.map { String(localized: "Lines \($0.lowerBound)–\($0.upperBound)") } ?? String(localized: "after line \(h.newStart)"))
                     .scaledFont(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button { step(-1) } label: { Image(systemName: "chevron.up") }
                 Button { step(1) } label: { Image(systemName: "chevron.down") }
-                Button("Zurücksetzen", role: .destructive) { revert(h) }
-                    .help("Diese Änderung rückgängig machen (alter Stand aus dem Git-Index)")
-                Button("Annehmen") { accept(h) }
+                Button("Reset", role: .destructive) { revert(h) }
+                    .help("Undo this change (previous state from the Git index)")
+                Button("Accept") { accept(h) }
                     .buttonStyle(.borderedProminent)
-                    .help("Diese Änderung stagen – sie verschwindet aus der Review-Ansicht")
+                    .help("Stage this change – it leaves the review")
                 Button { selectedHunk.wrappedValue = nil } label: { Image(systemName: "xmark") }
                     .keyboardShortcut(.cancelAction)
             }
@@ -586,10 +586,10 @@ private struct EditorDocumentView: View {
         guard let doc = document, !doc.isDirty else { return }
         doc.text = InlineDiff.reverting(h, in: doc.text)
         switch doc.save(force: false) {
-        case .saved: selectedHunk.wrappedValue = nil; changed("Änderung zurückgesetzt")
-        case .conflict: model.banner = "Die Datei wurde zwischenzeitlich geändert – bitte neu laden und erneut versuchen."
+        case .saved: selectedHunk.wrappedValue = nil; changed(String(localized: "Change reverted"))
+        case .conflict: model.banner = String(localized: "The file was changed in the meantime – please reload and try again.")
             doc.revert()
-        case .failed(let msg): model.banner = "Zurücksetzen fehlgeschlagen: \(msg)"; doc.revert()
+        case .failed(let msg): model.banner = String(localized: "Reverting failed: \(msg)"); doc.revert()
         }
     }
 
@@ -603,10 +603,10 @@ private struct EditorDocumentView: View {
         doc.text = text
         if case .saved = doc.save(force: false) {
             selectedHunk.wrappedValue = nil
-            changed("Alle Änderungen verworfen", next: false)
+            changed(String(localized: "All changes discarded"), next: false)
         } else {
             doc.revert()
-            model.banner = "Verwerfen fehlgeschlagen – Datei wurde zwischenzeitlich geändert."
+            model.banner = String(localized: "Discarding failed – the file was changed in the meantime.")
         }
     }
 
@@ -617,8 +617,8 @@ private struct EditorDocumentView: View {
         Task {
             let r = await InlineDiff.stage(h, of: diff, file: rel, root: root)
             guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspace.revision += 1 }; return }
-            if r.ok { selectedHunk.wrappedValue = nil; changed("Änderung angenommen (gestaged)") }
-            else { model.banner = "Annehmen fehlgeschlagen: \(r.output)" }
+            if r.ok { selectedHunk.wrappedValue = nil; changed(String(localized: "Change accepted (staged)")) }
+            else { model.banner = "Accepting failed: \(r.output)" }
         }
     }
 
@@ -628,8 +628,8 @@ private struct EditorDocumentView: View {
         Task {
             let r = await Git.mutate(["add", "--", rel], in: root)
             guard target == presentation, model.workspaceRoot == root else { if r.ok { model.workspace.revision += 1 }; return }
-            if r.ok { selectedHunk.wrappedValue = nil; changed("Alle Änderungen angenommen (gestaged)", next: false) }
-            else { model.banner = "Annehmen fehlgeschlagen: \(r.output)" }
+            if r.ok { selectedHunk.wrappedValue = nil; changed(String(localized: "All changes accepted (staged)"), next: false) }
+            else { model.banner = "Accepting failed: \(r.output)" }
         }
     }
 
@@ -691,7 +691,7 @@ private struct DefinitionChooser: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("\(locations.count) Definitionen für „\(symbol)“").font(.caption.bold())
+                Text("\(locations.count) definitions of “\(symbol)”").font(.caption.bold())
                 Spacer()
                 Button { model.editor.definitionChoices = nil } label: { Image(systemName: "xmark") }
                     .buttonStyle(.borderless).keyboardShortcut(.cancelAction)
@@ -744,7 +744,7 @@ private struct TabCloseButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering.wrappedValue = $0 }
-        .help(dirty ? "Ungesicherte Änderungen – schließen (⌘W)" : "Schließen (⌘W)")
+        .help(dirty ? "Unsaved changes – close (⌘W)" : String(localized: "Close (⌘W)"))
     }
 }
 

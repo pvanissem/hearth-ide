@@ -39,7 +39,7 @@ Agent-agnostic and sandbox-first: Hearth does not ship its own model or agent; i
 
 - Name: "Hearth IDE" (short: Hearth). A hearth: a protected place where you work with fire.
 - App icon: `Resources/AppIcon-1024.png` (flames in orange/red/purple on dark, a dark key with glowing "HI").
-- Language of the landing page: German.
+- Landing page languages: English at `/` (default), German at `/de/`; both share `assets/site.css` and `assets/site.js` (texts for the script per `<html lang>`).
 
 ## Evidence on Hand
 

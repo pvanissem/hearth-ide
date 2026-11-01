@@ -4,9 +4,12 @@ import AppKit
 @main
 struct HearthApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let model = AppModel()
+    private let model: AppModel
 
     init() {
+        // Before anything is localized: the bundle picks its language on first use.
+        AppLanguage.applyAtLaunch()
+        model = AppModel()
         AppDelegate.model = model
         if Snapshotter.directory != nil {
             NSApplication.shared.setActivationPolicy(.prohibited)
@@ -32,13 +35,13 @@ struct HearthApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(after: .toolbar) {
-                Button("Text größer") { model.textZoom.zoomAll(by: 1.1) }.keyboardShortcut("+", modifiers: .command)
-                Button("Text kleiner") { model.textZoom.zoomAll(by: 1 / 1.1) }.keyboardShortcut("-", modifiers: .command)
-                Button("Originalgröße") { model.textZoom.reset() }.keyboardShortcut("0", modifiers: .command)
+                Button("Larger text") { model.textZoom.zoomAll(by: 1.1) }.keyboardShortcut("+", modifiers: .command)
+                Button("Smaller text") { model.textZoom.zoomAll(by: 1 / 1.1) }.keyboardShortcut("-", modifiers: .command)
+                Button("Actual size") { model.textZoom.reset() }.keyboardShortcut("0", modifiers: .command)
             }
         }
 
-        WindowGroup("Diagramm", for: MermaidDiagram.self) { $diagram in
+        WindowGroup("Diagram", for: MermaidDiagram.self) { $diagram in
             if let d = diagram {
                 MermaidCanvas(source: d.source, title: d.title)
                     .navigationTitle("\(d.title) – \(d.file)")
@@ -47,7 +50,7 @@ struct HearthApp: App {
         }
         .defaultSize(width: 1200, height: 800)
 
-        WindowGroup("Bereich", for: InspectorTab.self) { $tab in
+        WindowGroup("Area", for: InspectorTab.self) { $tab in
             if let tab {
                 DetachedPaneView(tab: tab)
                     .environment(model)

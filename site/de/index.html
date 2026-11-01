@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearth IDE – Dein Agent. Dein Abo. Unser Feuerring.</title>
+<meta name="description" content="Hearth IDE ist eine native macOS-App, die Claude Code, Codex, GitHub Copilot CLI, OpenCode und Gemini CLI in einer nono-Sandbox laufen lässt – mit einer Inbox für alle Sitzungen.">
+<meta property="og:title" content="Hearth IDE">
+<meta property="og:description" content="Dein Agent. Dein Abo. Unser Feuerring. Jede Agent-CLI in einer Sandbox auf deinem Mac.">
+<meta property="og:image" content="https://pvanissem.github.io/hearth-ide/assets/hearth-app.webp">
+<meta property="og:locale" content="de_DE">
+<meta name="theme-color" content="#0e0a12">
+<link rel="canonical" href="https://pvanissem.github.io/hearth-ide/de/">
+<link rel="alternate" hreflang="en" href="https://pvanissem.github.io/hearth-ide/">
+<link rel="alternate" hreflang="de" href="https://pvanissem.github.io/hearth-ide/de/">
+<link rel="alternate" hreflang="x-default" href="https://pvanissem.github.io/hearth-ide/">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preload" href="../assets/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="firelight hero-light" aria-hidden="true"></div>
+  <header class="top">
+    <a class="mark" href="./" aria-label="Hearth IDE – Startseite">
+      <img src="../assets/hearth-icon.webp" alt="" width="36" height="36">
+      Hearth IDE <span class="version">v0.3</span>
+    </a>
+    <nav aria-label="Seitenbereiche">
+      <a href="#ring">Was gesperrt ist</a>
+      <a href="#agenten">Agenten</a>
+      <a href="#so-gehts">So geht’s</a>
+      <a class="gh" href="https://github.com/pvanissem/hearth-ide">GitHub</a>
+      <a class="lang" href="../" hreflang="en" lang="en">English</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="pitch">
+        <h1>Dein Agent. Dein Abo. <span class="lit">Unser Feuerring.</span></h1>
+        <p class="lede"><strong>Claude Code, Codex, Copilot &amp; Co.</strong> laufen auf deinem Mac wie gewohnt – nur in einer Sandbox, die deine Schlüssel, dein Home und fremde Hosts draußen lässt.</p>
+
+        <div class="install" data-install>
+          <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
+          <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
+            <span class="copy-text">Kopieren</span>
+          </button>
+          <span class="copy-status" role="status" aria-live="polite"></span>
+        </div>
+
+        <ul class="facts" aria-label="Eckdaten">
+          <li><b>v0.3</b> frühe Version</li>
+          <li>macOS <b>14+</b></li>
+          <li><b>Apple Silicon</b></li>
+          <li>Lizenz <b>MIT</b></li>
+          <li>Sandbox <b>nono 0.80</b></li>
+        </ul>
+
+        <div class="pitch-links">
+          <a href="https://github.com/pvanissem/hearth-ide">Quellcode auf GitHub</a>
+          <a href="#ring">Was der Ring sperrt</a>
+        </div>
+      </div>
+
+      <div class="ring" data-ring aria-label="Ein Steinring aus Sandbox-Regeln um das Feuer des Agenten. Jeder Stein ist eine Sperre.">
+        <canvas data-fire aria-hidden="true"></canvas>
+        <svg class="stones" data-stones viewBox="0 0 1000 860" role="list"></svg>
+        <div class="agent-name" data-agent aria-hidden="true">claude</div>
+        <div class="inside-label"><code>~/dein-projekt</code><span>lesen + schreiben</span></div>
+        <div class="rule-tip" data-tip aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <section id="ring" aria-labelledby="ring-h">
+      <div class="ember-light" style="left:-18rem;top:2rem" aria-hidden="true"></div>
+      <h2 id="ring-h">Was im Ring bleibt.</h2>
+      <p class="section-lede">Hearth startet jeden Agenten in einer <a href="https://nono.sh">nono</a>-Sandbox (macOS Seatbelt). Innerhalb des Rings arbeitet er frei:</p>
+      <ul class="inside">
+        <li><code>~/dein-projekt</code> lesen und schreiben</li>
+        <li>seinen eigenen Einstellungsordner in Hearth</li>
+        <li><strong>LLM-APIs</strong>, npm, PyPI, Maven</li>
+        <li><strong>GitHub, GitLab</strong> und Dokumentation</li>
+      </ul>
+      <h3 class="outside-title">Draußen bleiben:</h3>
+      <ul class="arc" data-arc>
+        <li style="--lift:1.4" data-stone="~/.ssh"><p>SSH-Schlüssel</p></li>
+        <li style="--lift:.5" data-stone="~/.zshrc"><p>Shell-Konfiguration</p></li>
+        <li style="--lift:0" data-stone="~/.aws"><p>Cloud-Zugangsdaten</p></li>
+        <li style="--lift:0" data-stone="Browserdaten"><p>Cookies, Passwörter, Sitzungen</p></li>
+        <li style="--lift:.5" data-stone="~/Documents"><p>der Rest deines Home</p></li>
+        <li style="--lift:1.4" data-stone="example.com"><p>jeder nicht freigegebene Host</p></li>
+      </ul>
+      <p class="side-note">Weitere Domains, Ports und Ordner gibst du in den Einstellungen frei. API-Keys reicht nono als Platzhalter durch: Der Agent sieht nie den echten Wert.</p>
+    </section>
+
+    <section id="agenten" aria-labelledby="agenten-h">
+      <h2 id="agenten-h">Deine Agenten, deine Logins.</h2>
+      <p class="section-lede">Hearth bringt kein eigenes Modell mit. Es hält die Agenten in Schach, für die du schon bezahlst.</p>
+      <ul class="roster">
+        <li><span class="who">Claude Code</span><span class="login">dein Claude-Abo, über die offizielle CLI</span><span class="how">Status per Hooks in der Inbox</span></li>
+        <li><span class="who">Codex</span><span class="login">ChatGPT-Login oder API-Key</span><span class="how">Status per notify</span></li>
+        <li><span class="who">GitHub Copilot CLI</span><span class="login">dein GitHub-Konto</span><span class="how">im Terminal-Chat</span></li>
+        <li><span class="who">OpenCode</span><span class="login">jeder Anbieter, den OpenCode kennt</span><span class="how">mit privatem Server in der Sandbox</span></li>
+        <li><span class="who">Gemini CLI</span><span class="login">dein Google-Konto</span><span class="how">im Terminal-Chat</span></li>
+      </ul>
+    </section>
+
+    <section id="so-gehts" aria-labelledby="so-gehts-h">
+      <div class="ember-light" style="right:-16rem;top:6rem" aria-hidden="true"></div>
+      <h2 id="so-gehts-h">In drei Zügen entfacht.</h2>
+      <p class="section-lede">Kein Konto, keine Konfiguration. Hearth bringt die Sandbox mit, deine Agenten bringst du selbst.</p>
+      <ol class="strokes" data-strokes>
+        <li><span class="n" aria-hidden="true">1</span><h3>Installieren</h3><p>Der Befehl oben lädt die App, prüft die SHA-256-Prüfsumme und legt sie in den Programme-Ordner. Updates kommen aus der App.</p></li>
+        <li><span class="n" aria-hidden="true">2</span><h3>Ordner wählen</h3><p>Der Projektordner ist das Innere des Rings: Nur hier darf der Agent schreiben.</p></li>
+        <li><span class="n" aria-hidden="true">3</span><h3>Agent starten</h3><p>Claude Code, Codex, Copilot, OpenCode oder Gemini – mit deinem eigenen Login, im Terminal der Chat-Ansicht.</p></li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="app-h">
+      <h2 id="app-h">Alle Feuer in einem Fenster.</h2>
+      <p class="section-lede">Eine Inbox zeigt, welcher Agent arbeitet, wartet oder fertig ist. Daneben Ordner, Git, Editor, Tests und Builds – die auch in der Sandbox laufen.</p>
+      <figure class="shot">
+        <div class="shot-frame">
+          <picture>
+            <source media="(max-width: 560px)" srcset="../assets/hearth-app-phone.webp" width="1000" height="1106">
+            <img src="../assets/hearth-app.webp" width="2400" height="1326" loading="lazy" decoding="async"
+                 alt="Hearth IDE: links die Inbox mit einer fertigen Claude-Code-Sitzung, daneben der Terminal-Chat mit Sandbox-Abzeichen, rechts Verzeichnis, Git mit zwei Änderungen und Build &amp; Deployment.">
+          </picture>
+          <span class="pin inbox">Inbox</span>
+          <span class="pin chat">Terminal-Chat<span class="long"> in der Sandbox</span></span>
+          <span class="pin inspector">Git &amp; Builds folgen dem Agenten</span>
+        </div>
+        <figcaption>Echter Screenshot mit dem Demo-Projekt „lagerfeuer“: Claude Code ergänzt in der Sandbox eine Funktion samt Test.</figcaption>
+      </figure>
+    </section>
+
+    <section aria-labelledby="stand-h">
+      <h2 id="stand-h">Ehrlicher Stand: v0.3.</h2>
+      <p class="section-lede">Früh, aber benutzbar. Das hier stimmt heute:</p>
+      <div class="status">
+        <div>
+          <h3>Läuft</h3>
+          <ul>
+            <li>Agenten als Terminal in der Chat-Ansicht</li>
+            <li>Inbox mit Status und Benachrichtigungen</li>
+            <li>Build &amp; Deployment und Git in der Sandbox</li>
+            <li>Sitzungen fortsetzen</li>
+            <li>Editor-Tabs pro Sitzung</li>
+            <li>Eigener Konfigurationsordner je Agent</li>
+            <li>CI/CD für GitLab und GitHub Actions</li>
+            <li>Englisch und Deutsch</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Kommt als Nächstes</h3>
+          <ul>
+            <li>Nativer Chat über das Agent Client Protocol</li>
+            <li>Login ohne Schlüsselbund-Freigabe</li>
+            <li>Signierte, notarisierte Builds</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Voraussetzungen</h3>
+          <ul>
+            <li>macOS 14 oder neuer</li>
+            <li>Apple Silicon</li>
+            <li>mindestens eine Agent-CLI</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="close" aria-labelledby="close-h">
+      <div class="embers"><img src="../assets/hearth-icon.webp" alt="" width="96" height="96" loading="lazy"></div>
+      <h2 id="close-h">Zünd ihn an.</h2>
+      <div class="install" data-install>
+        <code><span class="prompt">$</span><span data-cmd>curl -fsSL https://<wbr>github.com/<wbr>pvanissem/<wbr>hearth-ide/<wbr>releases/<wbr>latest/<wbr>download/<wbr>install.sh <wbr>| bash</span></code>
+        <button class="copy" type="button" data-copy aria-label="Installationsbefehl kopieren">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2"/><path d="M13.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5"/></svg>
+          <span class="copy-text">Kopieren</span>
+        </button>
+        <span class="copy-status" role="status" aria-live="polite"></span>
+      </div>
+      <div class="pitch-links">
+        <a href="https://github.com/pvanissem/hearth-ide/releases/latest">Release-Notizen</a>
+        <a href="https://github.com/pvanissem/hearth-ide/blob/main/CHANGELOG.md">Änderungen</a>
+        <a href="https://github.com/pvanissem/hearth-ide">Quellcode</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Hearth IDE · MIT-Lizenz · kein Konto, keine Telemetrie</span>
+    <span>Sandbox: <a href="https://github.com/nolabs-ai/nono">nono</a> (Apache-2.0)</span>
+  </footer>
+</div>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

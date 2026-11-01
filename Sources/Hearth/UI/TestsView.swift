@@ -12,11 +12,11 @@ struct TestsView: View {
     private let expandedCases = State(initialValue: Set<String>())
     private let loading = State(initialValue: false)
 
-    static let runPrompt = """
-    Führe die Tests dieses Projekts aus (z. B. `mvn -q verify`, `./gradlew test` oder \
-    `go test -coverprofile=coverage.out ./...`) und sorge dafür, dass JUnit-XML-Reports bzw. \
-    Coverage-Dateien geschrieben werden. Fasse danach kurz zusammen, was fehlschlägt.
-    """
+    static var runPrompt: String { String(localized: """
+    Run this project's tests (e.g. `mvn -q verify`, `./gradlew test` or \
+    `go test -coverprofile=coverage.out ./...`) and make sure JUnit XML reports or \
+    coverage files are written. Then briefly summarise what fails.
+    """) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,13 +32,13 @@ struct TestsView: View {
 
     private var empty: some View {
         ContentUnavailableView {
-            Label("Keine Testergebnisse", systemImage: "checkmark.seal")
+            Label("No test results", systemImage: "checkmark.seal")
         } description: {
-            Text("Gesucht wird nach JUnit-XML (Surefire, Gradle, Jest, pytest …), JaCoCo, Cobertura, lcov und Go-coverprofiles.")
+            Text("Looks for JUnit XML (Surefire, Gradle, Jest, pytest …), JaCoCo, Cobertura, lcov and Go cover profiles.")
         } actions: {
-            Button("Tests vom Agenten ausführen lassen") { model.ask(Self.runPrompt) }
+            Button("Let the agent run the tests") { model.ask(Self.runPrompt) }
                 .buttonStyle(.borderedProminent)
-            Button("Neu einlesen") { Task { await reload() } }
+            Button("Rescan") { Task { await reload() } }
         }
     }
 
@@ -47,7 +47,7 @@ struct TestsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 summary(r)
                 HStack(spacing: 6) {
-                    Toggle("Nur Fehler", isOn: onlyFailures.projectedValue).toggleStyle(.checkbox).scaledFont(.caption)
+                    Toggle("Failures only", isOn: onlyFailures.projectedValue).toggleStyle(.checkbox).scaledFont(.caption)
                     SearchField(text: filter.projectedValue, prompt: "Test filtern")
                 }
                 ForEach(visibleSuites(r)) { suite in suiteView(suite) }
@@ -64,23 +64,23 @@ struct TestsView: View {
                 Image(systemName: r.failed > 0 ? "xmark.octagon.fill" : "checkmark.seal.fill")
                     .scaledFont(.title2).foregroundStyle(r.failed > 0 ? .red : .green)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(r.cases.isEmpty ? "Nur Coverage" : "\(r.passed)/\(r.passed + r.failed) bestanden")
+                    Text(r.cases.isEmpty ? "Coverage only" : "\(r.passed)/\(r.passed + r.failed) passed")
                         .scaledFont(.headline)
                     if let d = r.newest {
-                        Text("Stand: \(d.formatted(.relative(presentation: .named)))").scaledFont(.caption).foregroundStyle(.secondary)
+                        Text("As of \(d.formatted(.relative(presentation: .named)))").scaledFont(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
                 Button { Task { await reload() } } label: { Image(systemName: "arrow.clockwise") }
-                    .buttonStyle(.borderless).help("Neu einlesen")
-                Button("Ausführen lassen") { model.ask(Self.runPrompt) }
-                    .controlSize(.small).help("Agent führt die Tests in der Sandbox aus")
+                    .buttonStyle(.borderless).help("Rescan")
+                Button("Let the agent run them") { model.ask(Self.runPrompt) }
+                    .controlSize(.small).help("The agent runs the tests in the sandbox")
             }
             if !r.cases.isEmpty {
                 HStack(spacing: 12) {
-                    stat("\(r.passed)", "bestanden", .green)
-                    stat("\(r.failed)", "fehlgeschlagen", r.failed > 0 ? .red : .secondary)
-                    stat("\(r.skipped)", "übersprungen", .secondary)
+                    stat("\(r.passed)", "passed", .green)
+                    stat("\(r.failed)", "failed", r.failed > 0 ? .red : .secondary)
+                    stat("\(r.skipped)", String(localized: "skipped"), .secondary)
                 }
             }
             ForEach(r.coverage, id: \.source) { c in
@@ -94,7 +94,7 @@ struct TestsView: View {
                     ProgressView(value: c.percent, total: 100)
                         .tint(c.percent >= 80 ? .green : (c.percent >= 50 ? .orange : .red))
                 }
-                .help("\(c.covered) von \(c.total) Zeilen/Statements abgedeckt")
+                .help("\(c.covered) of \(c.total) lines/statements covered")
             }
         }
         .padding(10)
@@ -142,7 +142,7 @@ struct TestsView: View {
             .help(suite.name)
             .contextMenu {
                 Button { model.editor.open(URL(fileURLWithPath: root).appendingPathComponent(suite.file)) } label: {
-                    Label("Report-Datei anzeigen", systemImage: "doc.text")
+                    Label("Show report file", systemImage: "doc.text")
                 }
             }
             if expanded {
@@ -172,17 +172,17 @@ struct TestsView: View {
             .contextMenu {
                 if let loc = location {
                     Button { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } } label: {
-                        Label("Zu \(loc.file):\(loc.line.map(String.init) ?? "?") springen", systemImage: "arrow.right.doc.on.clipboard")
+                        Label("Go to \(loc.file):\(loc.line.map(String.init) ?? "?")", systemImage: "arrow.right.doc.on.clipboard")
                     }
                 }
                 if failed {
-                    Button { model.ask(fixPrompt(c)) } label: { Label("Agent: Test fixen", systemImage: "wand.and.stars") }
+                    Button { model.ask(fixPrompt(c)) } label: { Label("Agent: fix the test", systemImage: "wand.and.stars") }
                 }
                 Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString("\(c.className).\(c.name)", forType: .string)
-                    model.toast("Testname kopiert")
-                } label: { Label("Name kopieren", systemImage: "doc.on.doc") }
+                    model.toast(String(localized: "Test name copied"))
+                } label: { Label("Copy name", systemImage: "doc.on.doc") }
             }
             if failed && open {
                 VStack(alignment: .leading, spacing: 6) {
@@ -196,9 +196,9 @@ struct TestsView: View {
                     }
                     HStack {
                         if let loc = location {
-                            Button("Zur Stelle") { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } }
+                            Button("Go to location") { Task { await model.editor.reveal(fileName: loc.file, line: loc.line) } }
                         }
-                        Button("Agent: fixen") { model.ask(fixPrompt(c)) }
+                        Button("Agent: fix") { model.ask(fixPrompt(c)) }
                     }
                     .controlSize(.small)
                 }
@@ -226,9 +226,9 @@ struct TestsView: View {
     }
 
     private func fixPrompt(_ c: TestCase) -> String {
-        var p = "Der Test `\(c.className).\(c.name)` schlägt fehl"
+        var p = String(localized: "The test `\(c.className).\(c.name)` fails")
         if let m = c.message { p += ": \(m)" }
-        p += ". Analysiere die Ursache, behebe sie und führe den Test erneut aus."
+        p += String(localized: ". Find the cause, fix it and run the test again.")
         return p
     }
 
