@@ -1,6 +1,6 @@
 # Hearth IDE – Änderungen
 
-## Unveröffentlicht
+## 0.4.4 · 2026-11-01
 
 - CI/CD: Die Ansicht lädt nicht mehr bei jeder Dateiänderung neu, während ein Agent arbeitet. Sie lädt neu beim Ordnerwechsel, beim Branchwechsel, im gewohnten Intervall (15 s bei laufenden Pipelines, sonst 60 s) und wenn sich das Git-Remote ändert.
 
