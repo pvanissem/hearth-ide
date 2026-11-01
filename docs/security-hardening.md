@@ -1,6 +1,6 @@
 # Security-Hardening und Dateiverwaltung (30.10.2026)
 
-## 1. GitLab: Freigabe und Tokens pro HTTPS-Origin
+## 1. CI/CD (GitLab, GitHub Actions): Freigabe und Tokens pro HTTPS-Origin
 
 - Ein `origin`-Remote beschreibt lediglich ein Projekt, niemals eine Serverfreigabe.
 - Der Nutzer bestätigt den vollständigen HTTPS-Origin einschließlich eines
@@ -17,6 +17,14 @@
 - Die Session ist ephemeral, ohne Cookie-/Credential-Speicher oder URL-Cache.
 - Über das Schlüssel-Symbol in CI/CD lassen sich Zugänge ergänzen und die
   Serverfreigabe widerrufen.
+
+**GitHub Actions:** Remotes auf github.com oder `github.<firma>` gelten als GitHub.
+Der für `https://github.com` freigegebene Token geht nur an die feste API-Adresse
+`api.github.com` (Enterprise: `https://<host>/api/v3`), getrennt nach Lesen und
+Schreiben. Empfohlen ist ein Fine-grained Token nur für das Repository mit
+„Actions: Read-only“ bzw. „Read and write“. Job-Logs liefert GitHub als
+Weiterleitung auf eine kurzlebige signierte Adresse; Hearth folgt ihr selbst und
+**ohne** Token (nur HTTPS, keine weiteren Weiterleitungen).
 
 **Einrichtung:** In CI/CD den angezeigten Server prüfen und einen Lesetoken
 einrichten; für Retry/Cancel/Run/Play bei Bedarf separat Schreibzugriff freigeben.
@@ -138,6 +146,9 @@ Die Tests laufen in GitHub Actions bei jedem Push (siehe `.github/workflows/ci.y
 - `SandboxGitTests`: feste Befehle, Aufteilung von Pull, Neutralisierung von
   Repo-Helfern, echtes Wegwerf-Repo mit bösartigem Filter (läuft beim Fetch nicht).
 - `AgentHomeTests`: eigene Konfigurationsordner, nur-lesende Links, einmalige Kopie.
+- `GitHubActionsTests`: Remote-Erkennung (auch Enterprise), Läufe/Jobs/Status,
+  Token nur an den freigegebenen Origin, Schreibaktionen nur mit Schreibtoken,
+  Job-Log über die signierte Adresse ohne Token.
 - `SecurityRegressionTests`: GitLab-Origin-Bindung, Terminal-Zwischenablage,
   Host-Git ohne Helfer, Directory-Moves, Mermaid in echtem WebKit.
 - `BuildDeployTests`, `DirectoryTests`, `ContextSwitchTests`, `EditorWorkspaceTests`,

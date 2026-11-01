@@ -18,7 +18,7 @@ flowchart TB
     Editor["EditorStore"]
     WS["WorkspaceState"]
     Zoom["TextZoomStore"]
-    GL["GitLabAccounts"]
+    GL["CIAccounts"]
     Agents["AgentHost"]
     Builds["BuildDeployStore"]
     Updates["UpdateChecker"]
@@ -50,7 +50,7 @@ flowchart TB
 | | `LayoutStore` | Bereiche, Splits, eigene Fenster, Maximieren; gespeichert in `UIStateStore`. |
 | | `EditorStore`, `EditorGroup` | Editoren pro Preview-Bereich, Tabs, ungespeicherte Dokumente, Navigation, „Gehe zu Definition“, Tabs pro Sitzung. |
 | | `WorkspaceState` | Git-Stand, Verzeichnisbaum, Revision (lädt Inspector-Tabs neu, wenn ein Agent Dateien ändert). |
-| | `TextZoomStore`, `GitLabAccounts` | Schriftgröße pro Bereich; GitLab-Tokens pro bestätigtem Origin. |
+| | `TextZoomStore`, `CIAccounts` | Schriftgröße pro Bereich; CI-Tokens pro bestätigtem Origin. |
 | Agenten | `AgentKind` | Katalog: Programm, Login, Status-Quelle, API-Hosts. |
 | | `AgentHost`, `AgentRun` | Start, Fortsetzen, Stoppen, Status aus `events.jsonl` (Claude-Hooks, Codex-`notify`), Benachrichtigungen, `runs.json`. |
 | Sandbox | `SandboxPurpose` | Wofür eine Sandbox ist: `.agent(kind)`, `.build`, `.gitNetwork`, `.gitLocal`. |
@@ -61,7 +61,8 @@ flowchart TB
 | Git | `Git` | Lesende Host-Abfragen und lokale Änderungen unter `sandbox-exec` ohne Netz und ohne Helfer. |
 | | `SandboxGitOperation`, `SandboxGitRunner` | Fetch/Clone in `.gitNetwork`, Fast-forward in `.gitLocal`; Repo-Helfer neutralisiert. |
 | Build | `BuildDetector`, `BuildCommand`, `BuildDeployStore` | Aufgaben aus Projektdateien, sicher gequotete Befehle, Ausführung und Health-Checks über `SandboxCommandRunner`. |
-| Sonstiges | `GitLabCI`, `TestReports`, `MermaidScanner`, `SymbolFinder`, `AppUpdates` | CI-Pipelines, Testberichte, Architekturdiagramme, Definitionen, Updates. |
+| CI/CD | `CIClient` (`GitLabAPI`, `GitHubAPI`), `CIAccounts` | GitLab-Pipelines und GitHub Actions über ein gemeinsames Protokoll; Tokens pro bestätigtem Origin. |
+| Sonstiges | `TestReports`, `MermaidScanner`, `SymbolFinder`, `AppUpdates` | Testberichte, Architekturdiagramme, Definitionen, Updates. |
 
 ## Datenablage
 
@@ -71,7 +72,7 @@ flowchart TB
 | `…/Hearth/runs.json`, `…/Hearth/runs/<id>/` | Sitzungen; je Sitzung nono-Profil, Log, Status-Ereignisse, Hook-Skripte |
 | `…/Hearth/agents/<agent>/` | Hearths Konfigurationsordner der Agenten (Login, Verlauf, Einstellungen) |
 | `UserDefaults` (`ui.*`) | Layout, Editor-Tabs (auch pro Sitzung), Schriftgrößen, Update-Einstellungen |
-| Schlüsselbund | `nono` / `hearth.<name>`: Credentials für den nono-Proxy; `hearth-gitlab`: GitLab-Tokens |
+| Schlüsselbund | `nono` / `hearth.<name>`: Credentials für den nono-Proxy; `hearth-gitlab`: CI-Tokens (GitLab, GitHub) |
 
 ## Abläufe
 

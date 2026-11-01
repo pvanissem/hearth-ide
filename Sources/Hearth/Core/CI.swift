@@ -2,12 +2,12 @@ import Foundation
 import Security
 
 /// A canonical HTTPS origin, independent of any repository-controlled project path.
-struct GitLabOrigin: Hashable, Codable, Sendable {
+struct CIOrigin: Hashable, Codable, Sendable {
     let url: URL
     var value: String { url.absoluteString }
     var authority: String { String(value.dropFirst("https://".count)) }
 
-    static func parse(_ value: String) -> GitLabOrigin? {
+    static func parse(_ value: String) -> CIOrigin? {
         guard let c = URLComponents(string: value), c.scheme?.lowercased() == "https",
               let host = c.host, !host.isEmpty, c.user == nil, c.password == nil,
               c.query == nil, c.fragment == nil, c.path.isEmpty || c.path == "/",
@@ -17,21 +17,61 @@ struct GitLabOrigin: Hashable, Codable, Sendable {
         clean.host = host.lowercased()
         clean.port = c.port == 443 ? nil : c.port
         guard let url = clean.url else { return nil }
-        return GitLabOrigin(url: url)
+        return CIOrigin(url: url)
     }
 }
 
+/// Which CI system a remote belongs to.
+enum CIProvider: String, Sendable {
+    case gitLab, gitHub
+
+    var name: String { self == .gitLab ? "GitLab" : "GitHub" }
+    /// What one run is called there.
+    var runName: String { self == .gitLab ? "Pipeline" : "Workflow-Lauf" }
+}
+
 /// Parsing a remote does NOT authorize this server to receive a token.
-struct GitLabRemote: Hashable, Sendable {
-    let origin: GitLabOrigin
-    let path: String          // e.g. "group/project"
+struct CIRemote: Hashable, Sendable {
+    let origin: CIOrigin
+    let path: String          // e.g. "group/project" or "owner/repo"
     var host: String { origin.authority }
 
+    /// github.com and GitHub Enterprise ("github.<company>") are GitHub; everything else GitLab.
+    var provider: CIProvider {
+        let h = (origin.url.host ?? "").lowercased()
+        return h == "github.com" || h.hasPrefix("github.") ? .gitHub : .gitLab
+    }
+
     var webURL: URL { URL(string: "https://\(host)/\(path)")! }
-    var apiBase: URL { URL(string: "https://\(host)/api/v4")! }
+
+    var apiBase: URL {
+        switch provider {
+        case .gitLab: URL(string: "https://\(host)/api/v4")!
+        case .gitHub: host == "github.com" ? URL(string: "https://api.github.com")! : URL(string: "https://\(host)/api/v3")!
+        }
+    }
+
+    /// The provider's own page listing pipelines / workflow runs.
+    var pipelinesPage: URL { webURL.appendingPathComponent(provider == .gitLab ? "-/pipelines" : "actions") }
+
+    /// Page where the user creates a token with the needed rights.
+    func tokenPage(writing: Bool) -> URL {
+        switch provider {
+        case .gitLab: GitLabAPI.tokenPage(host: host, writing: writing)
+        case .gitHub: URL(string: "https://\(host)/settings/personal-access-tokens/new")!
+        }
+    }
+
+    /// The API client for this remote, bound to the approved credential.
+    func client(_ credential: CICredential) -> any CIClient {
+        switch provider {
+        case .gitLab: GitLabAPI(remote: self, credential: credential)
+        case .gitHub: GitHubAPI(remote: self, credential: credential)
+        }
+    }
 
     /// Parses git@host:group/repo.git, ssh://git@host[:port]/group/repo.git and https://host/group/repo.git.
-    static func parse(_ remote: String) -> GitLabRemote? {
+    static func parse(_ remote: String) -> CIRemote? {
         var s = remote.trimmingCharacters(in: .whitespacesAndNewlines)
         while s.hasSuffix("/") { s.removeLast() }
         if s.hasSuffix(".git") { s.removeLast(4) }
@@ -47,34 +87,34 @@ struct GitLabRemote: Hashable, Sendable {
         return validated(origin: "https://\(host)\(port)", path: path)
     }
 
-    private static func validated(origin: String, path: String) -> GitLabRemote? {
+    private static func validated(origin: String, path: String) -> CIRemote? {
         let segments = path.split(separator: "/", omittingEmptySubsequences: false)
-        guard let origin = GitLabOrigin.parse(origin), segments.count >= 2,
+        guard let origin = CIOrigin.parse(origin), segments.count >= 2,
               segments.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." &&
                   $0.range(of: #"^[A-Za-z0-9_.-]+$"#, options: .regularExpression) != nil }) else { return nil }
-        return GitLabRemote(origin: origin, path: path)
+        return CIRemote(origin: origin, path: path)
     }
 
-    static func of(repo: String) async -> GitLabRemote? {
+    static func of(repo: String) async -> CIRemote? {
         guard let url = await Git.run(["config", "--get", "remote.origin.url"], in: repo) else { return nil }
         return parse(url)
     }
 }
 
-struct GitLabCredential: Sendable {
-    let origin: GitLabOrigin
+struct CICredential: Sendable {
+    let origin: CIOrigin
     let token: String
     let allowsWrites: Bool
 }
 
 /// Keychain entries scoped to one HTTPS origin and to read or write access.
-enum GitLabToken {
+enum CIToken {
     static let service = "hearth-gitlab"
-    private static func account(_ origin: GitLabOrigin, writing: Bool) -> String {
+    private static func account(_ origin: CIOrigin, writing: Bool) -> String {
         origin.value + (writing ? "#write" : "#read")
     }
 
-    static func load(origin: GitLabOrigin, writing: Bool) -> String? {
+    static func load(origin: CIOrigin, writing: Bool) -> String? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                                     kSecAttrAccount as String: account(origin, writing: writing),
                                     kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
@@ -85,7 +125,7 @@ enum GitLabToken {
     }
 
     @discardableResult
-    static func save(_ token: String, origin: GitLabOrigin, writing: Bool) -> Bool {
+    static func save(_ token: String, origin: CIOrigin, writing: Bool) -> Bool {
         delete(origin: origin, writing: writing)
         let attrs: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                                     kSecAttrAccount as String: account(origin, writing: writing),
@@ -94,10 +134,34 @@ enum GitLabToken {
         return SecItemAdd(attrs as CFDictionary, nil) == errSecSuccess
     }
 
-    static func delete(origin: GitLabOrigin, writing: Bool) {
+    static func delete(origin: CIOrigin, writing: Bool) {
         SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                        kSecAttrAccount as String: account(origin, writing: writing)] as CFDictionary)
     }
+}
+
+/// The CI operations the Pipelines pane uses, for GitLab and GitHub Actions alike.
+/// Status strings follow GitLab's vocabulary (success, failed, running, pending, …).
+protocol CIClient: Sendable {
+    var remote: CIRemote { get }
+    func pipelines(ref: String?) async throws -> [CIPipeline]
+    func jobs(pipeline: Int) async throws -> [CIJob]
+    func log(job: Int) async throws -> String
+    func retry(pipeline: Int) async throws
+    func cancel(pipeline: Int) async throws
+    func retry(job: Int) async throws
+    /// Starts a job waiting for a manual start (GitLab only).
+    func play(job: Int) async throws
+    /// Workflows that can be started by hand (GitHub); empty for GitLab.
+    func workflows() async throws -> [CIWorkflow]
+    /// Starts a new pipeline (GitLab) or the given workflow (GitHub) for a branch.
+    func run(ref: String, workflow: CIWorkflow?) async throws
+}
+
+struct CIWorkflow: Identifiable, Hashable, Sendable {
+    let id: Int
+    let name: String
+    let path: String
 }
 
 struct CIPipeline: Identifiable, Hashable, Sendable {
@@ -109,6 +173,14 @@ struct CIPipeline: Identifiable, Hashable, Sendable {
     let source: String
     let createdAt: Date?
     let webURL: URL?
+    /// Workflow name (GitHub).
+    var name: String?
+
+    init(id: Int, iid: Int, ref: String, sha: String, status: String, source: String,
+         createdAt: Date?, webURL: URL?, name: String? = nil) {
+        self.id = id; self.iid = iid; self.ref = ref; self.sha = sha; self.status = status
+        self.source = source; self.createdAt = createdAt; self.webURL = webURL; self.name = name
+    }
 
     init?(json j: JSON) {
         guard let id = j["id"]?.double.map(Int.init) else { return nil }
@@ -132,6 +204,11 @@ struct CIJob: Identifiable, Hashable, Sendable {
     let allowFailure: Bool
     let webURL: URL?
 
+    init(id: Int, name: String, stage: String, status: String, duration: Double?, allowFailure: Bool = false, webURL: URL?) {
+        self.id = id; self.name = name; self.stage = stage; self.status = status
+        self.duration = duration; self.allowFailure = allowFailure; self.webURL = webURL
+    }
+
     init?(json j: JSON) {
         guard let id = j["id"]?.double.map(Int.init) else { return nil }
         self.id = id
@@ -145,10 +222,10 @@ struct CIJob: Identifiable, Hashable, Sendable {
 }
 
 /// Minimal GitLab REST client for pipelines and jobs.
-struct GitLabAPI: Sendable {
-    let remote: GitLabRemote
-    let credential: GitLabCredential
-    var session: URLSession = GitLabTransport.session
+struct GitLabAPI: CIClient {
+    let remote: CIRemote
+    let credential: CICredential
+    var session: URLSession = NoRedirectTransport.session
 
     enum APIError: LocalizedError {
         case http(Int, String)
@@ -172,7 +249,7 @@ struct GitLabAPI: Sendable {
     }
 
     func authorizedRequest(_ method: String, _ path: String, query: [URLQueryItem] = []) throws -> URLRequest {
-        guard GitLabOrigin.parse(remote.origin.value) == remote.origin,
+        guard CIOrigin.parse(remote.origin.value) == remote.origin,
               remote.origin == credential.origin else { throw APIError.unauthorizedOrigin }
         guard method == "GET" || credential.allowsWrites else { throw APIError.readOnly }
         var comps = URLComponents(url: remote.apiBase, resolvingAgainstBaseURL: false)!
@@ -207,9 +284,16 @@ struct GitLabAPI: Sendable {
         return (JSON.parse(data)?.array ?? []).compactMap(CIJob.init(json:)).sorted { $0.id < $1.id }
     }
 
-    func trace(job: Int) async throws -> String {
-        String(decoding: try await request("GET", "/projects/\(project)/jobs/\(job)/trace"), as: UTF8.self)
+    func log(job: Int) async throws -> String {
+        let raw = String(decoding: try await request("GET", "/projects/\(project)/jobs/\(job)/trace"), as: UTF8.self)
+        // GitLab section markers carry no content for a reader.
+        return raw.strippingANSI
+            .replacingOccurrences(of: #"section_(start|end):\d+:[^\n\r]*?(\r|\n)?"#, with: "", options: .regularExpression)
     }
+
+    func workflows() async throws -> [CIWorkflow] { [] }
+
+    func run(ref: String, workflow: CIWorkflow?) async throws { try await runPipeline(ref: ref) }
 
     func retry(pipeline: Int) async throws { _ = try await request("POST", "/projects/\(project)/pipelines/\(pipeline)/retry") }
     func cancel(pipeline: Int) async throws { _ = try await request("POST", "/projects/\(project)/pipelines/\(pipeline)/cancel") }
@@ -230,14 +314,14 @@ struct GitLabAPI: Sendable {
 }
 
 /// No credential forwarding through redirects, even to another path on the same host.
-final class GitLabTransport: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+final class NoRedirectTransport: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false
         config.httpCookieStorage = nil
         config.urlCredentialStorage = nil
         config.urlCache = nil
-        return URLSession(configuration: config, delegate: GitLabTransport(), delegateQueue: nil)
+        return URLSession(configuration: config, delegate: NoRedirectTransport(), delegateQueue: nil)
     }()
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
