@@ -126,6 +126,12 @@ struct SandboxPolicy: Equatable {
         p.allowLocalhostURLs = spec.allowLocalhost
         p.environment = spec.environment.merging(agentHome.environment) { $1 }
 
+        // Build & Deployment only: dev servers talk to helpers on random localhost ports
+        // (e.g. Vaadin's Vite dev server and its watchdog). Agents don't get this.
+        if purpose == .build {
+            p.seatbeltRules.append(#"(allow network-outbound (remote tcp "localhost:*"))"#)
+        }
+
         // Build tools: the user's caches (~/.m2, ~/.npm, ~/.gradle) are read-only in the
         // sandbox, so Maven, Gradle and npm write into a private cache instead and still
         // reuse what the host already downloaded.
@@ -193,10 +199,13 @@ struct SandboxPolicy: Equatable {
 
     /// Private caches for build tools, under ~/Library/Caches (writable via user_caches_macos).
     /// Maven ≥ 3.9 reads the host's ~/.m2/repository as a read-only "tail"; Gradle uses
-    /// ~/.gradle/caches as its read-only dependency cache.
+    /// ~/.gradle/caches as its read-only dependency cache. Java programs get a private
+    /// `user.home`: frameworks such as Vaadin write state into ~/.<name>, and those folders
+    /// often hold tools that run outside the sandbox (Vaadin: node, IDE plugin).
     static func buildToolEnvironment(home: String) -> [String: String] {
         let cache = home + "/Library/Caches/Hearth"
         return [
+            "JAVA_TOOL_OPTIONS": "-Duser.home=\(cache)/home",
             "MAVEN_ARGS": "-Dmaven.repo.local=\(cache)/m2/repository -Dmaven.repo.local.tail=\(home)/.m2/repository",
             "GRADLE_USER_HOME": cache + "/gradle",
             "GRADLE_RO_DEP_CACHE": home + "/.gradle/caches",

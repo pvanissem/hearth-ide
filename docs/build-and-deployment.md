@@ -40,7 +40,12 @@ Namen, Pfade außerhalb des Workspace und übergroße Dateien werden ignoriert.
 ## Sandbox-Besonderheiten
 
 - **Erreichbarkeit:** Ein Service in der Sandbox kann lauschen und ist vom Mac aus
-  erreichbar; aus der Sandbox heraus sind andere localhost-Ports nicht erreichbar.
+  erreichbar. Build & Deployment darf sich außerdem mit localhost-Ports verbinden, weil
+  Dev-Server Hilfsprozesse auf zufälligen Ports nutzen (z. B. Vaadin mit Vite). Agenten
+  dürfen das nicht.
+- **Eigenes Java-Home:** Java-Programme in der Sandbox sehen `~/Library/Caches/Hearth/home`
+  als `user.home` (`JAVA_TOOL_OPTIONS`). Frameworks wie Vaadin schreiben dort ihr
+  `~/.vaadin` hin statt in deinen echten Ordner, in dem Node und das IDE-Plugin liegen.
 - **Netzwerk nur über den Sandbox-Proxy.** Java ignoriert `HTTPS_PROXY`. Für Maven
   erzeugt jeder Lauf eine temporäre globale Settings-Datei (0600, nur Proxy, wird nach
   dem Lauf gelöscht, Reste nach 24 h entfernt) und übergibt sie mit `-gs`. Deine

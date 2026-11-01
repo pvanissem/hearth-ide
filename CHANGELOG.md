@@ -1,5 +1,10 @@
 # Hearth IDE – Änderungen
 
+## Unveröffentlicht
+
+- Build & Deployment: Spring-Boot-Anwendungen mit Vaadin starten in der Sandbox. Java-Programme bekommen dort ein eigenes Home unter `~/Library/Caches/Hearth/home` (Vaadin schreibt nach `~/.vaadin`, wo auch Werkzeuge liegen, die außerhalb der Sandbox laufen). Dev-Server dürfen sich mit Hilfsprozessen auf localhost verbinden (z. B. Vite); Agenten weiterhin nicht.
+- Build & Deployment: Bei gesperrtem Dateizugriff nennt der Hinweis jetzt die Datei. Harmlose Maven-Warnungen zu optionalen Repositories führen nicht mehr zu einem falschen Netzwerk-Hinweis.
+
 ## 0.4.1 · 2026-11-01
 
 - Build & Deployment: Maven-, Gradle- und npm-Builds laufen wieder. In der Sandbox sind `~/.m2`, `~/.gradle` und `~/.npm` nicht beschreibbar (Maven scheiterte mit „Could not open file channel … .lock“). Die Werkzeuge nutzen jetzt einen eigenen Cache unter `~/Library/Caches/Hearth/` und lesen bereits geladene Artefakte aus `~/.m2/repository` bzw. `~/.gradle/caches` weiter mit. Das gilt auch für Agenten. JDKs aus `~/Library/Java/JavaVirtualMachines` und SDKMAN sind in der Sandbox nutzbar.

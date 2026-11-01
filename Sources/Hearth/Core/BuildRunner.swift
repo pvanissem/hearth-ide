@@ -281,9 +281,16 @@ final class BuildDeployStore {
         }
     }
 
-    /// Sandbox network denials look like generic I/O errors to build tools.
+    /// Sandbox denials look like generic I/O errors to build tools. Names the blocked file
+    /// (Java: "<path> (Operation not permitted)") or the probable host. Warnings are skipped:
+    /// Maven logs harmless "Could not transfer metadata" warnings for optional repositories.
     static func networkHint(_ output: String) -> String? {
-        let tail = String(output.suffix(20_000))
+        let lines = String(output.suffix(20_000)).split(separator: "\n").filter { !$0.hasPrefix("[WARNING]") }
+        if let line = lines.first(where: { $0.contains(" (Operation not permitted)") }),
+           let range = line.range(of: #"/[^\s()]+(?= \(Operation not permitted\))"#, options: .regularExpression) {
+            return String(localized: "File access denied in the sandbox: \(String(line[range])). Allow the folder in Settings › Sandbox, then run the task again.")
+        }
+        let tail = lines.joined(separator: "\n")
         guard tail.contains("Operation not permitted") || tail.contains("403 Forbidden") || tail.contains("CONNECT tunnel failed")
                 || tail.contains("proxyconnect") || tail.contains("Proxy Authentication Required") else { return nil }
         let host = tail.range(of: #"https?://[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, options: .regularExpression)

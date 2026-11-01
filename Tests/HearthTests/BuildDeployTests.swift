@@ -102,6 +102,10 @@ struct BuildDeployTests {
         try require(!settings.isEmpty && !FileManager.default.fileExists(atPath: settings), "Temporary proxy settings not removed")
         try require(BuildDeployStore.networkHint("Could not transfer from https://nexus.example.org/x: Operation not permitted")?.contains("nexus.example.org") == true
                     && BuildDeployStore.networkHint("BUILD FAILURE: compilation error") == nil, "Network hint")
+        let vaadin = "[WARNING] Could not transfer metadata from https://central.sonatype.com/x: Operation not permitted\n"
+            + "Caused by: java.io.FileNotFoundException: /Users/x/.vaadin/userKey (Operation not permitted)\n"
+        let hint = BuildDeployStore.networkHint(vaadin) ?? ""
+        try require(hint.contains("/Users/x/.vaadin/userKey") && !hint.contains("sonatype"), "File hint: \(hint)")
         try require(BuildTask(id: "z", tool: .node, project: "", title: "", kind: .task, argv: ["./mvnw"]).requiredTool == nil
                     && oneShot.requiredTool == "go", "Required tool detection")
     }

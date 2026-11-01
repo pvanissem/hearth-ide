@@ -640,3 +640,5 @@
 "%lld min %lld s" = "%lld min %lld s";
 "feature/…" = "feature/…";
 "Lines %lld–%lld" = "Zeile %lld–%lld";
+
+"File access denied in the sandbox: %@. Allow the folder in Settings › Sandbox, then run the task again." = "Dateizugriff in der Sandbox verweigert: %@. Gib den Ordner unter Einstellungen › Sandbox frei und starte die Aufgabe neu.";

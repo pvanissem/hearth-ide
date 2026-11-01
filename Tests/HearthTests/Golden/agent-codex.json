@@ -4,6 +4,7 @@
       "CODEX_HOME" : "\/Users\/test\/Library\/Application Support\/Hearth\/agents\/codex",
       "GRADLE_RO_DEP_CACHE" : "\/Users\/test\/.gradle\/caches",
       "GRADLE_USER_HOME" : "\/Users\/test\/Library\/Caches\/Hearth\/gradle",
+      "JAVA_TOOL_OPTIONS" : "-Duser.home=\/Users\/test\/Library\/Caches\/Hearth\/home",
       "MAVEN_ARGS" : "-Dmaven.repo.local=\/Users\/test\/Library\/Caches\/Hearth\/m2\/repository -Dmaven.repo.local.tail=\/Users\/test\/.m2\/repository",
       "npm_config_cache" : "\/Users\/test\/Library\/Caches\/Hearth\/npm"
     }

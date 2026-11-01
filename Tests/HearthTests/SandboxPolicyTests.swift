@@ -81,6 +81,16 @@ struct SandboxPolicyTests {
                     "\(purpose) may write the host's Maven repository")
         }
         #expect(SandboxPolicy.make(.gitNetwork, Self.context()).environment["MAVEN_ARGS"] == nil)
+        // Java gets a private user.home (Vaadin & co. write ~/.vaadin, which holds host tools).
+        #expect(SandboxPolicy.make(.build, Self.context()).environment["JAVA_TOOL_OPTIONS"] == "-Duser.home=\(cache)/home")
+    }
+
+    /// Dev servers (e.g. Vaadin + Vite) connect to helpers on random localhost ports.
+    @Test func onlyBuildsReachLocalhost() {
+        let rule = #"(allow network-outbound (remote tcp "localhost:*"))"#
+        for (name, purpose) in Self.purposes {
+            #expect(SandboxPolicy.make(purpose, Self.context()).seatbeltRules.contains(rule) == (purpose == .build), "\(name)")
+        }
     }
 
     @Test func keychainOnlyWhereNeeded() {
