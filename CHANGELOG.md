@@ -1,5 +1,9 @@
 # Hearth IDE – Änderungen
 
+## Unveröffentlicht
+
+- Agenten und Builds laufen jetzt auch in Ordnern in iCloud Drive (`~/Library/Mobile Documents/com~apple~CloudDocs`), im „Documents“-Ordner von iCloud-Apps und bei Cloud-Anbietern wie Dropbox, OneDrive oder Google Drive (`~/Library/CloudStorage`). Vorher hieß es „This folder contains settings of Hearth, macOS or an agent“. Der Rest von `~/Library` bleibt gesperrt.
+
 ## 0.4.2 · 2026-11-01
 
 - Build & Deployment: Spring-Boot-Anwendungen mit Vaadin starten in der Sandbox. Java-Programme bekommen dort ein eigenes Home unter `~/Library/Caches/Hearth/home` (Vaadin schreibt nach `~/.vaadin`, wo auch Werkzeuge liegen, die außerhalb der Sandbox laufen). Dev-Server dürfen sich mit Hilfsprozessen auf localhost verbinden (z. B. Vite); Agenten weiterhin nicht.

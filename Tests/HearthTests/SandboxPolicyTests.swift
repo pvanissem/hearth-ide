@@ -150,7 +150,16 @@ struct SandboxPolicyTests {
                     h + "/.config", h + "/.config/opencode", h + "/.ssh", h + "/.aws/x", h + "/.zshrc"] {
             #expect(SandboxSettings.protectedReason(bad, home: h, support: s) != nil, "\(bad) accepted")
         }
-        for ok in [h + "/code/project", h + "/Documents/notes", h + "/.local/share/x"] {
+        // Cloud drives inside ~/Library are documents, not settings; the rest of ~/Library stays blocked.
+        let iCloud = h + "/Library/Mobile Documents"
+        for bad in [iCloud, iCloud + "/iCloud~md~obsidian", iCloud + "/iCloud~md~obsidian/Library", h + "/Library/CloudStorage",
+                    iCloud + "/com~apple~CloudDocs/../../Preferences"] {
+            #expect(SandboxSettings.protectedReason(bad, home: h, support: s) != nil, "\(bad) accepted")
+        }
+        for ok in [h + "/code/project", h + "/Documents/notes", h + "/.local/share/x",
+                   iCloud + "/com~apple~CloudDocs", iCloud + "/com~apple~CloudDocs/Lofi/2026 Reise Jakarta",
+                   iCloud + "/iCloud~md~obsidian/Documents/Vault", h + "/Library/CloudStorage/Dropbox/project",
+                   h + "/Library/CloudStorage/OneDrive-Personal"] {
             #expect(SandboxSettings.protectedReason(ok, home: h, support: s) == nil, "\(ok) rejected")
         }
         #expect(SandboxSettings.validFolder("/etc", home: h, support: s) != nil)

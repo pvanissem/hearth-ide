@@ -107,6 +107,25 @@ struct SandboxSettings: Codable, Equatable {
         return protectedReason(resolved, home: home, support: support)
     }
 
+    /// Cloud drives macOS keeps inside ~/Library hold the user's documents, not settings:
+    /// iCloud Drive (and its folders), an iCloud app's "Documents" folder, and the folders
+    /// of File Provider apps such as Dropbox, OneDrive or Google Drive in ~/Library/CloudStorage.
+    static func isCloudFolder(_ resolved: String, home: String) -> Bool {
+        let iCloud = home + "/Library/Mobile Documents/"
+        if resolved.hasPrefix(iCloud) {
+            let parts = resolved.dropFirst(iCloud.count).split(separator: "/", omittingEmptySubsequences: false)
+            guard let container = parts.first, !container.isEmpty, !parts.contains(where: { $0 == ".." || $0.isEmpty }) else { return false }
+            if container == "com~apple~CloudDocs" { return true }
+            return container.hasPrefix("iCloud~") && parts.count >= 2 && parts[1] == "Documents"
+        }
+        let storage = home + "/Library/CloudStorage/"
+        if resolved.hasPrefix(storage) {
+            let parts = resolved.dropFirst(storage.count).split(separator: "/", omittingEmptySubsequences: false)
+            return !parts.isEmpty && !parts.contains(where: { $0 == ".." || $0.isEmpty || $0 == "." })
+        }
+        return false
+    }
+
     /// Why a folder must not be given to a sandbox, or nil. Covers the folder itself, anything
     /// inside a protected area and any folder that contains one.
     static func protectedReason(_ resolved: String, home: String, support: String) -> String? {
@@ -116,7 +135,8 @@ struct SandboxSettings: Codable, Equatable {
                              home + "/.gemini", home + "/.copilot", home + "/.config",
                              home + "/.zshrc", home + "/.zprofile", home + "/.bashrc", home + "/.bash_profile", home + "/.profile"]
         func overlaps(_ protected: String) -> Bool {
-            resolved == protected || resolved.hasPrefix(protected + "/") || protected.hasPrefix(resolved + "/")
+            if protected == home + "/Library", isCloudFolder(resolved, home: home) { return false }
+            return resolved == protected || resolved.hasPrefix(protected + "/") || protected.hasPrefix(resolved + "/")
         }
         if credentials.contains(where: overlaps) { return String(localized: "This folder contains credentials and stays blocked.") }
         if configuration.contains(where: overlaps) {
