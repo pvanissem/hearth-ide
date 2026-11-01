@@ -6,15 +6,11 @@ import Testing
 
 @MainActor
 struct ContextSwitchTests {
-    private func require(_ value: Bool, _ message: String) throws {
-        if !value { throw SandboxGitRunner.Failure(message) }
-    }
     private func json(_ data: Any) throws -> JSON { JSON.parse(try JSONSerialization.data(withJSONObject: data))! }
 
     @Test func staleLoadsCannotPublishAfterSwitchBack() throws {
-        let a = ChatSelection(serverID: "server-a", sessionID: "same-id")
-        let b = ChatSelection(serverID: "server-b", sessionID: "same-id")
-        var requests = LatestRequest<ChatSelection>()
+        let a = "run:a", b = "run:b"
+        var requests = LatestRequest<String>()
         let oldA = requests.begin(a)
         let loadB = requests.begin(b)
         try require(!requests.accepts(oldA, current: b) && requests.accepts(loadB, current: b), "A overwrites B")
@@ -34,51 +30,6 @@ struct ContextSwitchTests {
         try require(!editorRequests.accepts(oldDiff, current: editorB), "Diff from another workspace accepted")
         try require(EditorPresentation.relativePath(file, root: "/work/a") == "source.swift", "Valid relative path")
         try require(EditorPresentation.relativePath(URL(fileURLWithPath: "/work/ab/file"), root: "/work/a") == nil, "Prefix collision assigned wrong repository")
-    }
-
-    @Test func streamsStayWithTheirMessageAndSession() throws {
-        let a = ChatSelection(serverID: "a", sessionID: "session")
-        let b = ChatSelection(serverID: "b", sessionID: "session")
-        var store = ChatRenderStore()
-        let emptyA = try json(["id": "answer-a", "type": "assistant", "content": [["type": "text", "text": ""]]])
-        func data(_ message: String, _ ordinal: Int = 0, _ field: String? = nil, _ text: String = "") throws -> JSON {
-            var value: [String: Any] = ["sessionID": "session", "assistantMessageID": message, "ordinal": ordinal]
-            if let field { value[field] = text }
-            return try json(value)
-        }
-        store.select(a)
-        store.appendUser(id: "msg_user", text: "A prompt", to: a)
-        store.consume("session.text.started", data: try data("answer-a"), for: a)
-        store.consume("session.text.delta", data: try data("answer-a", 0, "delta", "Hello "), for: a)
-        store.load([emptyA], for: a) // In-flight history predates the delta.
-        try require(store.messages(for: a).contains { $0.id == "answer-a" && $0.text == "Hello " }, "History erased live delta")
-        store.select(b)
-        store.consume("session.text.delta", data: try data("answer-a", 0, "delta", "world"), for: a)
-        store.consume("session.text.started", data: try data("answer-b"), for: b)
-        store.consume("session.text.delta", data: try data("answer-b", 0, "delta", "B only"), for: b)
-        try require(store.messages(for: b).map(\.text).joined() == "B only", "A stream leaked into B")
-        store.select(a)
-        try require(store.messages(for: a).contains { $0.text == "Hello world" }, "Switch lost A's prefix")
-        store.consume("session.text.ended", data: try data("answer-a", 0, "text", "Canonical final answer"), for: a)
-        store.finishBackground(for: a, messageID: "answer-a")
-        store.load([emptyA], for: a)
-        try require(store.messages(for: a).contains { $0.text == "Canonical final answer" }, "Stale snapshot replaced canonical ended event")
-        let user = try json(["id": "msg_user", "type": "user", "text": "A prompt"])
-        let complete = try json(["id": "answer-a", "type": "assistant", "content": [["type": "text", "text": "Canonical final answer"]]])
-        store.load([user, complete], for: a)
-        try require(store.messages(for: a).count == 2, "Stream or optimistic user duplicated after acknowledgment")
-        store.consume("session.text.started", data: try data("answer-a", 1), for: a)
-        store.consume("session.text.delta", data: try data("answer-a", 1, "delta", "Second block"), for: a)
-        try require(store.messages(for: a).last?.text == "Canonical final answerSecond block", "Text ordinal applied to wrong part")
-        store.discardStreams(serverID: "a")
-        store.consume("session.text.delta", data: try data("answer-new", 0, "delta", "unknown suffix"), for: a)
-        try require(store.isSynchronizing(a) && !store.messages(for: a).contains { $0.text.contains("unknown suffix") }, "Partial reconnect suffix displayed as a full message")
-        store.consume("session.text.ended", data: try data("answer-new", 0, "text", "Recovered full text"), for: a)
-        try require(store.messages(for: a).last?.text == "Recovered full text", "Canonical reconnect text not recovered")
-        store.consume("session.text.delta", data: try data("failed-after-reconnect", 0, "delta", "unknown"), for: a)
-        let failed = try json(["id": "failed-after-reconnect", "type": "assistant", "content": [], "error": ["type": "provider", "message": "Failed"]])
-        store.load([failed], for: a)
-        try require(!store.isSynchronizing(a), "Failed terminal fragment left synchronization stuck")
     }
 
     private func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
@@ -196,9 +147,6 @@ struct EditorPerformanceTests {
 }
 
 extension EditorPerformanceTests {
-    private func require(_ value: Bool, _ message: String) throws {
-        if !value { throw SandboxGitRunner.Failure(message) }
-    }
     private func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
         if let result = view as? T { return result }
         return view.subviews.lazy.compactMap { find(type, in: $0) }.first

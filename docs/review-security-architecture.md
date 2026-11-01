@@ -1,5 +1,11 @@
 # Security- und Architektur-Review (01.11.2026)
 
+> **Umsetzung in v0.3:** S1, S2 und S6 behoben, S5 gekennzeichnet; Architektur
+> A1–A5 umgesetzt (devkcode-Pfad entfernt, `AppModel` geteilt, `SandboxCommandRunner`,
+> `SandboxPolicy` mit Golden-Tests, swift-testing + GitHub Actions). Details zu
+> jedem Punkt stehen am Ende des jeweiligen Abschnitts unter „Umgesetzt“.
+> Aktueller Aufbau: [Architektur](architecture.md).
+
 Stand: `main` nach v0.2.0. Geprüft wurden der Quellcode unter `Sources/Hearth`,
 die Skripte (`install.sh`, `scripts/`) und die erzeugten nono-Profile. Kein
 externer Pentest; Befunde sind aus dem Code abgeleitet. Wo ein Befund praktisch
@@ -16,12 +22,12 @@ ausgeführt wird.
 
 | # | Befund | Schwere | Status |
 |---|--------|---------|--------|
-| S1 | Git-Pull führt Filterbefehle aus der Repo-Konfiguration mit Zugriff auf `~/.ssh` aus | **Hoch** | nachgestellt |
-| S2 | Agent kann über seine eigene Konfiguration Befehle hinterlegen, die außerhalb der Sandbox laufen | **Hoch** | aus Code belegt |
+| S1 | Git-Pull führt Filterbefehle aus der Repo-Konfiguration mit Zugriff auf `~/.ssh` aus | **Hoch** | **behoben in v0.3** |
+| S2 | Agent kann über seine eigene Konfiguration Befehle hinterlegen, die außerhalb der Sandbox laufen | **Hoch** | **behoben in v0.3** (Gemini/Copilot: Schreibsperre einzelner Dateien) |
 | S3 | Agenten haben Zugriff auf den Login-Schlüsselbund | Mittel | plausibel, nicht getestet |
 | S4 | „Im Standardprogramm öffnen“ startet vom Agenten geschriebene Programme ohne Nachfrage | Mittel | aus Code belegt |
-| S5 | Terminal-Bereich ist eine ungesandboxte Host-Shell im Agenten-Ordner | Mittel | dokumentiert, by design |
-| S6 | Arbeitsordner darf Hearths eigene Einstellungen enthalten | Mittel | aus Code belegt |
+| S5 | Terminal-Bereich ist eine ungesandboxte Host-Shell im Agenten-Ordner | Mittel | gekennzeichnet in v0.3, offen |
+| S6 | Arbeitsordner darf Hearths eigene Einstellungen enthalten | Mittel | **behoben in v0.3** |
 | S7 | Session-ID aus der Event-Datei wird ungeprüft weitergegeben | Niedrig | aus Code belegt |
 | S8 | Datenabfluss über erlaubte Entwicklerdienste | Niedrig | Restrisiko |
 | S9 | Update-Kette vertraut allein dem GitHub-Konto | Niedrig | bekannt |
@@ -95,6 +101,12 @@ der (ebenfalls vom Agenten beschreibbaren) Remote-Konfiguration.
 4. Remote-Hosts nicht aus `.git/config` übernehmen, sondern einmal beim Klonen
    bzw. per Nutzerbestätigung festhalten.
 
+**Umgesetzt (v0.3):** Pull = `fetch` in `SandboxPurpose.gitNetwork` + `merge --ff-only`
+in `.gitLocal` (ohne Schlüssel); `Git.networkSandboxOverrides` leert Filter, Credential-
+Helper (auch URL-gebunden), `askPass` und `sshCommand` aus der Repo-Konfiguration.
+Tests: `SandboxGitTests.networkStepNeverRunsRepositoryFilters` (echtes Repo),
+`LiveSandboxTests`. Offen: Punkte 3 (ssh-agent statt Schlüsseldateien) und 4.
+
 ### S2 · Hoch · Persistenz über Agent-Konfiguration und Projektdateien
 
 **Wo:** `AgentKind.sandbox` (`readWrite: ["~/.claude"]`, `~/.claude.json`,
@@ -125,6 +137,13 @@ npm-`postinstall`).
    beschreibbar ist.
 3. In der README klar sagen: Was der Agent ins Projekt schreibt, bleibt
    unvertrauenswürdig, auch nach Ende der Sitzung.
+
+**Umgesetzt (v0.3):** Variante 2 – `AgentHome` gibt Claude Code (`CLAUDE_CONFIG_DIR`),
+Codex (`CODEX_HOME`) und OpenCode (`XDG_*`) einen eigenen Ordner; eigene
+Anweisungen/Skills/Agents/Commands nur lesend verlinkt, Einstellungen einmal kopiert.
+Gemini/Copilot: Seatbelt-Schreibsperre für `settings.json`, `extensions`,
+`mcp-config.json`. `.git/hooks` ist in jeder Sandbox schreibgeschützt (über
+`core.hooksPath` in `.git/config` bleibt ein Restrisiko, siehe Punkt 3).
 
 ### S3 · Mittel · Login-Schlüsselbund für Agenten
 
@@ -190,6 +209,11 @@ Zusatzordner: Hearth-Supportordner, `~/Library` (ganz, außer ausdrücklich
 erlaubten Unterordnern), `LaunchAgents`, Shell-Konfigurationen, die
 Zustandsordner der Agenten. Zusätzlich prüfen, dass kein gesperrter Pfad
 **unterhalb** des gewählten Ordners liegt (heute nur „ist selbst gesperrt“).
+
+**Umgesetzt (v0.3):** `SandboxSettings.protectedReason` – gemeinsame Sperrliste für
+Arbeits- und Zusatzordner (Hearth-Supportordner, `~/Library`, Agent- und
+Shell-Konfiguration, Zugangsdaten), auch wenn ein gesperrter Pfad im gewählten
+Ordner liegt.
 
 ### S7 · Niedrig · Session-ID aus `events.jsonl` ungeprüft
 
@@ -272,6 +296,10 @@ flowchart TB
 ```
 
 ### Befunde
+
+*Umgesetzt in v0.3: A1 (Pfad entfernt), A2 (Stores), A3 (`SandboxCommandRunner`),
+A4 (`SandboxPolicy`, Golden-Tests), A5 (swift-testing über `scripts/test.sh`,
+`.github/workflows/ci.yml`). A6 offen.*
 
 **A1 · Zwei Sitzungsmodelle nebeneinander.** Agenten-Läufe (`AgentHost`)
 und devkcode-Sitzungen (`ServerConnection`) existieren parallel. Daraus folgen

@@ -1,5 +1,15 @@
 # Hearth IDE – Änderungen
 
+## Unveröffentlicht
+
+- Sicherheit: Ein Pull im Git-Bereich lädt nur noch in der Sandbox mit Zugriff auf deine SSH-Schlüssel herunter; das Zusammenführen läuft in einer Sandbox ohne Schlüssel. Filter und Zugangs-Helfer aus der Repository-Konfiguration werden dort ignoriert. Vorher konnte ein Agent über die Konfiguration seines Projekts beim nächsten Pull an die Schlüssel kommen.
+- Sicherheit: Claude Code, Codex und OpenCode bekommen in Hearth einen eigenen Konfigurationsordner. Deine Anweisungen, Skills, Agents und Commands werden nur lesend eingebunden, deine Einstellungen einmal kopiert. Ein Agent kann damit keine Hooks oder MCP-Server mehr in deine echte Konfiguration schreiben, die außerhalb von Hearth laufen würden. **Bitte melde dich in Hearth einmal neu an** (Einstellungen › Agenten › Anmelden). Ältere Claude-Sitzungen starten neu statt fortzusetzen.
+- Sicherheit: Bei Gemini CLI und Copilot CLI sind die Dateien, die Befehle starten, schreibgeschützt. `.git/hooks` im Projekt ist für alle Sandboxes gesperrt. Als Arbeitsordner lassen sich keine Ordner mit Hearth-, macOS- oder Agent-Einstellungen mehr wählen.
+- Der Terminal-Bereich kennzeichnet, dass seine Shell ohne Sandbox läuft.
+- „Im Chat erwähnen“ und die Agent-Aufträge aus Tests und Architektur tippen jetzt direkt in den Terminal-Chat des ausgewählten Agenten.
+- Entfernt: die alte Anbindung über devkcode und OpenCode-Server (nativer Chat, Sandbox-Profile, Copilot-Verbrauch). Ein nativer Chat kommt über ACP zurück.
+- Intern: Sandbox-Regeln als eigene Typen mit Golden-Tests, typisierte Schnittstelle für Sandbox-Befehle, aufgeteiltes App-Modell, Tests mit swift-testing und eine Build-Pipeline in GitHub Actions, die Releases baut und veröffentlicht.
+
 ## 0.2.0 · 2026-10-31
 
 - Editor: Jede Sitzung behält ihre eigenen Tabs. Beim Wechsel zu einem anderen Agenten zeigt der Editor nur dessen Dateien, beim Zurückwechseln sind die alten Tabs samt Position wieder da – auch nach einem Neustart.

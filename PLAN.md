@@ -40,11 +40,18 @@ Hearth IDE.app
 - [x] **2b Einstellungen** – nativ statt devkcode-CLI: Domains, Ports, Ordner,
       Projekte, Credentials (nono-Proxy oder env), Git über SSH; Build &
       Deployment und Git laufen in Hearths nono-Sandbox.
-- [ ] **2c Rest** – Login ohne Schlüsselbund-Freigabe (nono `credential_providers`,
-      Platzhalter-Tokens), `DevkCLI`-/OpenCode-Server-Pfad entfernen.
-- [ ] **3 ACP-Chat** – Agent-Schnittstelle in der App, ACP-Client auf den
-      bestehenden Chat-Views (Permissions, Modelle, Modi, Slash-Commands);
-      OpenCode-HTTP-Weg danach entfernen.
+- [x] **2c Härtung & Architektur (v0.3)** – Befunde aus dem
+      [Review](docs/review-security-architecture.md): Pull geteilt (S1), eigene
+      Konfigurationsordner pro Agent (S2), geschützte Ordner (S6); devkcode-/
+      OpenCode-Server-Pfad entfernt, `AppModel` in Stores geteilt, Sandbox-Regeln
+      als `SandboxPolicy`, typisiertes `SandboxCommandRunner`-Protokoll,
+      swift-testing-Suite mit Golden-Profilen und Live-nono-Tests, CI-Pipeline.
+- [ ] **2d Rest** – Login ohne Schlüsselbund-Freigabe (nono `credential_providers`,
+      Platzhalter-Tokens), Terminal-Bereich standardmäßig in der Sandbox (S5),
+      Warnung vor ausführbaren Dateien (S4).
+- [ ] **3 ACP-Chat** – Agent-Schnittstelle in der App, ACP-Client mit eigenen
+      Chat-Views (Permissions, Modelle, Modi, Slash-Commands) als zweite
+      Darstellung neben dem Terminal.
 - [ ] **4 Feinschliff** – Pipelines für GitHub Actions und GitLab (freie URL),
       Signierung/Notarisierung, Agent-spezifische Verbrauchsanzeigen.
 
@@ -56,3 +63,5 @@ Hearth IDE.app
   die normalen Abo-Limits.
 - Guards (Git-Remote, MR, WebFetch) waren OpenCode-Plugins und müssen als
   nono-Regeln bzw. agentenspezifische Hooks neu entstehen.
+- Gemini CLI und Copilot CLI haben keine verlässliche Variable für einen eigenen
+  Konfigurationsordner; dort schützt nur eine Schreibsperre einzelner Dateien.

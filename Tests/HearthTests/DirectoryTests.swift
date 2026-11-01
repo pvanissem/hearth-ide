@@ -5,7 +5,7 @@ import Testing
 @testable import Hearth
 
 @MainActor
-struct DirectoryAndHistoryTests {
+struct DirectoryTests {
     private func require(_ value: Bool, _ message: String) throws {
         if !value { throw WorkspaceFiles.Failure(message) }
     }
@@ -103,27 +103,4 @@ struct DirectoryAndHistoryTests {
         try require(WorkspaceFileDrag.decode(providerData, root: base.path, token: token)?.source == file, "SwiftUI root-drop data bridge failed")
     }
 
-    @Test func historyMergesAndSortsBothRegistries() throws {
-        let decoder = JSONDecoder()
-        let web = try decoder.decode([WebSessionEntry].self, from: Data("""
-        [
-          {"id":"desk","repoRoot":"/repos/hearth","profileName":"web-profile","port":"1234","status":"stopped","lastStartedAt":"2026-10-29T14:32:41.070533Z"},
-          {"id":"buddy","repoRoot":"/repos/buddy","port":"1235","status":"stopped","lastStartedAt":"2026-10-29T15:00:00Z"},
-          {"id":"active","repoRoot":"/repos/active","port":"1236","status":"running","lastStartedAt":"2026-10-30T07:00:00Z"}
-        ]
-        """.utf8))
-        let terminal = [SandboxEntry(id: "old", name: "Hearth IDE", profileName: "old-profile", projectName: nil,
-                                    repoRoot: "/repos/hearth", pid: nil, status: "stopped", lastStartedAt: Date(timeIntervalSince1970: 1))]
-        let rows = SandboxHistory.merged(terminal: terminal, web: web)
-        try require(rows.map(\.root) == ["/repos/active", "/repos/buddy", "/repos/hearth"], "Web recency not used or running sandbox hidden")
-        try require(rows.filter { $0.root == "/repos/hearth" }.count == 1, "Duplicate merged sandbox")
-        let desk = rows.last!
-        try require(desk.profile == "web-profile" && desk.lastStarted == web[0].lastStartedAt, "Old terminal record overrides newer web entry")
-        let usage = [desk.id: Date(timeIntervalSince1970: 2_000_000_000)]
-        try require(SandboxHistory.merged(terminal: terminal, web: web, lastUsed: usage).first?.root == desk.root, "Persisted app usage ignored")
-        // More than seven entries must remain available to the welcome ScrollView.
-        let many = (0..<10).map { SandboxEntry(id: "\($0)", name: "repo\($0)", profileName: nil, projectName: nil,
-            repoRoot: "/repos/repo\($0)", pid: nil, status: "stopped", lastStartedAt: Date(timeIntervalSince1970: Double($0))) }
-        try require(SandboxHistory.merged(terminal: many, web: web).count == 13, "History truncated")
-    }
 }
