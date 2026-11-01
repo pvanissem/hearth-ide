@@ -259,7 +259,7 @@ Depth comes from light, not from layers. The page is flat night lit from one fir
 - **Embers halo** (close): radial `rgba(255,90,31,.45)` → `rgba(196,22,28,.15)` at 60% → transparent, behind the app icon.
 
 ### Named Rules
-**The Flicker Bus Rule.** Every surface lit by the fire reads one shared variable, `--flicker`, rather than animating on its own. The canvas loop eases it toward a random value between .75 and 1.25 (factor .18) and writes it to `:root` every third frame. The firelight and the stones' heat layer (`calc(.35 + .4 * var(--flicker))`) follow it. Light sources away from the fire, such as ember lights and the closing halo, smoulder on their own CSS loop.
+**The Flicker Bus Rule.** Every surface lit by the fire reads one shared variable, `--flicker`, rather than animating on its own. The canvas loop eases it toward a random value between .75 and 1.25 (factor .14 per step) and writes it to `:root` every frame. The firelight and the stones' heat layer (`calc(.35 + .4 * var(--flicker))`) follow it. Light sources away from the fire, such as ember lights and the closing halo, smoulder on their own CSS loop.
 
 **The Shadows Fall Down Rule.** Shadows are black, soft, have negative spread and fall straight down. Stone shadows are the one exception, falling away from the fire.
 
@@ -275,18 +275,19 @@ Focus rings are 2px flame, offset 3px, at 4px radius. On a stone, focus strokes 
 
 ### Field Stone (signature)
 A field stone is a procedural SVG slab lit by the fire, with a sandbox target cut into its face.
-- **Surface:** The base fill (stone-body) runs through feTurbulence (fractalNoise, baseFrequency .03–.045, 5 octaves, per-stone seed) into feDiffuseLighting (surfaceScale 1.4–2.2, diffuseConstant 1.15, lighting-color #efe0d6). An fePointLight sits at the fire's position relative to the stone, at z = 0.9 × stone height. The result is multiplied back (k1 1.15) and clipped to the outline.
-- **Shade and heat:** A linear shade runs from transparent on the fire side to night at 78% on the far side. A radial heat layer (#ff7a2a at 50% → ember at 0) sits on the fire side, and its opacity follows `--flicker`.
-- **Cut label:** First a smoothed face: a blurred ellipse in #4a3a44 at 82%, sized to the label. On it, the label in Azeret Mono with ligatures off is drawn twice: a stone-recess copy 1.4 units higher, then a stone-lip copy. The pale lip with a dark recess just above it reads as letters cut into the stone.
+- **Surface:** A height map gives the stone its volume: the outline's alpha blurred by 0.22 × stone height (a rounded body), roughened by fractalNoise (baseFrequency .028–.042, 4 octaves, per-stone seed, 9% weight). Its colour is a low-frequency mottle mapped to warm grey (about #6f6062 ± 20%) with fine dark grains (noise at .42, thresholded). feDiffuseLighting (surfaceScale 0.42–0.5 × height, lighting-color #ffd8b4) and a soft feSpecularLighting sheen (constant .32, exponent 18, #ffae70) share one fePointLight at the fire's position, z = 1.25 × stone height. Colour × light (k1 1.12) plus 17% ambient keeps the far side readable; the sheen adds at 38%. Clipped to the outline.
+- **Shade and heat:** A linear shade runs from transparent on the fire side to night at 55% on the far side. A radial heat layer (#ff7a2a at 34% → ember at 0) sits on the fire side, and its opacity follows `--flicker`.
+- **Cut label:** First a smoothed face: a blurred ellipse in #3f3439 at 78%, sized to the label. On it, the label in Azeret Mono with ligatures off is drawn twice: a stone-recess copy 1.4 units higher, then a stone-lip copy. The pale lip with a dark recess just above it reads as letters cut into the stone.
 - **Hit:** A radial hitglow (flame → ember → crimson → transparent) fades in over .08s and out over .7s. Hover, focus or a spark landing on the stone triggers it.
-- **Interaction:** Ring stones are focusable list items, labelled with "target: consequence". Hover or focus shows the rule tip with the real nono rule. A spark landing on a stone shows the tip for 1.7s.
+- **Interaction:** Ring stones are focusable list items, labelled with "target: consequence". Hover or focus shows the rule tip with the real nono rule and holds it: while a stone is hovered or focused, no spark is aimed at the ring and nothing replaces the tip. Otherwise a spark lands on a stone every 5–7s and shows the tip for 4s.
 - **Placement:** In the ring, 8 stones sit on an ellipse (rx 375, ry 255 in a 1000×860 viewBox). They are scaled by depth (far stones smaller) and painted back to front. In the outside arc, each stone gets its own SVG lit from above the arc's centre.
 
 ### Fire (canvas)
-- **Fire:** Every frame spawns 6 flame particles on five wandering columns, drawn additively ("lighter"). Each particle shifts colour as it ages: pale gold → orange → red-orange → deep crimson. Three logs lie under the fire (#5a2a1c → #120a0c) with an ember-coloured glowing seam, on a floor glow whose strength follows the flicker.
-- **Smoke:** Every 4th frame adds a smoke puff (rgba(104,70,74) at most 12%). It drifts up and fades out before reaching the top of the canvas, which itself is masked transparent → black over its top 22%.
-- **Sparks:** Every 9th frame a free spark rises. Every 70th frame a spark is aimed at a random stone, dies on contact, triggers that stone's hit, and breaks into 7 short ember fragments.
-- **Agent name:** Above the fire, in core, cycling claude / codex / copilot / opencode / gemini every 2.6s with a .4s fade and 6px blur.
+- **Clock:** The simulation runs in fixed 60 Hz steps (at most 4 per frame), so the fire burns at the same pace on 60 and 120 Hz screens. All counts below are steps.
+- **Fire:** Every step spawns 10 flame particles on seven columns, hotter and longer-lived in the middle. Each is a vertically stretched radial blob (1.9 → 4.5× as it ages) whose colour comes from one continuous heat ramp (pale gold #ffde96 → #ffaa3a → ember → #d63416 → deep red). A shared draught bends whole tongues and grows with height, so the tips lick. Flames are summed additively into a buffer, then laid on twice: blurred (1.4% of the width, 70%) for the glow and sharp for the licks, over a faint white-hot heart at the base. Under them: a bed of 18 coals that pulse on their own phases, and three logs with bark grain, sawn ends with a ring, and glowing cracks that follow the flicker. A floor glow (ember → crimson) follows the flicker.
+- **Smoke:** Every 4th step adds a smoke puff (rgba(96,68,72) at most 11%). It drifts up and fades out before reaching the top of the canvas, which itself is masked transparent → black over its top 22%.
+- **Sparks:** Every 10th step a free spark rises, drawn as a short tail along its path. Every 5–7s a spark is aimed at a random stone (unless one is hovered or focused), dies on contact, triggers that stone's hit, and breaks into 7 short ember fragments.
+- **Agent name:** Above the fire, in core, cycling claude / codex / copilot / opencode / gemini every 4.2s with a .4s fade and 6px blur.
 - **Economy:** The loop pauses when the ring leaves the viewport or the tab is hidden. DPR is capped at 2.
 
 ### Install Command
