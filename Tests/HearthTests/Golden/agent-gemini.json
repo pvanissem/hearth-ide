@@ -1,9 +1,22 @@
 {
+  "environment" : {
+    "set_vars" : {
+      "GRADLE_RO_DEP_CACHE" : "\/Users\/test\/.gradle\/caches",
+      "GRADLE_USER_HOME" : "\/Users\/test\/Library\/Caches\/Hearth\/gradle",
+      "MAVEN_ARGS" : "-Dmaven.repo.local=\/Users\/test\/Library\/Caches\/Hearth\/m2\/repository -Dmaven.repo.local.tail=\/Users\/test\/.m2\/repository",
+      "npm_config_cache" : "\/Users\/test\/Library\/Caches\/Hearth\/npm"
+    }
+  },
   "extends" : "default",
   "filesystem" : {
     "allow" : [
       "\/Users\/test\/Library\/Application Support\/Hearth\/runs\/run-1",
       "\/Users\/test\/.gemini"
+    ],
+    "read" : [
+      "\/Users\/test\/Library\/Java\/JavaVirtualMachines",
+      "\/Users\/test\/.sdkman\/candidates",
+      "\/Users\/test\/.gradle\/caches"
     ]
   },
   "groups" : {

@@ -65,6 +65,24 @@ struct SandboxPolicyTests {
         #expect(copilot.seatbeltRules.contains { $0.contains(Self.home + "/.copilot/mcp-config.json") })
     }
 
+    /// Maven, Gradle and npm can't write the user's caches (read-only in nono's runtime groups),
+    /// so builds and agents get a private, writable cache that reuses the host's downloads.
+    @Test func buildToolsGetAPrivateWritableCache() {
+        let cache = Self.home + "/Library/Caches/Hearth"
+        for purpose in [SandboxPurpose.build, .agent(.claude), .agent(.shell)] {
+            let policy = SandboxPolicy.make(purpose, Self.context())
+            let maven = policy.environment["MAVEN_ARGS"] ?? ""
+            #expect(maven.contains("-Dmaven.repo.local=\(cache)/m2/repository"), "\(purpose): Maven cache")
+            #expect(maven.contains("-Dmaven.repo.local.tail=\(Self.home)/.m2/repository"), "\(purpose): ~/.m2 fallback")
+            #expect(!maven.contains(" \(Self.home)/Library/Application"), "MAVEN_ARGS is split at spaces")
+            #expect(policy.environment["GRADLE_USER_HOME"] == cache + "/gradle")
+            #expect(policy.environment["npm_config_cache"] == cache + "/npm")
+            #expect(!policy.readWrite.contains(Self.home + "/.m2") && !policy.readWrite.contains(Self.home + "/.m2/repository"),
+                    "\(purpose) may write the host's Maven repository")
+        }
+        #expect(SandboxPolicy.make(.gitNetwork, Self.context()).environment["MAVEN_ARGS"] == nil)
+    }
+
     @Test func keychainOnlyWhereNeeded() {
         let keychains = Self.home + "/Library/Keychains"
         #expect(SandboxPolicy.make(.agent(.claude), Self.context()).readWrite.contains(keychains))
