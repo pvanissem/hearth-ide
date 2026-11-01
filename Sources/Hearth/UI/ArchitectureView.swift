@@ -26,7 +26,7 @@ struct ArchitectureView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: "\(root)#\(model.workspace.revision)") {
+        .task(id: "\(root)#\(model.workspace.settledRevision)") {
             let found = await MermaidScanner.scan(root: root)
             diagrams.wrappedValue = found
             if selectedID.wrappedValue == nil || !found.contains(where: { $0.id == selectedID.wrappedValue }) {

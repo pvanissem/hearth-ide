@@ -7,25 +7,14 @@ struct PipelinesView: View {
     @Environment(\.textScale) private var scale
     let root: String
 
-    private let remote = State(initialValue: CIRemote?.none)
-    private let remoteChecked = State(initialValue: false)
-    private let remoteRoot = State(initialValue: "")
     private let tokenInput = State(initialValue: "")
-    private let onlyCurrentBranch = State(initialValue: true)
-    private let pipelines = State(initialValue: [CIPipeline]())
-    private let jobs = State(initialValue: [Int: [CIJob]]())
-    private let expanded = State(initialValue: Set<Int>())
-    private let error = State(initialValue: String?.none)
-    private let loading = State(initialValue: false)
     private let log = State(initialValue: JobLog?.none)
-    private let lastRefresh = State(initialValue: Date?.none)
     private let showList = State(initialValue: Set<Int>())     // pipelines shown as list instead of graph
     private let bigGraph = State(initialValue: CIPipeline?.none)
     private let confirmPlay = State(initialValue: CIJob?.none)
     private let confirmRun = State(initialValue: false)
     private let writingToken = State(initialValue: false)
     private let configureToken = State(initialValue: false)
-    private let workflows = State(initialValue: [CIWorkflow]())
     private let confirmWorkflow = State(initialValue: CIWorkflow?.none)
 
     struct JobLog: Identifiable {
@@ -34,18 +23,15 @@ struct PipelinesView: View {
         var text: String?
     }
 
-    private var provider: CIProvider { remote.wrappedValue?.provider ?? .gitLab }
-
-    private var api: (any CIClient)? {
-        guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue else { return nil }
-        return model.ci.api(for: r)
-    }
+    private var store: PipelinesStore { model.pipelines }
+    private var provider: CIProvider { store.remote?.provider ?? .gitLab }
+    private var api: (any CIClient)? { store.root == root ? store.api : nil }
 
     var body: some View {
         Group {
-            if !remoteChecked.wrappedValue {
+            if !(store.remoteChecked && store.root == root) {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if remote.wrappedValue == nil {
+            } else if store.remote == nil {
                 ContentUnavailableView("No CI project", systemImage: "network.slash",
                                        description: Text("The repository has no GitLab or GitHub remote “origin”."))
             } else if api == nil || configureToken.wrappedValue {
@@ -54,40 +40,16 @@ struct PipelinesView: View {
                 content
             }
         }
-        // A new folder: start over. File changes (an agent at work) bump the workspace revision
-        // all the time; they only re-check the remote, quietly, and reload nothing unless it changed.
-        .task(id: root) {
-            remoteChecked.wrappedValue = false
-            remote.wrappedValue = nil
-            let detected = await CIRemote.of(repo: root)
-            guard !Task.isCancelled else { return }
-            remote.wrappedValue = detected
-            remoteRoot.wrappedValue = root
-            if let r = remote.wrappedValue { await model.ci.load(for: r.origin) }
-            remoteChecked.wrappedValue = true
-            pipelines.wrappedValue = []
-            jobs.wrappedValue = [:]
-            workflows.wrappedValue = []
-        }
-        .task(id: "\(root)#\(model.workspace.revision)") {
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled, remoteChecked.wrappedValue, remoteRoot.wrappedValue == root else { return }
-            let detected = await CIRemote.of(repo: root)
-            guard !Task.isCancelled, remoteRoot.wrappedValue == root,
-                  detected?.origin != remote.wrappedValue?.origin || detected?.path != remote.wrappedValue?.path else { return }
-            remote.wrappedValue = detected
-            if let r = detected { await model.ci.load(for: r.origin) }
-            pipelines.wrappedValue = []
-            jobs.wrappedValue = [:]
-            workflows.wrappedValue = []
+        // A new folder: start over. File changes (an agent at work) only re-check the remote,
+        // once they have settled; polling picks up new runs on its own.
+        .task(id: root) { await store.open(root: root) }
+        .task(id: "\(root)#\(model.workspace.settledRevision)") {
+            if store.root == root { await store.recheckRemote() }
         }
         // Poll while visible: every 15 s if something runs, otherwise every 60 s.
-        .task(id: "\(root)#\(remote.wrappedValue?.origin.value ?? "")#\(api != nil)#\(onlyCurrentBranch.wrappedValue)#\(model.workspace.gitSnapshot.branch)") {
-            while !Task.isCancelled {
-                await refresh()
-                let active = pipelines.wrappedValue.contains { CIStatus.isActive($0.status) }
-                try? await Task.sleep(for: .seconds(active ? 15 : 60))
-            }
+        .task(id: "\(root)#\(store.remote?.origin.value ?? "")#\(api != nil)#\(store.onlyCurrentBranch)#\(model.workspace.gitSnapshot.branch)") {
+            guard api != nil else { return }
+            await store.poll(branch: model.workspace.gitSnapshot.branch)
         }
         .modifier(Dialogs(view: self))
     }
@@ -150,7 +112,7 @@ struct PipelinesView: View {
             Text("Tokens are only sent to the HTTPS origin you approve below and are stored in the keychain per server and access level. Please check the server address first.")
                 .scaledFont(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if let r = remote.wrappedValue {
+            if let r = store.remote {
                 Text(r.origin.value).font(.system(.body, design: .monospaced)).textSelection(.enabled)
                 if r.provider == .gitHub {
                     Text("API: \(r.apiBase.host ?? r.host)").scaledFont(.caption, mono: true).foregroundStyle(.secondary)
@@ -177,16 +139,15 @@ struct PipelinesView: View {
             }
             if api != nil {
                 Button("Back to pipelines") { configureToken.wrappedValue = false }
-                if let r = remote.wrappedValue {
+                if let r = store.remote {
                     Button("Revoke server approval", role: .destructive) {
                         model.ci.revoke(r.origin)
-                        pipelines.wrappedValue = []
-                        jobs.wrappedValue = [:]
+                        store.clearResults()
                         tokenInput.wrappedValue = ""
                     }
                 }
             }
-            if let e = error.wrappedValue { Text(e).foregroundStyle(.orange) }
+            if let e = store.error { Text(e).foregroundStyle(.orange) }
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -194,7 +155,7 @@ struct PipelinesView: View {
 
     private func saveToken() {
         let t = tokenInput.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty, let r = remote.wrappedValue else { return }
+        guard !t.isEmpty, let r = store.remote else { return }
         let alert = NSAlert()
         alert.messageText = String(localized: "Approve this \(r.provider.name) server?")
         let access = r.provider == .gitLab ? (writingToken.wrappedValue ? String(localized: "Write (api)") : String(localized: "Read (read_api)"))
@@ -209,7 +170,7 @@ struct PipelinesView: View {
             configureToken.wrappedValue = false
             model.toast(String(localized: "\(r.provider.name) token saved"))
         } else {
-            error.wrappedValue = String(localized: "The token could not be saved in the keychain.")
+            store.error = String(localized: "The token could not be saved in the keychain.")
         }
     }
 
@@ -219,37 +180,37 @@ struct PipelinesView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            if let e = error.wrappedValue {
+            if let e = store.error {
                 Label(e, systemImage: "exclamationmark.triangle").scaledFont(.caption).foregroundStyle(.orange)
                     .padding(8).frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if pipelines.wrappedValue.isEmpty && !loading.wrappedValue && error.wrappedValue == nil {
+            if store.pipelines.isEmpty && !store.loading && store.error == nil {
                 ContentUnavailableView("No pipelines", systemImage: "checklist",
-                                       description: Text(onlyCurrentBranch.wrappedValue
+                                       description: Text(store.onlyCurrentBranch
                                                          ? "There is no pipeline for “\(model.workspace.gitSnapshot.branch)” yet."
                                                          : "This project has no pipeline yet."))
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 4) {
-                        ForEach(pipelines.wrappedValue) { pipelineRow($0) }
+                        ForEach(store.pipelines) { pipelineRow($0) }
                     }
                     .padding(8)
                 }
             }
         }
-        .busyOverlay(loading.wrappedValue && pipelines.wrappedValue.isEmpty, label: String(localized: "Loading pipelines…"))
+        .busyOverlay(store.loading && store.pipelines.isEmpty, label: String(localized: "Loading pipelines…"))
     }
 
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: provider == .gitLab ? "point.3.filled.connected.trianglepath.dotted" : "bolt.horizontal.circle")
                 .foregroundStyle(provider == .gitLab ? Color.orange : Color.accentColor)
-            Text(remote.wrappedValue?.path ?? "").scaledFont(.callout, bold: true).lineLimit(1).truncationMode(.head)
+            Text(store.remote?.path ?? "").scaledFont(.callout, bold: true).lineLimit(1).truncationMode(.head)
             Spacer()
             Button { configureToken.wrappedValue = true } label: { Image(systemName: "key") }
                 .buttonStyle(.borderless).help("Set up access for this \(provider.name) server")
-            Picker("", selection: onlyCurrentBranch.projectedValue) {
+            Picker("", selection: Binding(get: { store.onlyCurrentBranch }, set: { store.onlyCurrentBranch = $0 })) {
                 Text(model.workspace.gitSnapshot.branch.isEmpty ? "Branch" : model.workspace.gitSnapshot.branch).tag(true)
                 Text("All").tag(false)
             }
@@ -261,25 +222,22 @@ struct PipelinesView: View {
                     .help("Start a new pipeline for the current branch")
             } else {
                 Menu {
-                    if workflows.wrappedValue.isEmpty {
+                    if store.workflows.isEmpty {
                         Text("No active workflows found").disabled(true)
                     }
-                    ForEach(workflows.wrappedValue) { w in
+                    ForEach(store.workflows) { w in
                         Button(w.name) { confirmWorkflow.wrappedValue = w }
                     }
                 } label: { Image(systemName: "play.fill") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .disabled(model.workspace.gitSnapshot.branch.isEmpty)
                     .help("Start a workflow for the current branch")
-                    .task(id: "\(root)#\(api != nil)") {
-                        guard let api else { return }
-                        workflows.wrappedValue = (try? await api.workflows()) ?? []
-                    }
+                    .task(id: "\(root)#\(api != nil)") { await store.loadWorkflows() }
             }
-            Button { Task { await refresh() } } label: { Image(systemName: "arrow.clockwise") }
+            Button { Task { await store.refresh(branch: model.workspace.gitSnapshot.branch) } } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.borderless)
-                .help(lastRefresh.wrappedValue.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "Refresh")
-            if let r = remote.wrappedValue {
+                .help(store.lastRefresh.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "Refresh")
+            if let r = store.remote {
                 Button { NSWorkspace.shared.open(r.pipelinesPage) } label: {
                     Image(systemName: "arrow.up.forward.square")
                 }
@@ -301,7 +259,7 @@ struct PipelinesView: View {
     }
 
     private func pipelineRow(_ p: CIPipeline) -> some View {
-        let open = expanded.wrappedValue.contains(p.id)
+        let open = store.expanded.contains(p.id)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.right").font(.system(size: 9 * scale, weight: .bold))
@@ -326,9 +284,9 @@ struct PipelinesView: View {
             }
             .interactiveRow {
                 withAnimation(.easeOut(duration: 0.15)) {
-                    if open { expanded.wrappedValue.remove(p.id) } else { expanded.wrappedValue.insert(p.id) }
+                    if open { store.expanded.remove(p.id) } else { store.expanded.insert(p.id) }
                 }
-                if !open { Task { await loadJobs(p.id) } }
+                if !open { Task { await store.loadJobs(p.id) } }
             }
             .contextMenu {
                 if let url = p.webURL {
@@ -356,7 +314,7 @@ struct PipelinesView: View {
 
     @ViewBuilder
     private func stages(_ p: CIPipeline) -> some View {
-        if let list = jobs.wrappedValue[p.id] {
+        if let list = store.jobs[p.id] {
             let asList = showList.wrappedValue.contains(p.id)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
@@ -448,7 +406,7 @@ struct PipelinesView: View {
             }
             .padding(10)
             Divider()
-            PipelineGraph(jobs: jobs.wrappedValue[p.id] ?? [], large: true, onSelect: { job in
+            PipelineGraph(jobs: store.jobs[p.id] ?? [], large: true, onSelect: { job in
                 bigGraph.wrappedValue = nil
                 Task { try? await Task.sleep(for: .milliseconds(300)); openLog(job) }
             }, onRetry: retryJob, onPlay: { job in
@@ -503,34 +461,8 @@ struct PipelinesView: View {
 
     // MARK: Loading & actions
 
-    private func refresh() async {
-        guard let api else { return }
-        loading.wrappedValue = true
-        defer { loading.wrappedValue = false }
-        do {
-            let ref = onlyCurrentBranch.wrappedValue && !model.workspace.gitSnapshot.branch.isEmpty ? model.workspace.gitSnapshot.branch : nil
-            let list = try await api.pipelines(ref: ref)
-            guard !Task.isCancelled, self.api?.remote == api.remote else { return }
-            pipelines.wrappedValue = list
-            error.wrappedValue = nil
-            lastRefresh.wrappedValue = Date()
-            for id in expanded.wrappedValue where pipelines.wrappedValue.contains(where: { $0.id == id }) {
-                await loadJobs(id)
-            }
-        } catch {
-            self.error.wrappedValue = error.localizedDescription
-        }
-    }
-
-    private func loadJobs(_ pipeline: Int) async {
-        guard let api else { return }
-        if let list = try? await api.jobs(pipeline: pipeline), !Task.isCancelled, self.api?.remote == api.remote {
-            jobs.wrappedValue[pipeline] = list
-        }
-    }
-
     private func act(_ message: String, _ action: @escaping (any CIClient) async throws -> Void) {
-        guard remoteRoot.wrappedValue == root, let r = remote.wrappedValue, let api = model.ci.api(for: r, writing: true) else {
+        guard store.root == root, let r = store.remote, let api = model.ci.api(for: r, writing: true) else {
             writingToken.wrappedValue = true
             configureToken.wrappedValue = true
             model.banner = String(localized: "Please approve separate write access for this \(provider.name) server.")
@@ -541,7 +473,7 @@ struct PipelinesView: View {
                 try await action(api)
                 model.toast(message)
                 try? await Task.sleep(for: .seconds(1))
-                await refresh()
+                await store.refresh(branch: model.workspace.gitSnapshot.branch)
             } catch {
                 model.banner = error.localizedDescription
             }

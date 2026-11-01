@@ -60,7 +60,7 @@ extension AppModel {
             let result = await SandboxGitRunner(runner: runner, root: root).run(.clone(remote), progress: progress)
             if result.ok {
                 workspace.cloneDirectories.remove(root.path)
-                workspace.revision += 1
+                workspace.refreshNow()
             }
             return result
         } catch {

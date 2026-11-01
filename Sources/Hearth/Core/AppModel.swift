@@ -16,7 +16,9 @@ final class AppModel {
     let editor: EditorStore
     let workspace = WorkspaceState()
     let textZoom = TextZoomStore()
-    let ci = CIAccounts()
+    let ci: CIAccounts
+    /// CI/CD pane of the workspace folder (all inspector panes show the same folder).
+    let pipelines: PipelinesStore
 
     /// The user's sandbox rules (domains, ports, folders, projects, credentials).
     private(set) var sandboxSettings = SandboxSettings.load()
@@ -39,6 +41,11 @@ final class AppModel {
 
     init() {
         editor = EditorStore(layout: layout)
+        let ci = CIAccounts()
+        self.ci = ci
+        pipelines = PipelinesStore(.init(detectRemote: { await CIRemote.of(repo: $0) },
+                                         loadCredentials: { await ci.load(for: $0) },
+                                         client: { ci.api(for: $0) }))
         editor.workspaceRoot = { [weak self] in self?.workspaceRoot }
         editor.notify = { [weak self] in self?.toast($0) }
         layout.notify = { [weak self] in self?.toast($0) }
@@ -100,7 +107,7 @@ final class AppModel {
         }
         workspace.selectedFile = selected
         workspace.revealID = UUID()
-        workspace.revision += 1
+        workspace.refreshNow()
     }
 
     /// Starts an agent in the sandbox and shows it.

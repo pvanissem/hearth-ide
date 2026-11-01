@@ -22,11 +22,11 @@ struct WorkspaceLayoutView: View {
             }
         }
         .overlay { windowEdgeHighlight }
-        .task(id: "\(model.workspaceRoot ?? "")#\(model.workspace.revision)") {
+        .task(id: "\(model.workspaceRoot ?? "")#\(model.workspace.settledRevision)") {
             guard let root = model.workspaceRoot else { model.workspace.gitSnapshot = GitSnapshot(); return }
-            let revision = model.workspace.revision
+            let revision = model.workspace.settledRevision
             let snapshot = await Git.snapshot(of: root)
-            guard !Task.isCancelled, model.workspaceRoot == root, model.workspace.revision == revision else { return }
+            guard !Task.isCancelled, model.workspaceRoot == root, model.workspace.settledRevision == revision else { return }
             model.workspace.gitSnapshot = snapshot
         }
     }
@@ -356,7 +356,7 @@ struct DirectoryView: View {
                 } label: { Image(systemName: "plus") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .help("Create a file or folder in the workspace")
-                Button { model.workspace.revision += 1 } label: { Image(systemName: "arrow.clockwise") }
+                Button { model.workspace.refreshNow() } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless).help("Refresh directory")
             }
             .padding(.horizontal, 8).padding(.top, 6)
@@ -371,7 +371,7 @@ struct DirectoryView: View {
                     }
                 }
                 .busyOverlay(searching.wrappedValue && results.wrappedValue.isEmpty, label: String(localized: "Searching…"))
-                .task(id: "\(root)#\(query.wrappedValue)#\(model.workspace.revision)") {
+                .task(id: "\(root)#\(query.wrappedValue)#\(model.workspace.settledRevision)") {
                     try? await Task.sleep(for: .milliseconds(150))
                     if Task.isCancelled { return }
                     searching.wrappedValue = true
@@ -528,7 +528,7 @@ struct GitView: View {
                 .padding(8)
             }
             .busyOverlay(busy.wrappedValue != nil, label: busy.wrappedValue)
-            .task(id: "\(root)#\(model.workspace.revision)") { await reloadBranches() }
+            .task(id: "\(root)#\(model.workspace.settledRevision)") { await reloadBranches() }
             .confirmationDialog(checkoutTitle, isPresented: isPresent(pendingCheckout), presenting: pendingCheckout.wrappedValue) { b in
                 Button("Switch") { Task { await run(String(localized: "Switching to \(b.localName)…")) { await Git.checkout(b, in: root) } } }
             } message: { _ in
@@ -756,7 +756,7 @@ struct GitView: View {
         } else {
             model.banner = "Git: " + result.output.lastNonEmptyLines(4)
         }
-        model.workspace.revision += 1
+        model.workspace.refreshNow()
         await reloadBranches()
     }
 

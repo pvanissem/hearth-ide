@@ -28,7 +28,7 @@ ausgeführt wird.
 | S4 | „Im Standardprogramm öffnen“ startet vom Agenten geschriebene Programme ohne Nachfrage | Mittel | aus Code belegt |
 | S5 | Terminal-Bereich ist eine ungesandboxte Host-Shell im Agenten-Ordner | Mittel | gekennzeichnet in v0.2.1, offen |
 | S6 | Arbeitsordner darf Hearths eigene Einstellungen enthalten | Mittel | **behoben in v0.2.1** |
-| S7 | Session-ID aus der Event-Datei wird ungeprüft weitergegeben | Niedrig | aus Code belegt |
+| S7 | Session-ID aus der Event-Datei wird ungeprüft weitergegeben | Niedrig | **behoben in v0.4.5** |
 | S8 | Datenabfluss über erlaubte Entwicklerdienste | Niedrig | Restrisiko |
 | S9 | Update-Kette vertraut allein dem GitHub-Konto | Niedrig | bekannt |
 
@@ -229,6 +229,12 @@ beliebig fälschen; das ist kosmetisch.
 **Empfehlung:** Session-IDs auf `^[A-Za-z0-9-]{8,64}$` beschränken und vor
 positionalen Argumenten `--` setzen, wo die CLI das unterstützt; pro Poll höchstens
 z. B. 1 MB lesen.
+
+**Umgesetzt (v0.4.5):** `AgentHost.validSessionID` lässt nur IDs zu, die mit einem
+Buchstaben oder einer Ziffer beginnen und aus `A–Z a–z 0–9 _ . : -` bestehen (höchstens
+128 Zeichen). Geprüft wird beim Lesen der Event-Datei und noch einmal vor dem
+Fortsetzen, also auch bei gespeicherten Sitzungen. `pollEvents` liest höchstens 1 MB pro
+Durchlauf und überspringt zu lange Zeilen. Test: `LoadingTests.sessionIDsCannotBecomeOptions`.
 
 ### S8 · Niedrig · Datenabfluss über erlaubte Dienste (Restrisiko)
 

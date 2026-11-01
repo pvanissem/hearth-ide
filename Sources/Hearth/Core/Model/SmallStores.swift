@@ -6,8 +6,17 @@ import Observation
 @MainActor
 @Observable
 final class WorkspaceState {
-    /// Bumped whenever the agent may have changed files; inspector tabs reload on change.
-    var revision = 0
+    /// Bumped whenever the agent may have changed files. The directory tree and the editor
+    /// follow it directly; heavier views use `settledRevision`.
+    var revision = 0 { didSet { scheduleSettle() } }
+    /// Follows `revision` once changes have paused for `settleDelay`, or at the latest after
+    /// `maxSettleDelay` while an agent keeps writing. Tests, diagrams, branches, Git status and
+    /// CI/CD reload on this, so they don't restart their work on every file the agent writes.
+    private(set) var settledRevision = 0
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingSince: ContinuousClock.Instant?
+    @ObservationIgnored var settleDelay: Duration = .milliseconds(1500)
+    @ObservationIgnored var maxSettleDelay: Duration = .seconds(10)
     var gitSnapshot = GitSnapshot()
     var expandedPaths: Set<String> = []
     var selectedFile: URL?
@@ -15,6 +24,34 @@ final class WorkspaceState {
     let dragToken = UUID()
     /// Empty clone targets created by this app instance may be retried, never arbitrary folders.
     var cloneDirectories: Set<String> = []
+
+    /// An explicit reload (refresh button, session switch): everything follows at once.
+    func refreshNow() {
+        revision += 1
+        settle()
+    }
+
+    private func scheduleSettle() {
+        guard revision != settledRevision else { return }
+        let now = ContinuousClock.now
+        let since = pendingSince ?? now
+        pendingSince = since
+        let remaining = maxSettleDelay - (now - since)
+        let delay = min(settleDelay, max(remaining, .zero))
+        settleTask?.cancel()
+        settleTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            self?.settle()
+        }
+    }
+
+    private func settle() {
+        settleTask?.cancel()
+        settleTask = nil
+        pendingSince = nil
+        settledRevision = revision
+    }
 }
 
 /// Text size per area (chat, inspector, sidebar, single panes), ⌘-scroll / pinch zoom.

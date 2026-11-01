@@ -140,6 +140,7 @@ the commits. The app updater and `install.sh` read from
 - [App updates](docs/app-updates.md)
 - [Architecture](docs/architecture.md)
 - [Security and architecture review](docs/review-security-architecture.md)
+- [Code and project review](docs/review-code-project.md)
 
 ## License
 

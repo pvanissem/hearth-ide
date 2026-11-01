@@ -332,7 +332,7 @@ extension AppModel {
             menu.addItem(.separator())
         }
         guard let file else {
-            add(String(localized: "Refresh")) { self.workspace.revision += 1 }
+            add(String(localized: "Refresh")) { self.workspace.refreshNow() }
             return menu
         }
         let url = file.url

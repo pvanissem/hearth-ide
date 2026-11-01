@@ -166,7 +166,7 @@ final class AgentHost {
         let args: [String]
         if run.purpose == .login { args = run.kind.loginArguments ?? [] }
         else {
-            if !run.canResume { run.sessionID = nil }
+            if !run.canResume || !(run.sessionID.map(Self.validSessionID) ?? true) { run.sessionID = nil }
             args = run.kind.arguments(resume: run.sessionID)
         }
         let launch: SandboxManager.Launch
@@ -261,13 +261,20 @@ final class AgentHost {
         for run in runs where run.isRunning { pollEvents(run) }
     }
 
+    static let maxEventChunk = 1 << 20
+
     private func pollEvents(_ run: AgentRun) {
         let url = SandboxManager.runDirectory(run.id).appendingPathComponent("events.jsonl")
         guard let handle = try? FileHandle(forReadingFrom: url) else { return }
         defer { try? handle.close() }
+        // The sandbox writes this file: read at most 1 MB per poll, skip an oversized line.
+        let limit = Self.maxEventChunk
         guard (try? handle.seek(toOffset: run.eventOffset)) != nil,
-              let data = try? handle.readToEnd(), !data.isEmpty,
-              let lastNewline = data.lastIndex(of: 10) else { return }
+              let data = try? handle.read(upToCount: limit), !data.isEmpty else { return }
+        guard let lastNewline = data.lastIndex(of: 10) else {
+            if data.count >= limit { run.eventOffset += UInt64(data.count) }
+            return
+        }
         let complete = data[data.startIndex...lastNewline]
         run.eventOffset += UInt64(complete.count)
         for line in complete.split(separator: 10) {
@@ -276,8 +283,15 @@ final class AgentHost {
         }
     }
 
+    /// The event file lies in the run folder, which the sandbox may write. A session ID goes
+    /// into the agent's arguments on resume (`--resume <id>`), so it must not look like an
+    /// option or carry anything but ID characters (S7 in docs/review-security-architecture.md).
+    static func validSessionID(_ id: String) -> Bool {
+        id.range(of: #"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"#, options: .regularExpression) != nil
+    }
+
     private func apply(_ event: [String: Any], to run: AgentRun) {
-        if let sid = event["session_id"] as? String ?? event["thread-id"] as? String, !sid.isEmpty, run.sessionID != sid {
+        if let sid = event["session_id"] as? String ?? event["thread-id"] as? String, Self.validSessionID(sid), run.sessionID != sid {
             run.sessionID = sid
             save()
         }

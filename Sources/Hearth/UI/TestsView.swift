@@ -10,7 +10,6 @@ struct TestsView: View {
     private let filter = State(initialValue: "")
     private let expandedSuites = State(initialValue: Set<String>())
     private let expandedCases = State(initialValue: Set<String>())
-    private let loading = State(initialValue: false)
 
     static var runPrompt: String { String(localized: """
     Run this project's tests (e.g. `mvn -q verify`, `./gradlew test` or \
@@ -26,8 +25,7 @@ struct TestsView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .busyOverlay(loading.wrappedValue && report.wrappedValue != nil, label: "Lese Reports …")
-        .task(id: "\(root)#\(model.workspace.revision)") { await reload() }
+        .task(id: "\(root)#\(model.workspace.settledRevision)") { await reload() }
     }
 
     private var empty: some View {
@@ -211,10 +209,11 @@ struct TestsView: View {
 
     // MARK: Helpers
 
+    /// Reloads keep the current results on screen (no overlay); the first load shows a spinner.
     private func reload() async {
-        loading.wrappedValue = true
-        report.wrappedValue = await TestReports.load(root: root)
-        loading.wrappedValue = false
+        let found = await TestReports.load(root: root)
+        guard !Task.isCancelled else { return }
+        report.wrappedValue = found
     }
 
     private func toggle(_ set: State<Set<String>>, _ id: String) {
