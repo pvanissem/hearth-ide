@@ -253,13 +253,14 @@ final class BuildDeployStore {
                     failures = 0
                     if state != .running {
                         guard run.state.isActive else { return }
+                        // Clean up in the sandbox first: once the run shows as finished, nothing of it is left.
+                        await client.remove(id)
                         switch state {
                         case _ where run.stopRequested, .killed: self.finish(run, .stopped)
                         case .exited(0): self.finish(run, run.task.kind == .service ? .failed(String(localized: "ended")) : .succeeded)
                         case .timedOut: self.finish(run, .failed(String(localized: "timed out")))
                         default: self.finish(run, .failed(SandboxGitRunner.describe(state)), note: Self.networkHint(run.output))
                         }
-                        await client.remove(id)
                         return
                     }
                 } catch is CancellationError { return }
